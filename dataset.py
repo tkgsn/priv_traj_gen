@@ -2,6 +2,10 @@ from torch.utils.data import Dataset
 import torch
 import random
 import numpy as np
+from my_utils import plot_density, compute_next_location_count, compute_global_counts, compute_global_counts_from_time_label
+from collections import Counter
+import json
+import tqdm
 
 
 def make_format_to_label(traj_list):
@@ -20,23 +24,13 @@ def make_label_to_format(format_to_label):
     return label_to_format
     
 
-def compute_traj_type_distribution(real_traj):
+def make_label_info(real_traj):
     # make dictionary that maps a format to a label
     format_to_label = make_format_to_label(real_traj)
     # label_to_format
     label_to_format = make_label_to_format(format_to_label)
 
-    # make a list of labels
-    label_list = [format_to_label[traj_to_format(trajectory)] for trajectory in real_traj]
-
-    # count the number of trajectories for each label
-    label_count = [0] * len(format_to_label)
-    for label in label_list:
-        label_count[label] += 1
-    
-    # normalize
-    label_count = [count / sum(label_count) for count in label_count]
-    return label_count, format_to_label, label_to_format
+    return format_to_label, label_to_format
 
 def traj_to_format(traj):
     # list a set of states in the trajectory
@@ -55,148 +49,6 @@ def traj_to_format(traj):
 
     return format
 
-def padded_collate(batch):
-    # compute max_len
-    max_len = max([len(x["input"]) for x in batch])
-    inputs = []
-    targets = []
-    for record in batch:
-        s = record["input"]
-        target = record["target"]
-        inputs.append(s + [dataset.IGNORE_IDX] * (max_len - len(s)))
-        targets.append(target + [dataset.IGNORE_IDX] * (max_len - len(target)))
-
-    return {"input":torch.Tensor(inputs).long(), "target":torch.Tensor(targets).long()}
-
-def padded_collate_without_end(batch):
-    # compute max_len
-    max_len = max([len(x["input"]) for x in batch])-1
-    if max_len == 0:
-        max_len = 1
-    inputs = []
-    targets = []
-    for record in batch:
-        # remove elements with length 1
-        if len(record["input"]) == 1:
-            continue
-
-        s = record["input"][:-1]
-        target = record["target"][:-1]
-        inputs.append(s + [dataset.IGNORE_IDX] * (max_len - len(s)))
-        targets.append(target + [dataset.IGNORE_IDX] * (max_len - len(target)))
-
-    return {"input":torch.Tensor(inputs).long(), "target":torch.Tensor(targets).long()}
-
-
-def padded_collate_without_end_only_first_markov(batch):
-    # compute max_len
-    inputs = []
-    targets = []
-    for record in batch:
-        if len(record["input"]) < 2:
-            continue
-
-        s = record["input"][:-1][:1]
-        target = record["target"][:-1][:1]
-        inputs.append(s)
-        targets.append(target)
-
-    return {"input":torch.Tensor(inputs).long(), "target":torch.Tensor(targets).long()}
-
-
-def make_padded_collate(n_locations, format_to_label, time_to_label, remove_first_value=False):
-    start_idx = TrajectoryDataset.start_idx(n_locations)
-    ignore_idx = TrajectoryDataset.ignore_idx(n_locations)
-
-    def padded_collate(batch):
-        # compute max_len
-        max_len = max([len(x["trajectory"]) for x in batch])
-        inputs = []
-        targets = []
-        times = []
-        target_times = []
-        labels = []
-
-        for record in batch:
-            trajectory = record["trajectory"]
-            time_trajecotry = record["time_trajectory"]
-
-            format = traj_to_format(trajectory)
-            label = format_to_label[format]
-
-            # print(trajectory)
-
-            input = [start_idx] + trajectory + [ignore_idx] * (max_len - len(trajectory))
-            target = input[1:] + [ignore_idx]
-
-            # convert the duplicated state of target to the ignore_idx
-            # if the label is "010", then the second 0 is converted to the ignore_idx
-            checked_target = ["a"]
-            for i in range(1,len(format)):
-                if format[i] not in checked_target:
-                    checked_target.append(format[i])
-                    continue
-                target[i] = ignore_idx
-
-            if remove_first_value:
-                target[0] = ignore_idx
-
-            # convert time_input to labels [0,800,1439,...] -> [0, 5, 10, ...]
-            time_last = time_to_label(-1)
-            time_input = [time_to_label(v) for v in time_trajecotry] + [time_last] * (max_len - len(time_trajecotry)+1)
-            time_target = time_input[1:] + [time_last]
-            # if len(time_input) != len(input):
-            #     print("aa", time_input)
-            #     print("bb", input)
-
-            inputs.append(input)
-            targets.append(target)
-            times.append(time_input)
-            target_times.append(time_target)
-            labels.append(label)
-
-        # print([len(v) for v in inputs])
-        # print([len(v) for v in targets])
-        # print([len(v) for v in times])
-        # print([len(v) for v in target_times])
-        return {"input":torch.Tensor(inputs).long(), "target":torch.Tensor(targets).long(), "time":torch.Tensor(times).long(), "time_target":torch.Tensor(target_times).long(), "label":torch.Tensor(labels).long()}
-
-
-
-        # for record in batch:
-        #     if len(record["input"]) == 1:
-        #         continue
-        #     label = record["label"]
-        #     s = record["input"][:-1]
-        #     target = record["target"][:-1]
-        #     time = convert_time_traj_to_time_traj_float(record["time"])[:-1]
-        #     target_time = convert_time_traj_to_time_traj_float(record["time_target"][:-1])
-        #     if len(s) != len(time):
-        #         continue
-        #     inputs.append([start_idx] + s + [ignore_idx] * (max_len - len(s)))
-        #     targets.append(target + [ignore_idx] * (max_len - len(target)))
-        #     times.append(time + [ignore_idx] * (max_len - len(time)))
-        #     target_times.append(target_time + [ignore_idx] * (max_len - len(target_time)))
-        #     labels.append(label)
-
-    return padded_collate
-
-
-
-
-
-# convert minute to float of [0,1]
-def int_to_float_of_minute(minute):
-    return minute / 1439
-
-# convert real_time_traj to real_time_traj_float
-def convert_time_traj_to_time_traj_float(real_time_traj):
-    real_time_traj_float = []
-    for time_start, _ in real_time_traj:
-        real_time_traj_float.append(int_to_float_of_minute(time_start))
-    return real_time_traj_float
-
-
 class TrajectoryDataset(Dataset):
 
     @staticmethod
@@ -212,9 +64,11 @@ class TrajectoryDataset(Dataset):
         return n_locations+2
     
     @staticmethod
+    def time_end_idx(n_split):
+        return n_split
+    
+    @staticmethod
     def time_to_label(time, n_time_split, max_time):
-        if time == -1 or time == max_time:
-            return n_time_split
         if time == 0:
             return 0
         return int(time//(max_time/n_time_split))+1
@@ -229,49 +83,54 @@ class TrajectoryDataset(Dataset):
     def _label_to_time(self, label):
         return TrajectoryDataset.label_to_time(label, self.n_time_split, self.max_time)
     
-    #Init dataset
-    def __init__(self, data, time_data, n_bins, n_time_split, max_time, dataset_name="dataset"):
-        dataset = self
-        
-        dataset.data = data
-        dataset.seq_len = max([len(trajectory) for trajectory in data])
-
-        dataset.time_data = time_data
-
-        dataset.n_bins = n_bins
-        dataset.n_locations = (n_bins+2)**2
-        # vocab = list(range(dataset.n_locations)) + ['<start>', '<ignore>', '<end>', '<oov>', '<mask>', '<cls>']
-        # dataset.vocab = {e:i for i, e in enumerate(vocab)} 
-        dataset.dataset_name = dataset_name
-        dataset.time_end_index = n_time_split-1
-        dataset.label_count, dataset.format_to_label, dataset.label_to_format = compute_traj_type_distribution(data)
-        dataset.labels = self._compute_dataset_labels()
-        dataset.n_time_split = n_time_split
-        dataset.max_time = max_time
-        
-        #special tags
-        # dataset.START_IDX = dataset.vocab['<start>']
-        # dataset.IGNORE_IDX = dataset.vocab['<ignore>'] #replacement tag for tokens to ignore
-        # dataset.OUT_OF_VOCAB_IDX = dataset.vocab['<oov>'] #replacement tag for unknown words
-        # dataset.MASK_IDX = dataset.vocab['<mask>'] #replacement tag for the masked word prediction task
-        # dataset.CLS_IDX = dataset.vocab['<cls>']
-        # dataset.END_IDX = dataset.vocab['<end>']
+    def label_to_length(self, label):
+        format = self.label_to_format[label]
+        return len(format)
     
+    def _make_label_to_reference(self):
+
+        def make_reference(label):
+            format = self.label_to_format[label]
+            reference = {}
+            for i in range(len(format)):
+                if format[i] not in reference:
+                    reference[format[i]] = i
+            return tuple([reference[format[i]] for i in range(len(format))])
+        
+        return {label: make_reference(label) for label in self.label_to_format.keys()}
+    
+    #Init dataset
+    def __init__(self, data, time_data, n_locations, n_time_split, max_time, dataset_name="dataset"):
+        assert len(data) == len(time_data)
+        
+        self.data = data
+        self.seq_len = max([len(trajectory) for trajectory in data])
+        self.time_data = time_data
+        self.n_locations = n_locations
+        self.dataset_name = dataset_name
+        self.time_end_index = n_time_split-1
+        self.format_to_label, self.label_to_format = make_label_info(data)
+        self.labels = self._compute_dataset_labels()
+        self.label_to_reference = self._make_label_to_reference()
+        self.n_time_split = n_time_split
+        self.max_time = max_time
+
+        self.time_label_trajs = []
+        for time_traj in self.time_data:
+            self.time_label_trajs.append(tuple([self._time_to_label(t) for t in time_traj]))
+
+        self.time_ranges = [(self._label_to_time(i), self._label_to_time(i+1)) for i in range(n_time_split)]
+
+
     def __str__(self):
         return self.dataset_name
         
     # fetch data
     def __getitem__(self, index):
-        dataset = self
-        # s = dataset.data[index]
-        # target = dataset.data[index][1:] + [dataset.END_IDX]
-        trajectory = dataset.data[index]
-        time_trajectory = dataset.time_data[index]
+        trajectory = self.data[index]
+        time_trajectory = list(self.time_label_trajs[index])
         
-
         return {'trajectory': trajectory, 'time_trajectory': time_trajectory}
-        # return {'input': s, 'target': target, 'time': time, 'time_target': time_target, 'index': index, 'label': label}
-        # return {'input':torch.Tensor(s).long(), 'target':torch.Tensor(target).long()}
 
     def __len__(self):
         return len(self.data)
@@ -279,10 +138,121 @@ class TrajectoryDataset(Dataset):
     def _compute_dataset_labels(self):
         labels = [self.format_to_label[traj_to_format(trajectory)] for trajectory in self.data]
         return labels
+    
+    def convert_time_label_trajs_to_time_trajs(self, time_label_trajs):
+        time_trajs = []
+        for time_label_traj in time_label_trajs:
+            time_trajs.append(self.convert_time_label_traj_to_time_traj(time_label_traj))
+        return time_trajs
+    
+    def convert_time_label_traj_to_time_traj(self, time_label_traj):
+        time_traj = []
+        for time_label in time_label_traj:
+            time_traj.append(self._label_to_time(time_label))
+        return time_traj
 
-    def reset(self):
-        self.start_positions = {}
 
-    #get words id
-    def get_sentence_idx(self, index):
-        dataset = self
+    def compute_auxiliary_information(self, save_path, logger):
+
+        # find the top appearing locations in the dataset
+        locations_count = Counter([location for trajectory in self.data for location in trajectory]).most_common(self.n_locations)
+        locations = [location for location, _ in locations_count]
+        logger.info(f"top {10} locations: " + str(locations_count[:10]))
+
+        next_location_count_path = save_path.parent / f"next_location_count.json"
+        if next_location_count_path.exists():
+            logger.info(f"load next location count from {next_location_count_path}")
+            # load the next location distribution
+            with open(next_location_count_path) as f:
+                next_location_counts = json.load(f)
+                next_location_counts = {int(key): value for key, value in next_location_counts.items()}
+        else:
+            # compute the next location probability for each location
+            next_location_counts = {}
+            for location in tqdm.tqdm(range(self.n_locations)):
+                next_location_count = compute_next_location_count(location, self.data, self.n_locations)
+                next_location_counts[location] = (list(next_location_count))
+                if sum(next_location_count) == 0:
+                    logger.info(f"no next location at location {location}")
+                    continue
+                # visualize the next location distribution
+                next_location_distribution = np.array(next_location_count) / np.sum(next_location_count)
+                plot_density(next_location_distribution, self.n_locations, save_path.parent / f"real_next_location_distribution_{location}.png")
+            
+            # save the next location distribution
+            with open(next_location_count_path, "w") as f:
+                json.dump(next_location_counts, f)
+
+        # time_ranges := [(0, max_time/n_split), (max_time/n_split, 2*max_time/n_split), ..., (max_time*(n_split-1)/n_split, max_time)]
+
+
+        real_global_counts = []
+        for time in range(self.n_time_split+1):
+            real_global_count = compute_global_counts_from_time_label(self.data, self.time_label_trajs, time, self.n_locations)
+            real_global_counts.append(real_global_count)
+            if sum(real_global_count) == 0:
+                logger.info(f"no location at time {time}")
+                continue
+            real_global_distribution = np.array(real_global_count) / np.sum(real_global_count)
+            plot_density(real_global_distribution, self.n_locations, save_path.parent / f"real_global_distribution_{int(time)}.png")
+
+        # make a list of labels
+        label_list = [self.format_to_label[traj_to_format(trajectory)] for trajectory in self.data]
+        label_count = Counter({label:0 for label in self.label_to_format.keys()})
+        label_count.update(label_list)
+        reference_distribution = {self.label_to_reference[label]: count for label, count in label_count.items()}
+        
+        time_label_count = Counter(self.time_label_trajs)
+        time_distribution = {label: time_label_count[label] / len(self.time_label_trajs) for label in time_label_count.keys()}
+
+        return locations, next_location_counts, real_global_counts, label_count, time_distribution, reference_distribution
+
+
+    def make_padded_collate(self, remove_first_value=False):
+        start_idx = TrajectoryDataset.start_idx(self.n_locations)
+        ignore_idx = TrajectoryDataset.ignore_idx(self.n_locations)
+        time_end_idx = TrajectoryDataset.time_end_idx(self.n_time_split)
+
+        def padded_collate(batch):
+            max_len = max([len(x["trajectory"]) for x in batch])
+            inputs = []
+            targets = []
+            times = []
+            target_times = []
+            labels = []
+
+            for record in batch:
+                trajectory = record["trajectory"]
+                time_trajecotry = record["time_trajectory"]
+
+                format = traj_to_format(trajectory)
+                label = self.format_to_label[format]
+
+                input = [start_idx] + trajectory + [ignore_idx] * (max_len - len(trajectory))
+                target = input[1:] + [ignore_idx]
+
+                # convert the duplicated state of target to the ignore_idx
+                # if the label is "010", then the second 0 is converted to the ignore_idx
+                checked_target = ["a"]
+                for i in range(1,len(format)):
+                    if format[i] not in checked_target:
+                        checked_target.append(format[i])
+                        continue
+                    target[i] = ignore_idx
+
+                if remove_first_value:
+                    target[0] = ignore_idx
+
+                time_input = time_trajecotry + [time_end_idx] * (max_len - len(time_trajecotry)+1)
+                time_target = time_input[1:] + [time_end_idx]
+
+                inputs.append(input)
+                targets.append(target)
+                times.append(time_input)
+                target_times.append(time_target)
+                labels.append(label)
+
+            return {"input":torch.Tensor(inputs).long(), "target":torch.Tensor(targets).long(), "time":torch.Tensor(times).long(), "time_target":torch.Tensor(target_times).long(), "label":torch.Tensor(labels).long()}
+
+        return padded_collate
+        
