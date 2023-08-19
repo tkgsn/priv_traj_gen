@@ -2,7 +2,8 @@ from torch.utils.data import Dataset
 import torch
 import random
 import numpy as np
-from my_utils import plot_density, compute_next_location_count, compute_global_counts, compute_global_counts_from_time_label
+from my_utils import plot_density
+from evaluation import compute_next_location_count, compute_global_counts_from_time_label
 from collections import Counter
 import json
 import tqdm

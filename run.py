@@ -7,7 +7,7 @@ from torch import nn, optim
 import json
 from scipy.spatial.distance import jensenshannon
 
-from my_utils import get_datadir, load_dataset, load_time_dataset, compute_distance_distribution, clustering, noise_normalize, add_noise, plot_density, compute_global_distribution, make_trajectories, set_logger
+from my_utils import get_datadir, load_dataset, load_time_dataset, clustering, noise_normalize, add_noise, plot_density, make_trajectories, set_logger
 from dataset import TrajectoryDataset
 from models import MetaDiscreteTimeTrajTypeGRUNet, make_sample, MetaGRUNet, MetaNetwork, MetaAttentionNetwork, MetaClassNetwork
 from data_pre_processing import save_state_with_nan_padding
@@ -17,7 +17,7 @@ from opacus.utils.batch_memory_manager import BatchMemoryManager
 from opacus import PrivacyEngine
 from pytorchtools import EarlyStopping
 
-from evaluation import count_source_locations, count_target_locations, compute_distribution_from_count, compute_route_count, compute_distance_distribution, compute_destination_count
+from evaluation import count_source_locations, count_target_locations, compute_distribution_from_count, compute_route_count, compute_distance_distribution, compute_destination_count, compute_next_location_distribution, compute_global_distribution
 from data_post_processing import post_process_chengdu
 
 def evaluate():
@@ -58,6 +58,7 @@ def evaluate():
 
     route_jss = []
     destination_jss = []
+    next_location_jss = []
     for location in top_base_locations[:args.n_test_locations]:
         count = compute_route_count(trajectories, location)
         original_route_distribution = compute_distribution_from_count(count, dataset.n_locations)
@@ -73,7 +74,14 @@ def evaluate():
         destination_js = jensenshannon(original_destination_distribution, generated_destination_distribution)**2
         destination_jss.append(destination_js)
 
-
+        generated_next_location_distribution = compute_next_location_distribution(location, generated_trajs, dataset.n_locations)
+        if generated_next_location_distribution is None:
+            next_location_js = 1
+        else:
+            next_location_js = jensenshannon(next_location_distributions[location], generated_next_location_distribution)**2
+            next_location_jss.append(next_location_js)
+    
+    results["empirical_next_location_js"] = next_location_jss
     results["route_js"] = route_jss
     results["destination_js"] = destination_jss
 

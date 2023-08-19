@@ -1,14 +1,14 @@
 #!/usr/bin/bash
 
-# dataset=peopleflow
-# max_size=10000
-# data_name=$max_size
-# latlon_config=peopleflow.json
-# location_threshold=500
-# time_threshold=20
-# n_bins=38
-# seed_for_dataset=0
-# training_data_name=bin38
+dataset=peopleflow
+max_size=100000
+data_name=$max_size
+latlon_config=peopleflow.json
+location_threshold=500
+time_threshold=20
+n_bins=38
+seed_for_dataset=0
+training_data_name=bin38
 
 # dataset=test
 # max_size=1000
@@ -20,15 +20,15 @@
 # seed_for_dataset=0
 # training_data_name=seed${seed_for_dataset}_size${max_size}
 
-dataset=test
-max_size=1000
-data_name=circle
-latlon_config=test.json
-location_threshold=0
-time_threshold=0
-n_bins=1
-seed_for_dataset=0
-training_data_name=seed${seed_for_dataset}_size${max_size}
+# dataset=test
+# max_size=1000
+# data_name=circle
+# latlon_config=test.json
+# location_threshold=0
+# time_threshold=0
+# n_bins=1
+# seed_for_dataset=0
+# training_data_name=seed${seed_for_dataset}_size${max_size}
 
 # dataset=chengdu
 # max_size=100000
@@ -60,7 +60,7 @@ physical_batch_size=50
 n_epoch=300
 meta_n_iter=1000
 coef_location=1
-coef_time=0
+coef_time=1
 n_classes=10
 global_clip=2
 meta_hidden_dim=512
@@ -69,10 +69,10 @@ eval_interval=10
 n_test_locations=20
 
 # set the options
-is_dp=True
+is_dp=False
 remove_first_value=True
 fix_meta_network=False
-meta_network=True
+meta_network=False
 meta_class=True
 attention=True
 fix_embedding=True
@@ -136,7 +136,7 @@ done
 # epsilons=(10 20 1 2 5)
 seeds=(0)
 for seed in "${seeds[@]}"; do
-    save_name=attention_dp_batch1000
+    save_name=baseline
     python3 run.py $option --save_name $save_name
 done
 
