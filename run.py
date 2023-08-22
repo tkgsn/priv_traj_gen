@@ -9,7 +9,7 @@ from scipy.spatial.distance import jensenshannon
 
 from my_utils import get_datadir, load_dataset, load_time_dataset, clustering, noise_normalize, add_noise, plot_density, make_trajectories, set_logger
 from dataset import TrajectoryDataset
-from models import MetaDiscreteTimeTrajTypeGRUNet, make_sample, MetaGRUNet, MetaNetwork, MetaAttentionNetwork, MetaClassNetwork
+from models import GRUNet, MetaGRUNet, MetaNetwork, MetaAttentionNetwork, MetaClassNetwork
 from data_pre_processing import save_state_with_nan_padding
 import torch.nn.functional as F
 from opacus.utils.batch_memory_manager import BatchMemoryManager
@@ -22,11 +22,14 @@ from data_post_processing import post_process_chengdu
 
 def evaluate():
     results = {}
-    jss, generated_next_location_distributions = evaluate_next_location_on_test_dataset(next_location_distributions, test_data_loader, generator)
-    results["next_location_js"] = jss
+    jss, generated_next_location_distributions = evaluate_next_location_on_test_dataset(first_next_location_distributions, test_data_loader, eval_generator)
+    results["first_next_location_js"] = jss
 
-    start_data = [trajectories, dataset.time_label_trajs] if args.real_start else None
-    generated_trajs, generated_time_trajs = make_sample(args.batch_size, generator, torch.tensor(dataset.labels), dataset.label_to_format, dataset.n_locations, TrajectoryDataset.time_end_idx(args.n_split), real_start=start_data, without_time=False)
+    start_trajs = torch.tensor([traj[0] for traj in trajectories]).cuda(args.cuda_number)
+    start_time_trajs = torch.tensor([time_traj[0] for time_traj in dataset.time_label_trajs]).cuda(args.cuda_number)
+    start_data = [start_trajs, start_time_trajs] if args.real_start else None
+    # generated_trajs, generated_time_trajs = make_sample(args.batch_size, generator, torch.tensor(dataset.labels), dataset.label_to_format, dataset.n_locations, TrajectoryDataset.time_end_idx(args.n_split), real_start=start_data, without_time=False)
+    generated_trajs, generated_time_trajs = eval_generator.make_sample(dataset.references, dataset.n_locations, dataset._time_end_idx(), args.batch_size, real_start=start_data)
     generated_time_trajs = dataset.convert_time_label_trajs_to_time_trajs(generated_time_trajs)
     if (args.dataset == "chengdu") and args.post_process:
         generated_trajs = post_process_chengdu(generated_trajs)
@@ -75,11 +78,12 @@ def evaluate():
         destination_jss.append(destination_js)
 
         generated_next_location_distribution = compute_next_location_distribution(location, generated_trajs, dataset.n_locations)
-        if generated_next_location_distribution is None:
+        if generated_next_location_distribution is None or next_location_distributions[location] is None:
             next_location_js = 1
         else:
             next_location_js = jensenshannon(next_location_distributions[location], generated_next_location_distribution)**2
             next_location_jss.append(next_location_js)
+            plot_density(generated_next_location_distribution, dataset.n_locations, save_path / f"generated_empirical_next_location_distribution_{location}.png")
     
     results["empirical_next_location_js"] = next_location_jss
     results["route_js"] = route_jss
@@ -100,9 +104,9 @@ def evaluate_next_location_on_test_dataset(next_location_distributions, data_loa
     generated_next_location_distributions = {}
     for mini_batch in data_loader:
         input_locations = mini_batch["input"].cuda(cuda_number, non_blocking=True)
-        labels = mini_batch["label"].cuda(cuda_number, non_blocking=True)
+        references = [tuple(v) for v in mini_batch["reference"]]
         input_times = mini_batch["time"].cuda(cuda_number, non_blocking=True)
-        output = torch.exp(generator([input_locations, input_times], labels)[0]).cpu().detach().numpy()
+        output = torch.exp(generator([input_locations, input_times], references)[0]).cpu().detach().numpy()
         for i, traj in enumerate(input_locations):
             location = traj[1].item()
             next_location_distribution = next_location_distributions[location]
@@ -113,6 +117,7 @@ def evaluate_next_location_on_test_dataset(next_location_distributions, data_loa
                 generated_next_location_distribution = output[i][1]
                 # logger.info(f"generated_next_location_distribution: {generated_next_location_distribution}")
                 jss.append(jensenshannon(next_location_distribution, generated_next_location_distribution)**2)
+                plot_density(generated_next_location_distribution, len(next_location_distribution), save_path / f"first_next_location_distribution_{location}.png")
             
             generated_next_location_distributions[location] = generated_next_location_distribution.tolist()
                 # print(i, min([jensenshannon(next_location_distribution, numpy_target_next_location_distributions[j])**2 for j in range(n_classes)]))
@@ -184,19 +189,21 @@ def train_with_discrete_time(generator, optimizer, loss_model, input_locations, 
 
 
 def make_test_data(data_path, top_base_locations, n_test_location, dataset_name):
+    n_test_location = min(n_test_location, len(top_base_locations))
     test_data_dir = data_path
     if (test_data_dir / "test_data.csv").exists() and (test_data_dir / "test_data_time.csv").exists():
         test_traj = load_dataset(test_data_dir / "test_data.csv", logger=logger)
         test_traj_time = load_dataset(test_data_dir / "test_data_time.csv", logger=logger)
     else:
+        pad = np.ones((n_test_location, 1), dtype=int) * len(top_base_locations)
         if dataset_name == "chengdu":
-            test_traj = np.concatenate([np.array(top_base_locations[:n_test_location]).reshape(-1,1), np.zeros((n_test_location,1), dtype=int)], axis=1).tolist()
+            test_traj = np.concatenate([np.array(top_base_locations[:n_test_location]).reshape(-1,1), pad], axis=1).tolist()
             test_traj_time = [[0, 800, 1439]]*n_test_location
         elif dataset_name == "taxi":
-            test_traj = np.concatenate([np.array(top_base_locations[:n_test_location]).reshape(-1,1), np.zeros((n_test_location,1), dtype=int)], axis=1).tolist()
+            test_traj = np.concatenate([np.array(top_base_locations[:n_test_location]).reshape(-1,1), pad], axis=1).tolist()
             test_traj_time = [[0, 1, 2]]*n_test_location
         else:
-            test_traj = np.concatenate([np.array(top_base_locations[:n_test_location]).reshape(-1,1), np.zeros((n_test_location,1), dtype=int), np.array(top_base_locations[:n_test_location]).reshape(-1,1)], axis=1).tolist()
+            test_traj = np.concatenate([np.array(top_base_locations[:n_test_location]).reshape(-1,1), pad, np.array(top_base_locations[:n_test_location]).reshape(-1,1)], axis=1).tolist()
             test_traj_time = [[0, 800, 1200, 1439]]*n_test_location
 
     return test_traj, test_traj_time
@@ -208,11 +215,11 @@ def train_epoch(data_loader, generator, optimizer):
     for i, batch in enumerate(data_loader):
         input_locations = batch["input"].cuda(args.cuda_number, non_blocking=True)
         target_locations = batch["target"].cuda(args.cuda_number, non_blocking=True)
-        labels = batch["label"].cuda(args.cuda_number, non_blocking=True)
+        references = [tuple(v) for v in batch["reference"]]
         input_times = batch["time"].cuda(args.cuda_number, non_blocking=True)
         target_times = batch["time_target"].cuda(args.cuda_number, non_blocking=True)
 
-        loss1, loss2, norms = train_with_discrete_time(generator, optimizer, loss_model, input_locations, target_locations, input_times, target_times, labels, args.coef_location, args.coef_time)
+        loss1, loss2, norms = train_with_discrete_time(generator, optimizer, loss_model, input_locations, target_locations, input_times, target_times, references, args.coef_location, args.coef_time)
         loss_location = loss_location + loss1
         loss_time = loss_time + loss2
         norm = norm + np.mean(norms)
@@ -265,11 +272,17 @@ def construct_generator():
             meta_network = MetaNetwork(args.n_classes, args.meta_hidden_dim, output_dim).cuda(args.cuda_number)
             args.hidden_dim = 0
         early_stopping = EarlyStopping(patience=10, path=save_path / "meta_network.pt")
+        # set the meta network to not require gradients
+        for name, param in meta_network.named_parameters():
+            param.requires_grad = not args.fix_meta_network
+            if name in ["embeddings.weight", "embeddings.bias"] and args.fix_embedding:
+                param.requires_grad = not args.fix_embedding
         train_meta_network(meta_network, target_next_location_distributions, args.meta_n_iter, early_stopping)
         # meta_network = MetaAttentionNetwork(target_next_location_distributions)
-        generator = MetaGRUNet(meta_network, input_dim, traj_type_dim, args.hidden_dim, output_dim, args.n_split+3, args.n_layers, args.embed_dim, args.fix_meta_network, args.fix_embedding, drop_prob=0).cuda(args.cuda_number)
+        generator = MetaGRUNet(meta_network, input_dim, traj_type_dim, args.hidden_dim, output_dim, args.n_split+3, args.n_layers, args.embed_dim, dataset.reference_to_label).cuda(args.cuda_number)
+        # generator = MetaGRUNet(meta_network, input_dim, traj_type_dim, args.hidden_dim, output_dim, args.n_split+3, args.n_layers, args.embed_dim, args.fix_meta_network, args.fix_embedding).cuda(args.cuda_number)
     else:
-        generator = MetaDiscreteTimeTrajTypeGRUNet(input_dim, traj_type_dim, args.hidden_dim, output_dim, args.n_split+3, args.n_layers, args.embed_dim, drop_prob=0).cuda(args.cuda_number)
+        generator = GRUNet(input_dim, traj_type_dim, args.hidden_dim, output_dim, args.n_split+3, args.n_layers, args.embed_dim, dataset.reference_to_label).cuda(args.cuda_number)
     return generator
 
 def pretrain():
@@ -388,8 +401,9 @@ if __name__ == "__main__":
     
     # clipped_trajectories = global_clipping(trajectories, args.global_clip)
     # clipped_trajectories = trajectories
-    top_k_locations, next_location_counts, global_counts, label_count, time_distribution, reference_distribution = dataset.compute_auxiliary_information(save_path, logger)
+    top_k_locations, next_location_counts, first_next_location_counts, global_counts, label_count, time_distribution, reference_distribution = dataset.compute_auxiliary_information(save_path, logger)
     next_location_distributions = {key: noise_normalize(next_location_count) for key, next_location_count in next_location_counts.items()}
+    first_next_location_distributions = {key: noise_normalize(first_next_location_count) for key, first_next_location_count in first_next_location_counts.items()}
     global_distributions = [noise_normalize(global_count) for global_count in global_counts]
     noisy_global_distributions = [noise_normalize(add_noise(global_count, sensitivity, args.epsilon)) for global_count in global_counts]
     for i in range(len(noisy_global_distributions)):
@@ -397,6 +411,7 @@ if __name__ == "__main__":
             noisy_global_distributions[i] = [1/dataset.n_locations] * dataset.n_locations
     noisy_global_distributions = torch.tensor(noisy_global_distributions)
     top_base_locations = np.argsort(global_counts[0])[::-1]
+    param["test_locations"] = top_base_locations[:args.n_test_locations].tolist()
     test_traj, test_traj_time = make_test_data(data_path, top_base_locations, args.n_test_locations, args.dataset)
     test_dataset = TrajectoryDataset(test_traj, test_traj_time, n_locations, args.n_split, max_time)
     test_data_loader = torch.utils.data.DataLoader(test_dataset, num_workers=0, shuffle=False, pin_memory=True, batch_size=args.batch_size, collate_fn=test_dataset.make_padded_collate(args.remove_first_value))
@@ -430,7 +445,8 @@ if __name__ == "__main__":
 
         if epoch % args.eval_interval == 0:
             generator.eval()
-            generated_next_location_distributions, results = evaluate()
+            with torch.no_grad():
+                generated_next_location_distributions, results = evaluate()
             logger.info(f"evaluation: {results}")
             generator.train()
             resultss.append(results)
@@ -470,8 +486,10 @@ if __name__ == "__main__":
     param["generated_next_location_distributions"] = generated_next_location_distributions
 
 
-    start_data = [trajectories, dataset.time_label_trajs] if args.real_start else None
-    generated_trajs, generated_time_trajs = make_sample(args.batch_size, generator, torch.tensor(dataset.labels), dataset.label_to_format, dataset.n_locations, TrajectoryDataset.time_end_idx(args.n_split), real_start=start_data, without_time=False)
+    start_trajs = torch.tensor([traj[0] for traj in trajectories]).cuda(args.cuda_number)
+    start_time_trajs = torch.tensor([time_traj[0] for time_traj in dataset.time_label_trajs]).cuda(args.cuda_number)
+    start_data = [start_trajs, start_time_trajs] if args.real_start else None
+    generated_trajs, generated_time_trajs = make_sample(generator, dataset.references, dataset.n_locations, dataset._time_end_idx(), args.batch_size, real_start=start_data)
     generated_data_path = save_path / f"generated_trajs.csv"
     generated_time_data_path = save_path / f"genenerated_time_trajs.csv"
     save_state_with_nan_padding(generated_data_path, generated_trajs)

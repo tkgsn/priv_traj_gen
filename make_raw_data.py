@@ -262,6 +262,77 @@ def make_raw_data_test(seed, max_size, mode, is_variable):
         json.dump(json_file, f)
     
 
+
+def make_raw_data_test_return(seed, max_size):
+
+    np.random.seed(seed)
+
+    # make data
+    # the possible states are [1,2,3,4,5,6,7,8,9]
+    # P(r0): [1/3,1/6,1/9,1/6,1/9,0,1/9,0,0]
+    # P(r1): [0,0,1/9,0,1/9,1/6,1/9,1/6,1/3] if data_mode is normal
+    # P(r1): [1,0,0,0,0,0,0,0,0] if data_mode is simple
+
+    possible_states = [0,1,2,3,4,5,6,7,8]
+    P_r0 = [1/3,1/6,1/9,1/6,1/9,0,1/9,0,0]
+    P_r1 = [0,0,1/9,0,1/9,1/6,1/9,1/6,1/3]
+
+    # P(r1|r0=0): [0,0,1/3,0,1/3,0,1/3,0,0]
+    # P(r1|r0=1,3): [0,0,0,0,0,1/2,0,1/2,0]
+    # P(r1|r0=2,4,6): [0,0,0,0,0,0,0,0,1]
+
+    P_r1_r01 = [0,0,1/3,0,1/3,0,1/3,0,0]
+    P_r1_r02 = [0,0,0,0,0,1/2,0,1/2,0]
+    P_r1_r03 = [0,0,0,0,0,0,0,0,1]
+
+    # sample r0 from P(r0)
+    r0s = np.random.choice(possible_states, p=P_r0, size=max_size)
+    # sample r1 from P(r1|r0)
+    r1s = []
+    for r0 in r0s:
+        if r0 == 0:
+            r1 = np.random.choice(possible_states, p=P_r1_r01)
+        elif r0 == 1 or r0 == 3:
+            r1 = np.random.choice(possible_states, p=P_r1_r02)
+        elif r0 == 2 or r0 == 4 or r0 == 6:
+            r1 = np.random.choice(possible_states, p=P_r1_r03)
+        else:
+            raise ValueError("r0 is not in [0,1,2,3]")
+        r1s.append(r1)
+
+    r0s = np.array(r0s)
+    r1s = np.array(r1s)
+
+    # concat r0 and r1
+    trajs = np.concatenate([r0s.reshape(-1,1), r1s.reshape(-1,1)], axis=1).tolist()
+
+    # if r0 is 0 and r1 is 2, add 0
+    for i in range(len(trajs)):
+        if trajs[i][0] == 0 and trajs[i][1] == 2:
+            trajs[i].extend([0])
+
+    data_name = "return"
+    data_dir = get_datadir() / "test" / data_name / f"seed{seed}_size{max_size}"
+    save_path = data_dir / "training_data.csv"
+
+    data_dir.mkdir(parents=True, exist_ok=True)
+    save_state_with_nan_padding(save_path, trajs)
+
+    times = []
+    time_save_path = data_dir / "training_data_time.csv"
+    for i in range(len(trajs)):
+        if len(trajs[i]) == 2:
+            times.append([(0,800), (800,1439)])
+        else:
+            times.append([(0,800), (800,1200), (1200,1439)])
+        
+    max_time = 1439
+    save_time_with_nan_padding(time_save_path, times, max_time)
+
+    json_file = {"lat_range": [34.95, 36.85], "lon_range": [138.85, 140.9], "start_hour": 0, "end_hour": 23, "n_bins": 1, "save_name": data_name, "dataset": "test"}
+    with open(data_dir / "params.json", "w") as f:
+        json.dump(json_file, f)
+
 def make_raw_data_taxi():
 
     original_data_path = '/data/taxi_raw/raw/train.csv'
@@ -332,6 +403,8 @@ if __name__ == "__main__":
         print("make raw data")
         if args.save_name == 'circle':
             trajs = make_raw_data_test_circle(args.seed, args.max_size) 
+        elif args.save_name == 'return':
+            trajs = make_raw_data_test_return(args.seed, args.max_size)
         else:
             trajs = make_raw_data_test(args.seed, args.max_size, "normal", True)
             trajs = make_raw_data_distance_test(args.seed, args.max_size)

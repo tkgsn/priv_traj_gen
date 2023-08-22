@@ -67,6 +67,9 @@ class TrajectoryDataset(Dataset):
     @staticmethod
     def time_end_idx(n_split):
         return n_split
+
+    def _time_end_idx(self):
+        return TrajectoryDataset.time_end_idx(self.n_time_split)
     
     @staticmethod
     def time_to_label(time, n_time_split, max_time):
@@ -88,17 +91,18 @@ class TrajectoryDataset(Dataset):
         format = self.label_to_format[label]
         return len(format)
     
+    def make_reference(self, label):
+        format = self.label_to_format[label]
+        reference = {}
+        for i in range(len(format)):
+            if format[i] not in reference:
+                reference[format[i]] = i
+                
+        return tuple([reference[format[i]] for i in range(len(format))])
+    
     def _make_label_to_reference(self):
-
-        def make_reference(label):
-            format = self.label_to_format[label]
-            reference = {}
-            for i in range(len(format)):
-                if format[i] not in reference:
-                    reference[format[i]] = i
-            return tuple([reference[format[i]] for i in range(len(format))])
         
-        return {label: make_reference(label) for label in self.label_to_format.keys()}
+        return {label: self.make_reference(label) for label in self.label_to_format.keys()}
     
     #Init dataset
     def __init__(self, data, time_data, n_locations, n_time_split, max_time, dataset_name="dataset"):
@@ -109,10 +113,11 @@ class TrajectoryDataset(Dataset):
         self.time_data = time_data
         self.n_locations = n_locations
         self.dataset_name = dataset_name
-        self.time_end_index = n_time_split-1
         self.format_to_label, self.label_to_format = make_label_info(data)
         self.labels = self._compute_dataset_labels()
         self.label_to_reference = self._make_label_to_reference()
+        self.references = [self.label_to_reference[label] for label in self.labels]
+        self.reference_to_label = {reference: label for label, reference in self.label_to_reference.items()}
         self.n_time_split = n_time_split
         self.max_time = max_time
 
@@ -184,6 +189,32 @@ class TrajectoryDataset(Dataset):
             with open(next_location_count_path, "w") as f:
                 json.dump(next_location_counts, f)
 
+    
+        # coompute the first next location dsitribution
+        first_next_location_count_path = save_path.parent / f"first_next_location_count.json"
+        if first_next_location_count_path.exists():
+            logger.info(f"load first next location count from {first_next_location_count_path}")
+            # load the next location distribution
+            with open(first_next_location_count_path) as f:
+                first_next_location_counts = json.load(f)
+                first_next_location_counts = {int(key): value for key, value in first_next_location_counts.items()}
+        else:
+            # compute the next location probability for each location
+            first_next_location_counts = {}
+            for location in tqdm.tqdm(range(self.n_locations)):
+                first_next_location_count = compute_next_location_count(location, self.data, self.n_locations, True)
+                first_next_location_counts[location] = (list(first_next_location_count))
+                if sum(first_next_location_count) == 0:
+                    logger.info(f"no next location at location {location}")
+                    continue
+                # visualize the next location distribution
+                first_next_location_distribution = np.array(first_next_location_count) / np.sum(first_next_location_count)
+                plot_density(first_next_location_distribution, self.n_locations, save_path.parent / f"real_first_next_location_distribution_{location}.png")
+            
+            # save the next location distribution
+            with open(first_next_location_count_path, "w") as f:
+                json.dump(first_next_location_counts, f)
+
         # time_ranges := [(0, max_time/n_split), (max_time/n_split, 2*max_time/n_split), ..., (max_time*(n_split-1)/n_split, max_time)]
 
 
@@ -206,7 +237,7 @@ class TrajectoryDataset(Dataset):
         time_label_count = Counter(self.time_label_trajs)
         time_distribution = {label: time_label_count[label] / len(self.time_label_trajs) for label in time_label_count.keys()}
 
-        return locations, next_location_counts, real_global_counts, label_count, time_distribution, reference_distribution
+        return locations, next_location_counts, first_next_location_counts, real_global_counts, label_count, time_distribution, reference_distribution
 
 
     def make_padded_collate(self, remove_first_value=False):
@@ -220,7 +251,7 @@ class TrajectoryDataset(Dataset):
             targets = []
             times = []
             target_times = []
-            labels = []
+            references = []
 
             for record in batch:
                 trajectory = record["trajectory"]
@@ -228,6 +259,7 @@ class TrajectoryDataset(Dataset):
 
                 format = traj_to_format(trajectory)
                 label = self.format_to_label[format]
+                reference = self.label_to_reference[label]
 
                 input = [start_idx] + trajectory + [ignore_idx] * (max_len - len(trajectory))
                 target = input[1:] + [ignore_idx]
@@ -251,9 +283,9 @@ class TrajectoryDataset(Dataset):
                 targets.append(target)
                 times.append(time_input)
                 target_times.append(time_target)
-                labels.append(label)
-
-            return {"input":torch.Tensor(inputs).long(), "target":torch.Tensor(targets).long(), "time":torch.Tensor(times).long(), "time_target":torch.Tensor(target_times).long(), "label":torch.Tensor(labels).long()}
+                references.append(reference)
+            
+            return {"input":torch.Tensor(inputs).long(), "target":torch.Tensor(targets).long(), "time":torch.Tensor(times).long(), "time_target":torch.Tensor(target_times).long(), "reference":references}
 
         return padded_collate
         
