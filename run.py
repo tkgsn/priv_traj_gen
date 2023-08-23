@@ -489,7 +489,7 @@ if __name__ == "__main__":
     start_trajs = torch.tensor([traj[0] for traj in trajectories]).cuda(args.cuda_number)
     start_time_trajs = torch.tensor([time_traj[0] for time_traj in dataset.time_label_trajs]).cuda(args.cuda_number)
     start_data = [start_trajs, start_time_trajs] if args.real_start else None
-    generated_trajs, generated_time_trajs = make_sample(generator, dataset.references, dataset.n_locations, dataset._time_end_idx(), args.batch_size, real_start=start_data)
+    generated_trajs, generated_time_trajs = eval_generator.make_sample(dataset.references, dataset.n_locations, dataset._time_end_idx(), args.batch_size, real_start=start_data)
     generated_data_path = save_path / f"generated_trajs.csv"
     generated_time_data_path = save_path / f"genenerated_time_trajs.csv"
     save_state_with_nan_padding(generated_data_path, generated_trajs)
