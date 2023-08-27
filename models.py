@@ -145,8 +145,9 @@ class GRUNet(BaseGRUNet):
         self.time_dim = time_dim
         self.output_dim = output_dim
 
-        # output_dim + 1 because we also want to predict the time
+        # output_dim + time_dim because we also want to predict the time
         self.fc = nn.Linear(hidden_dim, output_dim+time_dim)
+        
     
     def decode(self, embedding, remove_locationss=None):
         out = self.fc(self.relu(embedding))
@@ -163,14 +164,17 @@ class GRUNet(BaseGRUNet):
 
 
 class MetaGRUNet(BaseGRUNet):
-    def __init__(self, meta_network, input_dim, traj_type_dim, hidden_dim, output_dim, time_dim, n_layers, embed_size, reference_to_label):
+    def __init__(self, meta_network, input_dim, traj_type_dim, hidden_dim, output_dim, time_dim, n_layers, embed_size, reference_to_label, fix_meta_embedding):
         self.hidden_dim = hidden_dim+meta_network.n_classes
         super(MetaGRUNet, self).__init__(reference_to_label, input_dim, embed_size, traj_type_dim, self.hidden_dim, n_layers, time_dim)
         self.meta_net = meta_network
 
-        self.fc1 = nn.Linear(self.hidden_dim, 100)
-        self.fc2 = nn.Linear(100, self.hidden_dim)
+        self.fc1 = nn.Linear(self.hidden_dim, embed_size)
+        self.fc2 = nn.Linear(embed_size, self.hidden_dim)
         self.fc_time = nn.Linear(self.hidden_dim, time_dim)
+
+        if fix_meta_embedding:
+            self.fix_meta_embedding()
     
     def decode(self, embedding, remove_locationss=None):
         out = self.fc1(embedding)
@@ -181,6 +185,12 @@ class MetaGRUNet(BaseGRUNet):
         time = self.fc_time(out)
         time = F.log_softmax(time, dim=-1)
         return location, time
+
+    def fix_meta_embedding(self):
+        # set the meta network to not require gradients
+        for name, param in self.meta_net.named_parameters():
+            if name.startswith("embeddings"):
+                param.requires_grad = False
 
 
 class MetaNetwork(nn.Module):
@@ -209,7 +219,7 @@ class MetaAttentionNetwork(nn.Module):
     
     def __init__(self, embed_dim, hidden_dim, n_locations, n_classes):
         super(MetaAttentionNetwork, self).__init__()
-        # embedding with name "embed"
+
         # self.embeddings = nn.Embedding(n_classes, embed_dim*2)
         # self.embeddings = nn.Linear(n_classes, embed_dim*2)
         self.embeddings1 = nn.Linear(n_classes, hidden_dim)
@@ -218,6 +228,7 @@ class MetaAttentionNetwork(nn.Module):
         self.n_classes = n_classes
         self.embed_dim = embed_dim
 
+        # self.query_fc = nn.Linear(n_classes, embed_dim)
         self.fc1 = nn.Linear(embed_dim, hidden_dim)
         self.fc2 = nn.Linear(hidden_dim, n_locations)
         self.relu = nn.ReLU()
@@ -236,6 +247,7 @@ class MetaAttentionNetwork(nn.Module):
         else:
             input_embeddings = torch.zeros(query.shape[0], self.embed_dim, device=query.device)
         
+        # query = self.query_fc(query)
         query = query.matmul(keys)
         extracted_memory = attention(query, keys, values)
         extracted_memory = extracted_memory + input_embeddings * (1-self.ignore_input_embeddings)
@@ -255,8 +267,6 @@ class MetaClassNetwork(nn.Module):
         self.relu = nn.ReLU()
         # self.embeddings = nn.Embedding(n_classes, embed_dim)
         self.embeddings = nn.Linear(n_classes, embed_dim)
-        # set the required_grads to false so that the embeddings are not updated
-        # self.embeddings.weight.requires_grad = False
         self.n_classes = n_classes
 
     def one_hot_class_embedding(self, one_hot):
@@ -284,11 +294,9 @@ def attention(query, keys, values):
     # query: batch_size * embed_dim
     # keys: n_memories * embed_dim
     # values: n_memories * embed_dim
-    scores = query.matmul(keys.transpose(0,1))
+    scores = query.matmul(keys.transpose(0, 1))
+    # scores = query.matmul(keys)
     scores /= math.sqrt(query.shape[-1])
-    # batch_size * n_memories
-
     scores = F.softmax(scores, dim = -1)
     output = scores.matmul(values)
-    # batch_size * embed_dim
     return output

@@ -436,7 +436,7 @@ def clustering(global_distribution, distance_matrix, n_classes):
     return location_to_class
 
 
-def privtree_clustering(count):
+def privtree_clustering(count, theta):
     n_bins = int(np.sqrt(len(count))) -2
 
     # lat_range and lon range do not matter, here
@@ -448,7 +448,7 @@ def privtree_clustering(count):
     ranges = Grid.make_ranges_from_latlon_range_and_nbins(lat_range, lon_range, n_bins)
     quad_tree = QuadTree(ranges)
     quad_tree.register_count(count)
-    priv_tree(quad_tree)
+    priv_tree(quad_tree, theta=theta)
 
     location_to_class = {}
     for i, leaf in enumerate(quad_tree.get_leafs()):

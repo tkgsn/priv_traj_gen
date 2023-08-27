@@ -127,24 +127,21 @@ def evaluate_next_location_on_test_dataset(next_location_distributions, data_loa
 
 
 def train_meta_network(meta_network, next_location_distributions, n_iter, early_stopping):
+    device = next(iter(meta_network.parameters())).device
     optimizer = optim.Adam(meta_network.parameters(), lr=0.001)
     n_classes = len(next_location_distributions)
     with tqdm.tqdm(range(n_iter)) as pbar:
         for _ in pbar:
-            losses = 0
-            for i in range(n_classes):
-                distribution = next_location_distributions[i]
-                optimizer.zero_grad()
+            # make input: (n_classes, n_classes)
+            input = torch.eye(n_classes).to(device)
+            meta_network_output = meta_network(input)
+            loss = F.kl_div(meta_network_output, next_location_distributions, reduction='mean')
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
 
-                # one_hot_encoding i
-                i = F.one_hot(torch.tensor(i), num_classes=n_classes).to(next(iter(meta_network.parameters())).device).float().reshape(1,-1)
-                meta_network_output = meta_network(i)
-                loss = F.kl_div(meta_network_output, distribution, reduction='sum')
-                loss.backward()
-                optimizer.step()
-                losses += loss.item() / n_classes
-            pbar.set_description(f"loss: {losses:.5f}")
-            early_stopping(losses, meta_network)
+            pbar.set_description(f"loss: {loss.item():.5f}")
+            early_stopping(loss.item(), meta_network)
 
             if early_stopping.early_stop:
                 break
@@ -232,8 +229,10 @@ def construct_generator():
 
         # clustering
         if args.privtree_clustering:
-            location_to_class = privtree_clustering(global_counts[0])
+            logger.info("use privtree clustering")
+            location_to_class = privtree_clustering(global_counts[0], theta=args.privtree_theta)
         else:
+            logger.info("use distance clustering")
             location_to_class = clustering(noisy_global_distributions[0], distance_matrix, args.n_classes)
         args.n_classes = len(set(location_to_class.values()))
         
@@ -275,15 +274,10 @@ def construct_generator():
         else:
             meta_network = MetaNetwork(args.n_classes, args.meta_hidden_dim, output_dim).cuda(args.cuda_number)
             args.hidden_dim = 0
-        early_stopping = EarlyStopping(patience=args.meta_patience, path=save_path / "meta_network.pt")
-        # set the meta network to not require gradients
-        for name, param in meta_network.named_parameters():
-            param.requires_grad = not args.fix_meta_network
-            if name in ["embeddings.weight", "embeddings.bias"] and args.fix_embedding:
-                param.requires_grad = not args.fix_embedding
+        early_stopping = EarlyStopping(patience=args.meta_patience, path=save_path / "meta_network.pt", delta=1e-6)
         train_meta_network(meta_network, target_next_location_distributions, args.meta_n_iter, early_stopping)
         # meta_network = MetaAttentionNetwork(target_next_location_distributions)
-        generator = MetaGRUNet(meta_network, input_dim, traj_type_dim, args.hidden_dim, output_dim, args.n_split+3, args.n_layers, args.embed_dim, dataset.reference_to_label).cuda(args.cuda_number)
+        generator = MetaGRUNet(meta_network, input_dim, traj_type_dim, args.hidden_dim, output_dim, args.n_split+3, args.n_layers, args.embed_dim, dataset.reference_to_label, args.fix_meta_embedding).cuda(args.cuda_number)
         # generator = MetaGRUNet(meta_network, input_dim, traj_type_dim, args.hidden_dim, output_dim, args.n_split+3, args.n_layers, args.embed_dim, args.fix_meta_network, args.fix_embedding).cuda(args.cuda_number)
     else:
         generator = GRUNet(input_dim, traj_type_dim, args.hidden_dim, output_dim, args.n_split+3, args.n_layers, args.embed_dim, dataset.reference_to_label).cuda(args.cuda_number)
@@ -342,7 +336,7 @@ if __name__ == "__main__":
     parser.add_argument('--meta_network', action='store_true')
     parser.add_argument('--fix_meta_network', action='store_true')
     parser.add_argument('--meta_class', action='store_true')
-    parser.add_argument('--fix_embedding', action='store_true')
+    parser.add_argument('--fix_meta_embedding', action='store_true')
     parser.add_argument('--real_start', action='store_true')
     parser.add_argument('--attention', action='store_true')
     parser.add_argument('--privtree_clustering', action='store_true')
@@ -357,6 +351,7 @@ if __name__ == "__main__":
     parser.add_argument('--meta_hidden_dim', type=int)
     parser.add_argument('--n_test_locations', type=int)
     parser.add_argument('--meta_patience', type=int)
+    parser.add_argument('--privtree_theta', type=float)
     args = parser.parse_args()
     
     # set seed
