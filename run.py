@@ -7,7 +7,7 @@ from torch import nn, optim
 import json
 from scipy.spatial.distance import jensenshannon
 
-from my_utils import get_datadir, load_dataset, load_time_dataset, clustering, noise_normalize, add_noise, plot_density, make_trajectories, set_logger
+from my_utils import get_datadir, load_dataset, load_time_dataset, clustering, privtree_clustering, noise_normalize, add_noise, plot_density, make_trajectories, set_logger
 from dataset import TrajectoryDataset
 from models import GRUNet, MetaGRUNet, MetaNetwork, MetaAttentionNetwork, MetaClassNetwork
 from data_pre_processing import save_state_with_nan_padding
@@ -231,7 +231,11 @@ def construct_generator():
         numpy_target_next_location_distributions = []
 
         # clustering
-        location_to_class = clustering(noisy_global_distributions[0], distance_matrix, args.n_classes)
+        if args.privtree_clustering:
+            location_to_class = privtree_clustering(global_counts[0])
+        else:
+            location_to_class = clustering(noisy_global_distributions[0], distance_matrix, args.n_classes)
+        args.n_classes = len(set(location_to_class.values()))
         
         for i in range(args.n_classes):
             # find the locations belonging to the class i
@@ -271,7 +275,7 @@ def construct_generator():
         else:
             meta_network = MetaNetwork(args.n_classes, args.meta_hidden_dim, output_dim).cuda(args.cuda_number)
             args.hidden_dim = 0
-        early_stopping = EarlyStopping(patience=10, path=save_path / "meta_network.pt")
+        early_stopping = EarlyStopping(patience=args.meta_patience, path=save_path / "meta_network.pt")
         # set the meta network to not require gradients
         for name, param in meta_network.named_parameters():
             param.requires_grad = not args.fix_meta_network
@@ -341,6 +345,7 @@ if __name__ == "__main__":
     parser.add_argument('--fix_embedding', action='store_true')
     parser.add_argument('--real_start', action='store_true')
     parser.add_argument('--attention', action='store_true')
+    parser.add_argument('--privtree_clustering', action='store_true')
     parser.add_argument('--max_size', type=int)
     parser.add_argument('--patience', type=int)
     parser.add_argument('--physical_batch_size', type=int)
@@ -351,6 +356,7 @@ if __name__ == "__main__":
     parser.add_argument('--global_clip', type=int)
     parser.add_argument('--meta_hidden_dim', type=int)
     parser.add_argument('--n_test_locations', type=int)
+    parser.add_argument('--meta_patience', type=int)
     args = parser.parse_args()
     
     # set seed

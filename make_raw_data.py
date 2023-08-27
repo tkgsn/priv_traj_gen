@@ -10,6 +10,17 @@ import os
 import pathlib
 import json
 
+
+def temp_make_raw_data_peopleflo():
+    data_path = get_datadir() / "peopleflow" / "0"
+    trajs = []
+    for path in data_path.glob("raw_data*.csv"):
+        raw_data_i = pd.read_csv(path, header=None).values
+        raw_data_i = list(raw_data_i)
+        for record in raw_data_i:
+            record = [v for v in record if type(v) == str]
+            trajs.append(record)
+    return trajs
     
 def make_raw_data_peopleflow():
     format = '%H:%M:%S'
@@ -177,12 +188,12 @@ def make_raw_data_test_circle(seed, max_size):
     max_time = 1439
     save_time_with_nan_padding(time_save_path, times, max_time)
 
-    json_file = {"lat_range": [34.95, 36.85], "lon_range": [138.85, 140.9], "start_hour": 0, "end_hour": 23, "n_bins": 1, "save_name": data_name, "dataset": "test"}
+    json_file = {"lat_range": [34.95, 36.85], "lon_range": [138.85, 140.9], "start_hour": 0, "end_hour": 23, "n_bins": n_bins, "save_name": data_name, "dataset": "test"}
     with open(data_dir / "params.json", "w") as f:
         json.dump(json_file, f)
     
 
-def make_raw_data_test(seed, max_size, mode, is_variable):
+def make_raw_data_test(seed, max_size, mode, is_variable, n_bins):
 
     np.random.seed(seed)
 
@@ -240,7 +251,7 @@ def make_raw_data_test(seed, max_size, mode, is_variable):
     else:
         data_name = f"{mode}"
 
-    data_dir = get_datadir() / "test" / data_name / f"seed{seed}_size{max_size}"
+    data_dir = get_datadir() / "test" / data_name / f"seed{seed}_size{max_size}_nbins{n_bins}"
     save_path = data_dir / "training_data.csv"
 
     data_dir.mkdir(parents=True, exist_ok=True)
@@ -257,7 +268,7 @@ def make_raw_data_test(seed, max_size, mode, is_variable):
     max_time = 1439
     save_time_with_nan_padding(time_save_path, times, max_time)
 
-    json_file = {"lat_range": [34.95, 36.85], "lon_range": [138.85, 140.9], "start_hour": 0, "end_hour": 23, "n_bins": 1, "save_name": data_name, "dataset": "test"}
+    json_file = {"lat_range": [34.95, 36.85], "lon_range": [138.85, 140.9], "start_hour": 0, "end_hour": 23, "n_bins": n_bins, "save_name": data_name, "dataset": "test"}
     with open(data_dir / "params.json", "w") as f:
         json.dump(json_file, f)
     
@@ -329,7 +340,7 @@ def make_raw_data_test_return(seed, max_size):
     max_time = 1439
     save_time_with_nan_padding(time_save_path, times, max_time)
 
-    json_file = {"lat_range": [34.95, 36.85], "lon_range": [138.85, 140.9], "start_hour": 0, "end_hour": 23, "n_bins": 1, "save_name": data_name, "dataset": "test"}
+    json_file = {"lat_range": [34.95, 36.85], "lon_range": [138.85, 140.9], "start_hour": 0, "end_hour": 23, "n_bins": n_bins, "save_name": data_name, "dataset": "test"}
     with open(data_dir / "params.json", "w") as f:
         json.dump(json_file, f)
 
@@ -383,10 +394,10 @@ if __name__ == "__main__":
     parser.add_argument('--max_size', type=int)
     parser.add_argument('--seed', type=int)
     parser.add_argument('--save_name', type=str)
+    parser.add_argument('--n_bins', type=int)
     args = parser.parse_args()
 
-
-    save_path = get_datadir() / args.original_data_name / args.save_name / "raw_data*.csv"
+    save_path = get_datadir() / args.original_data_name / args.save_name / "raw_data.csv"
     save_paths = glob.glob(str(save_path))
     if save_paths != []:
         print("raw data already exists")
@@ -406,12 +417,12 @@ if __name__ == "__main__":
         elif args.save_name == 'return':
             trajs = make_raw_data_test_return(args.seed, args.max_size)
         else:
-            trajs = make_raw_data_test(args.seed, args.max_size, "normal", True)
+            trajs = make_raw_data_test(args.seed, args.max_size, "normal", True, args.n_bins)
             trajs = make_raw_data_distance_test(args.seed, args.max_size)
-
 
     if trajs is not None:
         np.random.seed(args.seed)
+        print("c")
         if args.max_size != 0:
             # shuffle trajectories and real_time_traj with the same order without using numpy
             p = np.random.permutation(len(trajs))
@@ -450,5 +461,6 @@ if __name__ == "__main__":
                 print("copy distance matrix from /data/chengdu/1000/start_end/distance_matrix.npy to", save_dir / "distance_matrix.npy")
                 os.system(f"cp /data/chengdu/1000/start_end/distance_matrix.npy {save_dir}/distance_matrix.npy")
         else:
+            print("c")
             print("save raw data to", save_path)
             save_timelatlon_with_nan_padding(save_path, trajs)

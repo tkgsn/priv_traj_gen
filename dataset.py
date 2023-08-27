@@ -179,7 +179,7 @@ class TrajectoryDataset(Dataset):
                 next_location_count = compute_next_location_count(location, self.data, self.n_locations)
                 next_location_counts[location] = (list(next_location_count))
                 if sum(next_location_count) == 0:
-                    logger.info(f"no next location at location {location}")
+                    # logger.info(f"no next location at location {location}")
                     continue
                 # visualize the next location distribution
                 next_location_distribution = np.array(next_location_count) / np.sum(next_location_count)
@@ -205,7 +205,7 @@ class TrajectoryDataset(Dataset):
                 first_next_location_count = compute_next_location_count(location, self.data, self.n_locations, True)
                 first_next_location_counts[location] = (list(first_next_location_count))
                 if sum(first_next_location_count) == 0:
-                    logger.info(f"no next location at location {location}")
+                    # logger.info(f"no next location at location {location}")
                     continue
                 # visualize the next location distribution
                 first_next_location_distribution = np.array(first_next_location_count) / np.sum(first_next_location_count)
@@ -228,6 +228,11 @@ class TrajectoryDataset(Dataset):
             real_global_distribution = np.array(real_global_count) / np.sum(real_global_count)
             plot_density(real_global_distribution, self.n_locations, save_path.parent / f"real_global_distribution_{int(time)}.png")
 
+        global_counts_path = save_path.parent / f"global_count.json"
+        # save the global counts
+        with open(global_counts_path, "w") as f:
+            json.dump(real_global_counts, f)
+            
         # make a list of labels
         label_list = [self.format_to_label[traj_to_format(trajectory)] for trajectory in self.data]
         label_count = Counter({label:0 for label in self.label_to_format.keys()})

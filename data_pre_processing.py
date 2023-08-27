@@ -185,8 +185,9 @@ if __name__ == "__main__":
     max_time = 24*60-1
 
     # make training data
-    training_data_paths = sorted(data_path.glob("training_data*.csv"))
-    if training_data_paths == []:
+    # training_data_paths = sorted(data_path.glob("training_data*.csv"))
+    training_data_path = data_path / "training_data.csv"
+    if not training_data_path.exists():
 
         print("make grid", lat_range, lon_range, n_bins)
         ranges = Grid.make_ranges_from_latlon_range_and_nbins(lat_range, lon_range, n_bins)
@@ -194,25 +195,28 @@ if __name__ == "__main__":
 
         raw_data_dir = data_path.parent
         # find csv file whose format is raw_data{i}.csv
-        raw_data_paths = sorted(raw_data_dir.glob("raw_data*.csv"))
-        print(raw_data_paths)
+        # raw_data_paths = sorted(raw_data_dir.glob("raw_data*.csv"))
+        raw_data_path = raw_data_dir / "raw_data.csv"
+        print(raw_data_path)
         # if configs["dataset"] == "geolife" or configs["dataset"] == "geolife_test":
 
-        for i, raw_data_path in enumerate(raw_data_paths):
-            save_path = data_path / f"training_data{i}.csv"
-            print(f"save to {save_path}")
-            print(f"load raw data from {raw_data_path}")
-            trajs = pd.read_csv(raw_data_path, header=None).values
+        # raw_trajs = []
+        # for i, raw_data_path in enumerate(raw_data_paths):
+        save_path = data_path / f"training_data.csv"
+        print(f"save to {save_path}")
+        print(f"load raw data from {raw_data_path}")
+        raw_trajs = list(pd.read_csv(raw_data_path, header=None).values)
+            # raw_trajs += trajs
             
-            print("make stay trajectory")
-            time_trajs, trajs = make_stay_trajectory(trajs, time_threshold, location_threshold)
-            print("make complessed dataset")
-            dataset, times = make_complessed_dataset(time_trajs, trajs, grid)
-            print(f"save complessed dataset to {save_path}")
-            save_state_with_nan_padding(save_path, dataset)
-            
-            time_save_path = data_path / f"training_data_time{i}.csv"
-            save_time_with_nan_padding(time_save_path, times, max_time)
+        print("make stay trajectory")
+        time_trajs, trajs = make_stay_trajectory(raw_trajs, time_threshold, location_threshold)
+        print("make complessed dataset")
+        dataset, times = make_complessed_dataset(time_trajs, trajs, grid)
+        print(f"save complessed dataset to {save_path}")
+        save_state_with_nan_padding(save_path, dataset)
+        
+        time_save_path = data_path / f"training_data_time.csv"
+        save_time_with_nan_padding(time_save_path, times, max_time)
 
     
     # make gps data

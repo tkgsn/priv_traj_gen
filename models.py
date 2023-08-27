@@ -104,7 +104,7 @@ class BaseGRUNet(nn.Module):
             time_trajectories.extend(sampled_time_trajectory)
         
         # remove the outside of the format
-        for i in range(len(references)):
+        for i in range(len(trajectories)):
             length = len(references[i])
             trajectories[i] = trajectories[i][:length]
             time_trajectories[i].append(time_end_index)
@@ -211,7 +211,10 @@ class MetaAttentionNetwork(nn.Module):
         super(MetaAttentionNetwork, self).__init__()
         # embedding with name "embed"
         # self.embeddings = nn.Embedding(n_classes, embed_dim*2)
-        self.embeddings = nn.Linear(n_classes, embed_dim*2)
+        # self.embeddings = nn.Linear(n_classes, embed_dim*2)
+        self.embeddings1 = nn.Linear(n_classes, hidden_dim)
+        self.embeddings2 = nn.Linear(hidden_dim, embed_dim*2)
+        self.embeddings = nn.Sequential(self.embeddings1, self.embeddings2)
         self.n_classes = n_classes
         self.embed_dim = embed_dim
 

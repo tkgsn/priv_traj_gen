@@ -11,6 +11,7 @@ from logging import getLogger, config
 import matplotlib.pyplot as plt
 import seaborn as sns
 import tqdm
+from grid import Grid, QuadTree, priv_tree
 
 # make a dataset for pre-training
 def make_trajectories(global_distribution, reference_distribution, transition_matrix, time_distribution, n_samples):
@@ -432,4 +433,27 @@ def clustering(global_distribution, distance_matrix, n_classes):
     for loc in set(all_locations) - set(clustered):
         location_to_class[loc] = n_classes-1
         
+    return location_to_class
+
+
+def privtree_clustering(count):
+    n_bins = int(np.sqrt(len(count))) -2
+
+    # lat_range and lon range do not matter, here
+    with open(pathlib.Path("./") / "dataset_configs" / "peopleflow.json", "r") as f:
+        configs = json.load(f)
+    lat_range = configs["lat_range"]
+    lon_range = configs["lon_range"]
+
+    ranges = Grid.make_ranges_from_latlon_range_and_nbins(lat_range, lon_range, n_bins)
+    quad_tree = QuadTree(ranges)
+    quad_tree.register_count(count)
+    priv_tree(quad_tree)
+
+    location_to_class = {}
+    for i, leaf in enumerate(quad_tree.get_leafs()):
+        state_list = leaf.state_list
+        for state in state_list:
+            location_to_class[state] = i
+    
     return location_to_class
