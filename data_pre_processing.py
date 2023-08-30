@@ -199,7 +199,7 @@ if __name__ == "__main__":
         raw_data_path = raw_data_dir / "raw_data.csv"
         print(raw_data_path)
         # if configs["dataset"] == "geolife" or configs["dataset"] == "geolife_test":
-
+        
         # raw_trajs = []
         # for i, raw_data_path in enumerate(raw_data_paths):
         save_path = data_path / f"training_data.csv"

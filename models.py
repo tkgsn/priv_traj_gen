@@ -164,33 +164,25 @@ class GRUNet(BaseGRUNet):
 
 
 class MetaGRUNet(BaseGRUNet):
-    def __init__(self, meta_network, input_dim, traj_type_dim, hidden_dim, output_dim, time_dim, n_layers, embed_size, reference_to_label, fix_meta_embedding):
-        self.hidden_dim = hidden_dim+meta_network.n_classes
+    def __init__(self, meta_network, input_dim, traj_type_dim, hidden_dim, output_dim, time_dim, n_layers, embed_size, reference_to_label):
+        self.hidden_dim = hidden_dim+meta_network.n_classes+meta_network.n_margin
         super(MetaGRUNet, self).__init__(reference_to_label, input_dim, embed_size, traj_type_dim, self.hidden_dim, n_layers, time_dim)
         self.meta_net = meta_network
 
         self.fc1 = nn.Linear(self.hidden_dim, embed_size)
         self.fc2 = nn.Linear(embed_size, self.hidden_dim)
         self.fc_time = nn.Linear(self.hidden_dim, time_dim)
-
-        if fix_meta_embedding:
-            self.fix_meta_embedding()
     
     def decode(self, embedding, remove_locationss=None):
         out = self.fc1(embedding)
         out = self.fc2(self.relu(out))
+        # softmax
         location = self.meta_net(out)
         # remove the locations that are in remove_locations
         location = self.remove_location(location, remove_locationss)
         time = self.fc_time(out)
         time = F.log_softmax(time, dim=-1)
         return location, time
-
-    def fix_meta_embedding(self):
-        # set the meta network to not require gradients
-        for name, param in self.meta_net.named_parameters():
-            if name.startswith("embeddings"):
-                param.requires_grad = False
 
 
 class MetaNetwork(nn.Module):
@@ -217,46 +209,64 @@ class MetaAttentionNetwork(nn.Module):
     output: log_probs := (batch_size * n_locations)
     """
     
-    def __init__(self, embed_dim, hidden_dim, n_locations, n_classes):
+    def __init__(self, memory_dim, hidden_dim, n_locations, n_classes):
         super(MetaAttentionNetwork, self).__init__()
-
-        # self.embeddings = nn.Embedding(n_classes, embed_dim*2)
-        # self.embeddings = nn.Linear(n_classes, embed_dim*2)
-        self.embeddings1 = nn.Linear(n_classes, hidden_dim)
-        self.embeddings2 = nn.Linear(hidden_dim, embed_dim*2)
-        self.embeddings = nn.Sequential(self.embeddings1, self.embeddings2)
         self.n_classes = n_classes
-        self.embed_dim = embed_dim
+        self.memory_dim = memory_dim
+        self.n_margin = 0
 
-        # self.query_fc = nn.Linear(n_classes, embed_dim)
-        self.fc1 = nn.Linear(embed_dim, hidden_dim)
+        # prepare the trainable parameters with size n_memories * memory_dim * 2
+        self.embeddings = nn.Parameter(torch.empty(memory_dim*2, n_classes+self.n_margin))
+        self.embeddings_bias = nn.Parameter(torch.empty(memory_dim*2))
+        self.init_embeddings()
+        self.embeddings_query = nn.Linear(n_classes+self.n_margin, memory_dim)
+        
+        self.fc1 = nn.Linear(memory_dim, hidden_dim)
         self.fc2 = nn.Linear(hidden_dim, n_locations)
         self.relu = nn.ReLU()
-        self.ignore_input_embeddings = False
+
+    def init_embeddings(self):
+        with torch.no_grad():
+            torch.nn.init.kaiming_uniform_(self.embeddings, a=math.sqrt(5))
+            fan_in, _ = torch.nn.init._calculate_fan_in_and_fan_out(self.embeddings)
+            bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
+            torch.nn.init.uniform_(self.embeddings_bias, -bound, bound)
 
     def forward(self, query):
         # memory
-        # input_to_memory = torch.tensor([i for i in range(self.n_classes)]).to(query.device)
-        input_to_memory = torch.eye(self.n_classes).to(query.device)
-        kvs = self.embeddings(input_to_memory)
-        keys = kvs[:, :self.embed_dim]
-        values = kvs[:, self.embed_dim:]
+        keys = self.embeddings.T[:, :self.memory_dim] + self.embeddings_bias[:self.memory_dim]
+        values = self.embeddings.T[:, self.memory_dim:] + self.embeddings_bias[self.memory_dim:]
 
-        if query.shape[-1] > self.n_classes:
-            query, input_embeddings = torch.split(query, [self.n_classes, query.shape[-1]-self.n_classes], dim=-1)
+        if query.shape[-1] > self.n_classes+self.n_margin:
+            query, input_embeddings = torch.split(query, [self.n_classes+self.n_margin, query.shape[-1]-self.n_classes-self.n_margin], dim=-1)
+            query = F.softmax(query, dim=-1)
+            if query.shape[0] > 1:
+                # print(query[0][1])
+                pass
         else:
-            input_embeddings = torch.zeros(query.shape[0], self.embed_dim, device=query.device)
-        
-        # query = self.query_fc(query)
-        query = query.matmul(keys)
+            input_embeddings = torch.zeros(query.shape[0], self.memory_dim, device=query.device)
+         
+        query = self.relu(self.embeddings_query(query))
         extracted_memory = attention(query, keys, values)
-        extracted_memory = extracted_memory + input_embeddings * (1-self.ignore_input_embeddings)
+        extracted_memory = extracted_memory + input_embeddings
 
         # convert memory to log_probs
         out = self.fc1(extracted_memory)
         out = self.fc2(self.relu(out))
         return F.log_softmax(out, dim=-1)
+    
 
+    def fix_meta_embedding(self):
+        # set the meta network to not require gradients
+        for name, param in self.named_parameters():
+            if name.startswith("embeddings"):
+                param.requires_grad = False
+
+    def unfix_meta_embedding(self):
+        # set the meta network to not require gradients
+        for name, param in self.named_parameters():
+            if name.startswith("embeddings"):
+                param.requires_grad = True
 
 class MetaClassNetwork(nn.Module):
     def __init__(self, embed_dim, hidden_dim, output_dim, n_classes):
@@ -265,7 +275,6 @@ class MetaClassNetwork(nn.Module):
         self.fc1 = nn.Linear(embed_dim, hidden_dim)
         self.fc2 = nn.Linear(hidden_dim, output_dim)
         self.relu = nn.ReLU()
-        # self.embeddings = nn.Embedding(n_classes, embed_dim)
         self.embeddings = nn.Linear(n_classes, embed_dim)
         self.n_classes = n_classes
 
@@ -289,14 +298,19 @@ class MetaClassNetwork(nn.Module):
         out = self.fc2(self.relu(out))
         return F.log_softmax(out, dim=-1)
     
+    def fix_meta_embedding(self):
+        # set the meta network to not require gradients
+        for name, param in self.named_parameters():
+            if name.startswith("embeddings"):
+                param.requires_grad = False
+    
 
 def attention(query, keys, values):
     # query: batch_size * embed_dim
     # keys: n_memories * embed_dim
     # values: n_memories * embed_dim
     scores = query.matmul(keys.transpose(0, 1))
-    # scores = query.matmul(keys)
     scores /= math.sqrt(query.shape[-1])
-    scores = F.softmax(scores, dim = -1)
+    scores = F.softmax(scores, dim=-1)
     output = scores.matmul(values)
     return output
