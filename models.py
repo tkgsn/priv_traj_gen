@@ -246,7 +246,7 @@ class MetaAttentionNetwork(nn.Module):
         else:
             input_embeddings = torch.zeros(query.shape[0], self.memory_dim, device=query.device)
          
-        query = self.relu(self.embeddings_query(query))
+        query = self.embeddings_query(query)
         extracted_memory = attention(query, keys, values)
         extracted_memory = extracted_memory + input_embeddings
 
@@ -267,6 +267,30 @@ class MetaAttentionNetwork(nn.Module):
         for name, param in self.named_parameters():
             if name.startswith("embeddings"):
                 param.requires_grad = True
+
+class MetaAttentionNetworkDirect(MetaAttentionNetwork):
+    # query: batch_size * embed_dim
+    def forward(self, query):
+        if query.shape[-1] == self.n_classes:
+            query = self.embeddings_query(query)
+            input_embedings = torch.zeros(query.shape[0], self.memory_dim, device=query.device)
+        else:
+            query, input_embedings = torch.split(query, [self.memory_dim, query.shape[-1]-self.memory_dim], dim=-1)
+
+        # memory
+        keys = self.embeddings.T[:, :self.memory_dim] + self.embeddings_bias[:self.memory_dim]
+        values = self.embeddings.T[:, self.memory_dim:] + self.embeddings_bias[self.memory_dim:]
+
+        extracted_memory = attention(query, keys, values) + input_embedings
+
+        # convert memory to log_probs
+        out = self.fc1(extracted_memory)
+        out = self.fc2(self.relu(out))
+        return F.log_softmax(out, dim=-1)
+    
+    def remove_embeddings_query(self):
+        self.embeddings_query.requires_grad_(False)
+        self.n_margin = self.memory_dim - self.n_classes
 
 class MetaClassNetwork(nn.Module):
     def __init__(self, embed_dim, hidden_dim, output_dim, n_classes):

@@ -9,7 +9,7 @@ from scipy.spatial.distance import jensenshannon
 
 from my_utils import get_datadir, load_dataset, load_time_dataset, clustering, privtree_clustering, noise_normalize, add_noise, plot_density, make_trajectories, set_logger
 from dataset import TrajectoryDataset
-from models import GRUNet, MetaGRUNet, MetaNetwork, MetaAttentionNetwork, MetaClassNetwork
+from models import GRUNet, MetaGRUNet, MetaNetwork, MetaAttentionNetwork, MetaClassNetwork, MetaAttentionNetworkDirect
 from data_pre_processing import save_state_with_nan_padding
 import torch.nn.functional as F
 from opacus.utils.batch_memory_manager import BatchMemoryManager
@@ -328,18 +328,22 @@ def construct_generator():
 
         if args.meta_class:
             if args.attention:
-                meta_network = MetaAttentionNetwork(args.hidden_dim, args.meta_hidden_dim, output_dim, len(target_next_location_distributions)).cuda(args.cuda_number)
+                # meta_network = MetaAttentionNetwork(args.hidden_dim, args.meta_hidden_dim, output_dim, len(target_next_location_distributions)).cuda(args.cuda_number)
+                meta_network = MetaAttentionNetworkDirect(args.hidden_dim, args.meta_hidden_dim, output_dim, len(target_next_location_distributions)).cuda(args.cuda_number)
             else:
                 meta_network = MetaClassNetwork(args.hidden_dim, args.meta_hidden_dim, output_dim, len(target_next_location_distributions)).cuda(args.cuda_number)
         else:
             meta_network = MetaNetwork(args.n_classes, args.meta_hidden_dim, output_dim).cuda(args.cuda_number)
             args.hidden_dim = 0
         
-        if args.meta_network_load_path != "":
+        if args.meta_network_load_path != "None":
             meta_network.load_state_dict(torch.load(args.meta_network_load_path))
         else:
             early_stopping = EarlyStopping(patience=args.meta_patience, path=save_path / "meta_network.pt", delta=1e-6)
             train_meta_network(meta_network, target_next_location_distributions, args.meta_n_iter, early_stopping)
+        # if meta__network has remove_embeddings_query method, remove the embeddings
+        if hasattr(meta_network, "remove_embeddings_query"):
+            meta_network.remove_embeddings_query()
         generator = MetaGRUNet(meta_network, input_dim, traj_type_dim, args.hidden_dim, output_dim, args.n_split+3, args.n_layers, args.embed_dim, dataset.reference_to_label).cuda(args.cuda_number)
     else:
         generator = GRUNet(input_dim, traj_type_dim, args.hidden_dim, output_dim, args.n_split+3, args.n_layers, args.embed_dim, dataset.reference_to_label).cuda(args.cuda_number)
