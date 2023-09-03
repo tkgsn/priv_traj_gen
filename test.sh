@@ -1,7 +1,7 @@
 #!/usr/bin/bash
 
 dataset=peopleflow
-max_size=10000
+max_size=100000
 data_name=$max_size
 latlon_config=peopleflow.json
 location_threshold=500
@@ -54,7 +54,7 @@ python3 make_raw_data.py --original_data_name $dataset --max_size $max_size --se
 python3 data_pre_processing.py --latlon_config  $latlon_config --dataset $dataset --data_name $data_name --location_threshold $location_threshold --time_threshold $time_threshold --save_name $training_data_name --n_bins $n_bins
 
 seed=0
-cuda_number=3
+cuda_number=0
 patience=100
 batch_size=1000
 noise_multiplier=1
@@ -67,7 +67,8 @@ embed_dim=512
 meta_hidden_dim=512
 learning_rate=1e-3
 accountant_mode=prv
-meta_network_load_path=/data/results/peopleflow/10000/bin62/test_meta_patience10000/meta_network.pt
+# meta_network_load_path=/data/results/peopleflow/10000/bin62/test_meta_patience10000/meta_network.pt
+meta_network_load_path=None
 physical_batch_size=50
 n_epoch=100
 meta_n_iter=100000
@@ -78,7 +79,7 @@ global_clip=2
 n_pre_epochs=0
 eval_interval=10
 n_test_locations=30
-meta_patience=10000
+meta_patience=1000
 privtree_theta=3000
 
 # set the options
