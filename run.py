@@ -167,10 +167,6 @@ def train_meta_network(meta_network, next_location_distributions, n_iter, early_
         return [node.id for node in tree.get_nodes(depth)]
     # make test data
     test_input = torch.eye(n_classes).to(device)
-    # target = torch.zeros(test_input.shape[0], n_locations).to(device)
-    # for i in range(n_classes):
-    #     target += test_input[:,i].reshape(-1,1) * next_location_distributions[i]
-    # test_target = tree.make_quad_distribution(target).view(-1,4)
     
     with tqdm.tqdm(range(n_iter)) as pbar:
         for epoch in pbar:
@@ -214,6 +210,7 @@ def train_meta_network(meta_network, next_location_distributions, n_iter, early_
                         losses.append(F.kl_div(meta_network_output.view(batch_size,-1), test_target[-1], reduction='batchmean'))
                     loss = sum(losses)
             else:
+                print(meta_network_output.shape, target.shape)
                 meta_network_output = meta_network_output.view(*target.shape)
                 losses.append(F.kl_div(meta_network_output, target, reduction='batchmean'))
             # loss = compute_loss_meta_quad_tree_attention_net(meta_network_output, target, meta_network.tree)
@@ -417,9 +414,10 @@ def construct_generator(data_loader):
         args.n_epochs = 0
     else:
         if args.network_type == "meta_network":
-            meta_network = MetaNetwork(dataset.n_locations, args.memory_dim, args.n_classes, args.cuda_number)
+            meta_network = MetaNetwork(args.memory_hidden_dim, args.memory_dim, dataset.n_locations, args.n_classes, "relu").cuda(args.cuda_number)
+            args.train_all_layers = False
         elif args.network_type == "fulllinear_quadtree":
-            meta_network = FullLinearQuadTreeNetwork(dataset.n_locations, args.memory_dim, args.hidden_dim, args.location_embedding_dim, privtree, "relu").cuda(args.cuda_number)
+            meta_network = FullLinearQuadTreeNetwork(dataset.n_locations, args.memory_dim, args.memory_hidden_dim, args.location_embedding_dim, privtree, "relu").cuda(args.cuda_number)
     
         param["n_params_meta_network"] = compute_num_params(meta_network, logger)
         

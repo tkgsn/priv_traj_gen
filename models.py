@@ -288,7 +288,7 @@ class MetaGRUNet(GRUNet):
 
 def compute_loss_meta_gru_net(target_locations, target_times, output_locations, output_times, coef_location, coef_time):
     if type(target_locations) != list:
-        output_locations = [output_locations[-1]]
+        output_locations = [output_locations[-1]] if type(output_locations) == list else [output_locations]
         target_locations = [target_locations]
 
     n_locations = output_locations[-1].shape[-1]
@@ -316,7 +316,7 @@ class MetaNetwork(nn.Module):
     that is, the hidden state is directory converted to log distribution on locations by MLP
     '''
 
-    def __init__(self, input_dim, hidden_dim, output_dim, n_classes, activate):
+    def __init__(self, memory_hidden_dim, hidden_dim, output_dim, n_classes, activate):
         '''
         output_dim := location_dim
         '''
@@ -330,10 +330,10 @@ class MetaNetwork(nn.Module):
         else:
             raise NotImplementedError("activate should be relu or sigmoid, but it is {}".format(activate))
 
-        self.input_dim = input_dim
+        self.input_dim = memory_hidden_dim
         self.query_to_scores = nn.Sequential(nn.Linear(hidden_dim, hidden_dim), self.activate, nn.Linear(hidden_dim, output_dim))
         self.class_to_query = nn.Sequential(nn.Linear(n_classes, hidden_dim), self.activate, nn.Linear(hidden_dim, hidden_dim))
-        self.hidden_to_query_ = nn.Sequential(nn.Linear(input_dim, hidden_dim), self.activate, nn.Linear(hidden_dim, hidden_dim))
+        self.hidden_to_query_ = nn.Sequential(nn.Linear(memory_hidden_dim, hidden_dim), self.activate, nn.Linear(hidden_dim, hidden_dim))
         self.n_classes = n_classes
 
     def forward(self, hidden):
