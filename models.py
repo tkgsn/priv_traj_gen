@@ -347,7 +347,8 @@ class MetaNetwork(nn.Module):
     
     def hidden_to_query(self, hidden):
        # for pre_training
-        if hidden.shape[-1] == self.n_classes:
+        # if hidden.shape[-1] == self.n_classes:
+        if hasattr(self, "class_to_query"):
             # hidden: batch_size * seq_len * n_classes
             query = self.class_to_query(hidden)
         else:
@@ -360,7 +361,8 @@ class MetaNetwork(nn.Module):
         return scores
     
     def remove_class_to_query(self):
-        self.class_to_query.requires_grad_(False)
+        del self.class_to_query
+        # self.class_to_query.requires_grad_(False)
 
 
 class BaseQuadTreeNetwork(nn.Module):
@@ -415,7 +417,8 @@ class BaseQuadTreeNetwork(nn.Module):
 
     def hidden_to_query(self, hidden):
        # for pre_training
-        if hidden.shape[-1] == self.n_classes:
+        # if hidden.shape[-1] == self.n_classes:
+        if hasattr(self, "class_to_query"):
             query = self.class_to_query(hidden)
         else:
             query = self.hidden_to_query_(hidden)
@@ -480,7 +483,8 @@ class BaseQuadTreeNetwork(nn.Module):
         return get_log_distribution_at_depth(summed_scores, target_depth)
     
     def remove_class_to_query(self):
-        self.class_to_query.requires_grad_(False)
+        # self.class_to_query.requires_grad_(False)
+        del self.class_to_query
 
 class LinearQuadTreeNetwork(BaseQuadTreeNetwork):
     def __init__(self, n_locations, memory_dim, hidden_dim, n_classes, activate, multilayer=False):

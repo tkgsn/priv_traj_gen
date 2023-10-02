@@ -515,6 +515,8 @@ def compute_num_params(model, logger):
         num_params += param.numel()
     logger.info(f"number of parameters: {num_params}")
 
+    return num_params
+
 def load(save_path, size=0):
     if size != 0:
         # count the number of lines in the text

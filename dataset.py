@@ -131,6 +131,7 @@ class TrajectoryDataset(Dataset):
             self.time_label_trajs.append(tuple([self._time_to_label(t) for t in time_traj]))
 
         self.time_ranges = [(self._label_to_time(i), self._label_to_time(i+1)) for i in range(n_time_split)]
+        self.computed_auxiliary_information = False
 
     def reference_to_label(self, reference):
         reference = tuple([0] + list(reference[1:]))
@@ -167,96 +168,75 @@ class TrajectoryDataset(Dataset):
 
 
     def compute_auxiliary_information(self, save_path, logger):
-
-        # find the top appearing locations in the dataset
-        locations_count = Counter([location for trajectory in self.data for location in trajectory]).most_common(self.n_locations)
-        locations = [location for location, _ in locations_count]
-        logger.info(f"top {10} locations: " + str(locations_count[:10]))
-
-        (save_path.parent / "imgs").mkdir(exist_ok=True)
-
-        next_location_count_path = save_path.parent / f"next_location_count.json"
-        if next_location_count_path.exists():
-            logger.info(f"load next location count from {next_location_count_path}")
-            # load the next location distribution
-            with open(next_location_count_path) as f:
-                next_location_counts = json.load(f)
-                next_location_counts = {int(key): value for key, value in next_location_counts.items()}
-        else:
-            # compute the next location probability for each location
-            print("compute next location count")
-            next_location_counts = {}
-            for location in tqdm.tqdm(range(self.n_locations)):
-                next_location_count = compute_next_location_count(location, self.data, self.n_locations)
-                next_location_counts[location] = (list(next_location_count))
-                if sum(next_location_count) == 0:
-                    # logger.info(f"no next location at location {location}")
-                    continue
-                # visualize the next location distribution
-                next_location_distribution = np.array(next_location_count) / np.sum(next_location_count)
-                plot_density(next_location_distribution, self.n_locations, save_path.parent / "imgs" / f"real_next_location_distribution_{location}.png")
-            
-            # save the next location distribution
-            logger.info(f"save next location count to {next_location_count_path}")
-            with open(next_location_count_path, "w") as f:
-                json.dump(next_location_counts, f)
-
-    
-        # coompute the first next location dsitribution
-        first_next_location_count_path = save_path.parent / f"first_next_location_count.json"
-        if first_next_location_count_path.exists():
-            logger.info(f"load first next location count from {first_next_location_count_path}")
-            # load the next location distribution
-            with open(first_next_location_count_path) as f:
-                first_next_location_counts = json.load(f)
-                first_next_location_counts = {int(key): value for key, value in first_next_location_counts.items()}
-        else:
-            print("compute first next location count")
-            # compute the next location probability for each location
-            first_next_location_counts = {}
-            for location in tqdm.tqdm(range(self.n_locations)):
-                first_next_location_count = compute_next_location_count(location, self.data, self.n_locations, True)
-                first_next_location_counts[location] = (list(first_next_location_count))
-                if sum(first_next_location_count) == 0:
-                    # logger.info(f"no next location at location {location}")
-                    continue
-                # visualize the next location distribution
-                first_next_location_distribution = np.array(first_next_location_count) / np.sum(first_next_location_count)
-                plot_density(first_next_location_distribution, self.n_locations, save_path.parent / "imgs" / f"real_first_next_location_distribution_{location}.png")
-            
-            # save the next location distribution
-            logger.info(f"save first next location count to {first_next_location_count_path}")
-            with open(first_next_location_count_path, "w") as f:
-                json.dump(first_next_location_counts, f)
-
-        # time_ranges := [(0, max_time/n_split), (max_time/n_split, 2*max_time/n_split), ..., (max_time*(n_split-1)/n_split, max_time)]
-
-
-        real_global_counts = []
-        for time in range(self.n_time_split+1):
-            real_global_count = compute_global_counts_from_time_label(self.data, self.time_label_trajs, time, self.n_locations)
-            real_global_counts.append(real_global_count)
-            if sum(real_global_count) == 0:
-                logger.info(f"no location at time {time}")
-                continue
-            real_global_distribution = np.array(real_global_count) / np.sum(real_global_count)
-            plot_density(real_global_distribution, self.n_locations, save_path.parent / f"real_global_distribution_{int(time)}.png")
-
-        global_counts_path = save_path.parent / f"global_count.json"
-        # save the global counts
-        with open(global_counts_path, "w") as f:
-            json.dump(real_global_counts, f)
-            
-        # make a list of labels
-        label_list = [self.format_to_label[traj_to_format(trajectory)] for trajectory in self.data]
-        label_count = Counter({label:0 for label in self.label_to_format.keys()})
-        label_count.update(label_list)
-        reference_distribution = {self.label_to_reference[label]: count for label, count in label_count.items()}
         
-        time_label_count = Counter(self.time_label_trajs)
-        time_distribution = {label: time_label_count[label] / len(self.time_label_trajs) for label in time_label_count.keys()}
+        if not self.computed_auxiliary_information:
 
-        return locations, next_location_counts, first_next_location_counts, real_global_counts, label_count, time_distribution, reference_distribution
+            # find the top appearing locations in the dataset
+            locations_count = Counter([location for trajectory in self.data for location in trajectory]).most_common(self.n_locations)
+            locations = [location for location, _ in locations_count]
+            logger.info(f"top {10} locations: " + str(locations_count[:10]))
+            (save_path.parent / "imgs").mkdir(exist_ok=True)
+
+            def make_next_location_count(target_index):
+                # coompute the first next location dsitribution
+                first_next_location_count_path = save_path.parent / f"{target_index}_next_location_count.json"
+                if first_next_location_count_path.exists():
+                    logger.info(f"load {target_index} next location count from {first_next_location_count_path}")
+                    # load the next location distribution
+                    with open(first_next_location_count_path) as f:
+                        first_next_location_counts = json.load(f)
+                        first_next_location_counts = {int(key): value for key, value in first_next_location_counts.items()}
+                else:
+                    print(f"compute {target_index} next location count")
+                    # compute the next location probability for each location
+                    first_next_location_counts = {}
+                    for location in tqdm.tqdm(range(self.n_locations)):
+                        first_next_location_count = compute_next_location_count(location, self.data, self.n_locations, target_index)
+                        first_next_location_counts[location] = (list(first_next_location_count))
+                        if sum(first_next_location_count) == 0:
+                            # logger.info(f"no next location at location {location}")
+                            continue
+                        # visualize the next location distribution
+                        first_next_location_distribution = np.array(first_next_location_count) / np.sum(first_next_location_count)
+                        plot_density(first_next_location_distribution, self.n_locations, save_path.parent / "imgs" / f"real_{target_index}_next_location_distribution_{location}.png")
+                    
+                    # save the next location distribution
+                    logger.info(f"save {target_index} next location count to {first_next_location_count_path}")
+                    with open(first_next_location_count_path, "w") as f:
+                        json.dump(first_next_location_counts, f)
+                return first_next_location_counts
+
+            self.next_location_counts = make_next_location_count(0)
+            self.first_next_location_counts = make_next_location_count(1)
+            self.second_next_location_counts = make_next_location_count(2)
+
+            # time_ranges := [(0, max_time/n_split), (max_time/n_split, 2*max_time/n_split), ..., (max_time*(n_split-1)/n_split, max_time)]
+            real_global_counts = []
+            for time in range(self.n_time_split+1):
+                real_global_count = compute_global_counts_from_time_label(self.data, self.time_label_trajs, time, self.n_locations)
+                real_global_counts.append(real_global_count)
+                if sum(real_global_count) == 0:
+                    logger.info(f"no location at time {time}")
+                    continue
+                real_global_distribution = np.array(real_global_count) / np.sum(real_global_count)
+                plot_density(real_global_distribution, self.n_locations, save_path.parent / "imgs" / f"real_global_distribution_{int(time)}.png")
+            global_counts_path = save_path.parent / f"global_count.json"
+            # save the global counts
+            with open(global_counts_path, "w") as f:
+                json.dump(real_global_counts, f)
+            self.global_counts = real_global_counts
+
+            # make a list of labels
+            label_list = [self.format_to_label[traj_to_format(trajectory)] for trajectory in self.data]
+            label_count = Counter({label:0 for label in self.label_to_format.keys()})
+            label_count.update(label_list)
+            reference_distribution = {self.label_to_reference[label]: count for label, count in label_count.items()}
+            
+            time_label_count = Counter(self.time_label_trajs)
+            time_distribution = {label: time_label_count[label] / len(self.time_label_trajs) for label in time_label_count.keys()}
+
+            self.computed_auxiliary_information = True
+        # return locations, next_location_counts, first_next_location_counts, real_global_counts, label_count, time_distribution, reference_distribution
 
 
     def make_padded_collate(self, remove_first_value=False):
