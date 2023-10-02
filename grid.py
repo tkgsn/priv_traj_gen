@@ -1,5 +1,6 @@
 import numpy as np
 import pickle
+import torch
 
 class Grid():
     # A Grid instance has a bidirectional mapping between a state and a lat/lon pair
@@ -122,6 +123,13 @@ class Node():
     def set_count(self, count):
         self.count = count
 
+    def get_count(self):
+        if not hasattr(self, "count"):
+            self.count = sum([child.get_count() for child in self.children])
+            return self.count
+        else:
+            return self.count
+
     def set_noisy_count(self, noisy_count):
         self.noisy_count = noisy_count
 
@@ -130,6 +138,9 @@ class Node():
 
     def get_depth(self):
         return self.depth
+    
+    def is_leaf(self):
+        return self.children is None
 
 
 class QuadTree(Grid):
@@ -149,16 +160,25 @@ class QuadTree(Grid):
         # check if self.vocab_size is a power of 2
         assert self.vocab_size & (self.vocab_size - 1) == 0, "self.vocab_size must be a power of 2"
         self.root_node = Node.make_root_node(list(range(self.vocab_size)))
+        # depth is the log of the vocab_size with the base 4
+        self.max_depth = int(np.log2(self.vocab_size)/2)
+        self.state_to_path_cache = {}
+        self.state_to_node_path_cache = {}
+        self.get_nodes_cache = {}
+        self.is_complete = False
 
     @staticmethod
     def divide(node):
+        # if the node is the leaf at the finest level, return False
+        if len(node.state_list) == 1:
+            return False
         assert node.state_list is not None, "input must be a leaf"
         assert len(node.state_list) % 4 == 0, f"node.state_list: {node.state_list} must be divided into 4"
         # check if len(node.state_list) is a power of 2
         assert len(node.state_list) & (len(node.state_list) - 1) == 0, "len(node.state_list) must be a power of 2"
+
         length = int(np.sqrt(len(node.state_list)))
         depth = node.get_depth()
-
         # q1 is the locations on the upper left
         # q2 is the locations on the upper right
         # q3 is the locations on the lower left
@@ -177,13 +197,181 @@ class QuadTree(Grid):
         q3 = Node(depth+1, state_list=[node.state_list[i] for i in q3_indice])
         q4 = Node(depth+1, state_list=[node.state_list[i] for i in q4_indice])
         node.children = [q1, q2, q3, q4]
-        node.state_list = None
         node.unvisited = False
+        q1.parent = node
+        q2.parent = node
+        q3.parent = node
+        q4.parent = node
+        return True
+    
+    def make_self_complete(self):
+        # if all nodes are divided, condition becomes False
+        condition = True
+        while condition:
+            leafs = self.get_leafs()
+            for leaf in leafs:
+                condition = condition and QuadTree.divide(leaf)
+        self.register_id()
+        self.node_id_to_hidden_id = self._make_hidden_ids()
+        self.location_id_to_node_id = self._make_location_id_to_node_id()
+        self.is_complete = True
 
+    def _make_location_id_to_node_id(self):
+        location_id_to_node_id = {}
+        leafs = self.get_leafs()
+        for node in self.get_leafs():
+            for state in node.state_list:
+                location_id_to_node_id[state] = node.id
+        location_id_to_node_id[len(leafs)] = len(self.get_all_nodes())-1
+        location_id_to_node_id[len(leafs)+1] = len(self.get_all_nodes())
+        return location_id_to_node_id
+
+    # hidden id is the id labeld by the order from the upper left to the lower right
+    def _make_hidden_ids(self):
+        nodes = self.get_all_nodes()
+        self.set_coordinate()
+
+        id_to_hidden_id = {}
+        for depth in range(1,self.max_depth+1):
+            nodes = self.get_nodes(depth)
+            base_number = nodes[0].id-1
+            for node in nodes:
+                id_to_hidden_id[node.id] = node.oned_coordinate+base_number
+        
+        # sort by key
+        id_to_hidden_id = dict(sorted(id_to_hidden_id.items(), key=lambda x:x[0]))
+        
+        # the root node does not correspond to any location
+        return [100000000] + list(id_to_hidden_id.values())
+
+    def set_coordinate(self):
+        nodes = self.get_all_nodes()
+        # set place_id (0, 1, 2, 3) for each node
+        # place_id is the index of the node in the children list of the parent node
+        for node in nodes:
+            if hasattr(node, "parent"):
+                node._place_id = node.parent.children.index(node)
+
+        # if the coordinate of the parent is (x,y), 
+        # the coordinate of the children are (2x, 2y), (2x+1, 2y), (2x, 2y+1), (2x+1, 2y+1)
+        for node in self.get_all_nodes():
+            if hasattr(node, "parent") is False:
+                node.coordinate = (0, 0)
+            else:
+                parent_coordinate = node.parent.coordinate
+                place_id = node._place_id
+                node.coordinate = (parent_coordinate[0]*2 + place_id % 2, parent_coordinate[1]*2 + place_id // 2)
+                node.oned_coordinate = node.coordinate[0] + node.coordinate[1] * 2**node.depth
+
+    def reset_count(self):
+        # remove count from all nodes
+        for i in range(self.max_depth+1):
+            nodes = self.get_nodes(i)
+            for node in nodes:
+                if hasattr(node, "count"):
+                    delattr(node, "count")
+
+
+    def make_quad_distribution(self, counts):
+        # assert self.is_complete
+        # to batched shape
+        # if len(counts.shape) == 1:
+        #     counts = counts.rehsape(1, -1)
+        # self._register_count_to_complete_graph(counts)
+        # batch_size = counts.shape[0]
+
+        # nodes_except_leafs = self.get_all_nodes()
+        # nodes_except_leafs = [node for node in nodes_except_leafs if node.is_leaf() is False]
+        # quad_distribution = np.zeros(batch_size, len(nodes_except_leafs), 4)
+
+        # for node in nodes_except_leafs:
+        #     for i, child in enumerate(node.children):
+        #         quad_distribution[:,node.id,i] = child.get_count()
+
+        # return quad_distribution
+        assert self.is_complete
+        # to batched shape
+        if len(counts.shape) == 1:
+            counts = counts.rehsape(1, -1)
+        batch_size = counts.shape[0]
+        n_leafs = counts.shape[1]
+
+        # depth is log of n_leafs with the base 4
+        depth = int(np.log2(n_leafs)/2)
+        n_nodes_except_leafs = sum([4**depth_ for depth_ in range(depth)])
+        quad_distribution = torch.zeros((batch_size, n_nodes_except_leafs, 4)).to(counts.device)
+        for i in range(n_leafs):
+            node_path = self.state_to_node_id_path(i)[:-1]
+            place_path = self.state_to_path(i)
+            quad_distribution[:, node_path, place_path] += counts[:, i].view(-1, 1)
+        quad_distribution = torch.nn.functional.normalize(quad_distribution, p=1, dim=-1)
+        return quad_distribution
+
+
+    def _register_count_to_complete_graph(self, counts):
+        # counts: batch_size, n_locations
+        assert self.is_complete
+        leafs = self.get_leafs()
+        for leaf in leafs:
+            assert len(leaf.state_list) == 1, "leaf.state_list must be a singleton"
+            state = leaf.state_list[0]
+            leaf.set_count(counts[:,state])
+
+    def register_id(self):
+        # set id from 0 to len(nodes)-1
+        id = 0
+        nodes = self.get_all_nodes()
+        for node in nodes:
+            node.id = id
+            id += 1
+
+    def get_node_by_id(self, id):
+        return self.get_all_nodes()[id]
+
+    def get_all_nodes(self):
+        if hasattr(self, "all_nodes"):
+            return self.all_nodes
+
+        nodes = []
+        for i in range(self.max_depth+1):
+            nodes += self.get_nodes(i)
+        
+        self.all_nodes = nodes
+        return nodes
+        # return list(self._get_all_nodes(self.root_node))
+    
+    # def _get_all_nodes(self, node):
+        # yield node
+        # if node.children is not None:
+        #     for child in node.children:
+        #         yield from self._get_all_nodes(child)
+        
+    # get nodes at the depth
+    def get_nodes(self, depth):
+        if self.is_complete and (depth in self.get_nodes_cache):
+            return self.get_nodes_cache[depth]
+        else:
+            nodes = list(self._get_nodes(self.root_node, depth))
+            self.get_nodes_cache[depth] = nodes
+            assert len(nodes) == 4**depth, f"len(nodes): {len(nodes)} must be 4**(depth-1): {4**depth}"
+            return nodes
+    
+    def _get_nodes(self, node, depth):
+        if node.depth == depth:
+            yield node
+        else:
+            if node.children is not None:
+                for child in node.children:
+                    yield from self._get_nodes(child, depth)
     
     # get leafs from the root node by recursion
     def get_leafs(self):
-        return list(self._get_leafs(self.root_node))
+        if hasattr(self, "leafs"):
+            if all([leaf.children is None for leaf in self.leafs]):
+                return self.leafs
+        leafs = list(self._get_leafs(self.root_node))
+        self.leafs = leafs
+        return self.leafs
     
     def get_unvisited_leafs(self):
         return list(self._get_unvisited_leafs(self.root_node))
@@ -204,8 +392,77 @@ class QuadTree(Grid):
                     yield from self._get_unvisited_leafs(child)
                 
     def count_of_node(self, node):
-        assert node.state_list is not None, "input must be a leaf"
-        return sum([self.counts[state] for state in node.state_list])
+        if node.is_leaf():
+            return sum([self.counts[state] for state in node.state_list])
+        else:
+            return sum([self.count_of_node(child) for child in node.children])
+        
+    def get_leaf_ids_in_tree(self, tree):
+        leafs = self.get_leafs()
+        leaf_id_in_tree = []
+        for leaf in leafs:
+            depth = leaf.get_depth()
+            nodes = tree.get_nodes(depth)
+            condition = False
+            for node in nodes:
+                if node.state_list == leaf.state_list:
+                    leaf_id_in_tree.append(node.id)
+                    condition = True
+                    leaf.id = node.id
+                    break
+            assert condition, "leaf_id_in_tree must be found"
+                # if all nodes are not the same, raise
+        return leaf_id_in_tree
+    
+    def state_to_path(self, state):
+        if state in self.state_to_path_cache:
+            return self.state_to_path_cache[state]
+        else:
+            node = self.get_node_by_state(state)
+            if node is None:
+                self.state_to_path_cache[state] = [4]*self.max_depth
+                return [4]*self.max_depth
+            path = []
+            while hasattr(node, "parent"):
+                path.append(node._place_id)
+                node = node.parent
+            self.state_to_path_cache[state] = path[::-1]
+            return path[::-1]
+    
+    def state_to_node_id_path(self, state):
+        if state in self.state_to_node_path_cache:
+            node_path = self.state_to_node_path_cache[state]
+        else:
+            node_path = self.state_to_node_path(state)
+        return [node.id for node in node_path]
+
+    def state_to_node_path(self, state):
+        if state in self.state_to_node_path_cache:
+            return self.state_to_node_path_cache[state]
+        else:
+            node = self.get_node_by_state(state)
+            if node is None:
+                self.state_to_node_path_cache[state] = [None]*self.max_depth
+                return [None]*self.max_depth
+            path = []
+            while hasattr(node, "parent"):
+                path.append(node)
+                node = node.parent
+            path.append(self.root_node)
+            self.state_to_node_path_cache[state] = path[::-1]
+            return path[::-1]
+
+    
+    def get_node_by_state(self, state):
+        for node in self.get_leafs():
+            assert len(node.state_list) == 1, "node.state_list must be a singleton"
+            if state in node.state_list:
+                return node
+        return None
+    
+    def get_location_id_in_the_depth(self, state, depth):
+        node_path = self.state_to_node_path(state)
+        return self.node_id_to_hidden_id[node_path[depth].id]
     
 
 def laplace_noise(Lambda, seed=7): # using inverse transform sampling

@@ -105,7 +105,7 @@ def compute_next_location_count(target, trajectories, n_locations, next_first=Fa
 def compute_global_counts_from_time_label(trajs, time_label_trajs, time_label, n_locations):
     # find the locations at time
     def locations_at_time(traj, time_label_traj, time):
-        indice = [i for i, t in enumerate(time_label_traj[:-1]) if t == time]
+        indice = [i for i, t in enumerate(time_label_traj) if t == time]
         return [traj[i] for i in indice]
     
     locations = []

@@ -4,21 +4,192 @@ import torch
 import math
 import torch
 import numpy as np
-from opacus.layers.dp_rnn import DPGRU, DPGRUCell
+from opacus.layers.dp_rnn import DPGRUCell
 from dataset import TrajectoryDataset
+from my_utils import construct_default_quadtree
 
 
-class BaseGRUNet(nn.Module):
+    
+class BaseReferenceGenerator(nn.Module):
+    """
+    reference includes trajectory type and start_location
+    this generates a trajectory that starts with start location and follows the trajectory type
+    e.g., x, 1, 0 -> x, ?, x
+    """
 
-    def __init__(self, reference_to_label, input_dim, embed_size, traj_type_dim, hidden_dim, n_layers, time_dim):
-        super(BaseGRUNet, self).__init__()
-        self.traj_type_embedding = nn.Embedding(traj_type_dim, hidden_dim*n_layers)
+    def post_process(self, output, sampled, reference):
+        """
+        reference is a tuple of ints
+        the length of the reference is the length of the trajectory
+        the first element is the start location
+        the rest of the elements are references to a first appearance of the location in the trajectory
+        i.e., (x, 1, 0, 1) induces (x, y, x, y) where x and y are locations
+        """
+        # if the output is a list, this is the distributions for all layers
+        output = output[-1] if type(output) == list else output
+        assert len(reference) == output.shape[0], "the length of the reference should be {}, but it is {}".format(output.shape[0], len(reference))
+        log_location_probs = output
+
+        pointer = len(sampled)
+        if pointer == 1 and reference[0][0] != -1:
+            locations = torch.tensor([v[0] for v in reference]).view(-1, 1).to(output.device)
+        else:
+            passed_locations = torch.concatenate([v for v in sampled[1:]], dim=1).view(-1, len(sampled)-1)
+            log_location_probs = self.remove_location(log_location_probs, passed_locations)
+            location_probs = torch.exp(log_location_probs).view(log_location_probs.shape[0], -1)
+            # if all locations are removed, then we just sample from the first location
+            indice = location_probs.sum(dim=-1) == 0
+            location_probs[indice,0] = 1
+            # sample
+            locations = location_probs.multinomial(1)
+            # replace by the reference
+            locations = torch.concat([passed_locations, locations], dim=-1)[range(len(reference)), reference[:, pointer-1]].view(-1, 1)
+
+        return locations
+    
+    def step(self, input):
+        return self(input)
+
+    def make_initial_input(self, reference):
+        batch_size = len(reference)
+        seq_len = max([len(ref) for ref in reference])
+        outputs = torch.tensor([self.start_idx for _ in range(batch_size)]).view(batch_size, 1)
+        return outputs, seq_len
+
+    def concat(self, sampled, samples, reference):
+        if samples == None:
+            samples = []
+        sampled = torch.concat(sampled, dim=1)
+        samples.extend(sampled.cpu().detach().numpy().tolist())
+        return samples
+
+    def make_sample(self, references, batch_size):
+        '''
+        make n_samples of trajectories usign minibatch of batch_size
+        kwargs are used as the auxiliary information to post-process output
+        '''
+        n_samples = len(references)
+
+        samples = None
+        for i in range(int(n_samples / batch_size)):
+            reference = references[i*batch_size:(i+1)*batch_size]
+            outputs, seq_len = self.make_initial_input(reference)
+            reference_input = torch.tensor([list(ref) + [i for i in range(len(ref), seq_len)] for ref in reference])
+            sampled = [outputs]
+            for j in range(seq_len):
+                outputs = self.step(outputs)
+                # the main function of post_process is sample a location from the corresponding distribution
+                outputs = self.post_process(outputs, sampled, reference_input)
+                sampled.append(outputs)
+            sampled = sampled[1:]
+
+            samples = self.concat(sampled, samples, reference)
+        
+        return samples
+
+    def remove_location(self, location, remove_locationss, log_prob=True):
+        # remove the locations that are in remove_locations
+        if remove_locationss is not None:
+            assert location.shape[0] == len(remove_locationss)
+            for i, remove_locations in enumerate(remove_locationss):
+                if log_prob:
+                    location[i, ..., remove_locations] = -float("inf")
+                else:
+                    location[i, ..., remove_locations] = 0
+        if not log_prob:
+            location = F.normalize(location, p=1, dim=-1)
+        return location
+    
+
+class Markov1Generator(BaseReferenceGenerator):
+    def __init__(self, transition_matrix, state_to_class):
+        """
+        transition_matrix: class * n_locations
+        """
+        n_classes = transition_matrix.shape[0]
+        n_locations = len(state_to_class)
+        assert transition_matrix.shape[1] == n_locations, "the number of locations should be {}, but it is {}".format(n_locations, transition_matrix.shape[1])
+        start_prob = torch.zeros_like(transition_matrix[1]).view(1, -1)
+        start_prob[0][0] = 1
+        self.transition_matrix = torch.concat([transition_matrix, start_prob], dim=0)
+        self.state_to_class = state_to_class
+        self.start_idx = n_locations
+        self.state_to_class[self.start_idx] = n_classes
+
+    def __call__(self, input):
+        """
+        input is supposed to be batched location: batch_size * 1
+        start_idx is going to be 0
+        """
+        classes = torch.tensor([self.state_to_class[state.item()] for state in input])
+        output = self.transition_matrix[classes]
+        return torch.log(output)
+    
+    def train(self):
+        pass
+
+    def eval(self):
+        pass
+    
+
+class BaseTimeReferenceGenerator(BaseReferenceGenerator):
+    """
+    reference includes trajectory type and start_location
+    this generates a trajectory that starts with start location and follows the trajectory type
+    e.g., x, 1, 0 -> x, ?, x
+    """
+
+    def post_process(self, output, sampled, reference):
+        """
+        reference is a tuple of ints
+        the length of the reference is the length of the trajectory
+        the first element is the start location
+        the rest of the elements are references to a first appearance of the location in the trajectory
+        i.e., (x, 1, 0, 1) induces (x, y, x, y) where x and y are locations
+        """
+        
+        log_location_probs, log_time_probs = output
+        locations = super().post_process(log_location_probs, [v[0] for v in sampled], reference)
+        times = torch.exp(log_time_probs).multinomial(1)
+
+        return [locations, times]
+    
+    def concat(self, sampled, samples, reference):
+        if samples == None:
+            samples = [[], []]
+        locations = torch.concat([v[0] for v in sampled], dim=1).cpu().detach().numpy().tolist()
+        times = torch.concat([v[1] for v in sampled], dim=1).cpu().detach().numpy().tolist()
+
+        # remove the outside of the format
+        for i in range(len(locations)):
+            samples[0].append(locations[i][:len(reference[i])])
+            samples[1].append(times[i][:len(reference[i])])
+        
+        return samples
+
+
+class GRUNet(BaseTimeReferenceGenerator):
+
+    def __init__(self, n_locations, location_embedding_dim, time_dim, traj_type_dim, hidden_dim, reference_to_label):
+        super(GRUNet, self).__init__()
+        self.traj_type_embedding = nn.Embedding(traj_type_dim, hidden_dim)
         self.reference_to_label = reference_to_label
-        self.location_embedding = nn.Embedding(input_dim, embed_size)
+        self.n_locations = n_locations
         self.time_dim = time_dim
         self.hidden_dim = hidden_dim
-        self.gru = DPGRUCell(embed_size+time_dim, hidden_dim, True)
+        self.gru = DPGRUCell(location_embedding_dim+time_dim, hidden_dim, True)
+        self.fc = nn.Linear(hidden_dim, n_locations+time_dim)
+        self.location_embedding = nn.Embedding(TrajectoryDataset.vocab_size(n_locations), location_embedding_dim)
+        self.start_idx = TrajectoryDataset.start_idx(n_locations)
         self.relu = nn.ReLU()
+
+    def make_initial_input(self, reference):
+        batch_size = len(reference)
+        seq_len = max([len(ref) for ref in reference])
+        locations = torch.tensor([self.start_idx for _ in range(batch_size)]).to(next(self.parameters()).device).view(batch_size, 1)
+        times = torch.tensor([0 for _ in range(batch_size)]).to(next(self.parameters()).device).view(batch_size, 1)
+        states = self.init_hidden(reference)
+        return [locations, times, states], seq_len
 
     def input_gru(self, x, references):
         state = self.init_hidden(references)
@@ -38,82 +209,40 @@ class BaseGRUNet(nn.Module):
 
         return out
     
+    # from the input, predict the next location probs and next time probs
+    # input sequence fo (embed location, embed time): batch_size * seq_len * (embed_size+time_dim)
+    # output location, time: seq_len * batch_size * (location_dim, time_dim)
     def forward(self, x, references):
         # embedding prefix
         out = self.input_gru(x, references)
 
-        # decoding to next location and next time
+        # decoding to probability of next location and next time
         location, time = self.decode(out)
         return location, time
-
+    
     def init_hidden(self, references):
-        labels = torch.tensor([self.reference_to_label[reference] for reference in references]).to(next(self.parameters()).device)
+        labels = torch.tensor([self.reference_to_label(reference) for reference in references]).to(next(self.parameters()).device)
         hidden = self.traj_type_embedding(labels).view(-1, self.hidden_dim)
         return hidden
-
-    def step(self, inputs, input_times, input_states, remove_locationss=None):
-        x = self.location_embedding(inputs)
-        # one hot encode time
-        times = F.one_hot(input_times, num_classes=self.time_dim).long().view(input_times.shape[0], -1)
-        # concat time information
-        x = torch.cat([x, times], dim=-1)
-        state = self.gru(x, input_states)
-
-        location, time = self.decode(state, remove_locationss)
-        return state, location, time
     
+    def post_process(self, output, sampled, reference):
 
-    def make_sample(self, references, n_locations, time_end_index, batch_size, real_start=None):
-        # the indice of references should correspond to the indice of real_start
-        n_samples = len(references)
-        start_idx = TrajectoryDataset.start_idx(n_locations)
-        device = next(self.parameters()).device
+        log_location_probs, log_time_probs, states = output
+        locations, times = super().post_process([log_location_probs, log_time_probs], [[v[0], v[1]] for v in sampled], reference)
 
-        trajectories = []
-        time_trajectories = []
-        for i in range(int(n_samples / batch_size)):
-            sampled_trajectory = torch.tensor([start_idx for _ in range(batch_size)]).to(device, non_blocking=True).view(batch_size, 1)
-            sampled_time_trajectory = torch.tensor([0 for _ in range(batch_size)]).to(device, non_blocking=True).view(batch_size, 1)
-            input_references = references[i*batch_size:(i+1)*batch_size]
-            states = [self.init_hidden(input_references)]
-            seq_len = max([len(reference) for reference in input_references])
-            batch_references = np.array([list(reference) + [i for i in range(len(reference), seq_len)] for reference in input_references])
-            for j in range(seq_len):
-                inputs = sampled_trajectory[:, -1]
-                input_times = sampled_time_trajectory[:, -1]
-                input_states = states[-1]
-                output_states, pred_location, pred_time = self.step(inputs, input_times, input_states, sampled_trajectory[:,1:])
-                if j == 0 and real_start is not None:
-                    locations = real_start[0][i*batch_size:(i+1)*batch_size]
-                    times = real_start[1][i*batch_size:(i+1)*batch_size]
-                else:
-                    locations = torch.exp(pred_location).multinomial(1).squeeze()
-                    times = torch.exp(pred_time).multinomial(1).squeeze()
-
-                sampled_trajectory = torch.cat([sampled_trajectory, locations.view(batch_size, 1)], dim=1)
-                # access sampled_trajectory by batch_references[:, j]
-                sampled_trajectory[:, -1] = sampled_trajectory[range(batch_size), batch_references[:, j]+1]
-                sampled_time_trajectory = torch.cat([sampled_time_trajectory, times.view(batch_size, 1)], dim=1)
-                # sampled_trajectory.append(locations)
-                # sampled_time_trajectory.append(times)
-                states.append(output_states)
-                
-            sampled_trajectory = sampled_trajectory[:,1:].cpu().detach().numpy().tolist()
-            sampled_time_trajectory = sampled_time_trajectory[:,1:].cpu().detach().numpy().tolist()
-            trajectories.extend(sampled_trajectory)
-            time_trajectories.extend(sampled_time_trajectory)
+        return [locations, times, states]
+    
+    def step(self, input):
+        # input: [locations, times, states]
+        next_state = self.encode(*input)
+        location_probs, time_probs = self.decode(next_state)
+        if type(location_probs) == list:
+            location_probs = location_probs[-1]
         
-        # remove the outside of the format
-        for i in range(len(trajectories)):
-            length = len(references[i])
-            trajectories[i] = trajectories[i][:length]
-            time_trajectories[i].append(time_end_index)
-            time_trajectories[i] = time_trajectories[i][:length+1]    
-        
-        return trajectories, time_trajectories
-
+        return [location_probs, time_probs, next_state]
+    
     def encode(self, location, time, state):
-        x = self.location_embedding(location)
+        x = self.location_embedding(location).view(location.shape[0], -1)
         # one hot encode time
         times = F.one_hot(time, num_classes=self.time_dim).long().view(time.shape[0], -1)
         # concat time information
@@ -121,220 +250,454 @@ class BaseGRUNet(nn.Module):
 
         state = self.gru(x, state)
         return state
-
-    def decode(self, embedding, remove_locationss=None):
-        pass     
-
-    def remove_location(self, location, remove_locationss):
-        # remove the locations that are in remove_locations
-        if remove_locationss is not None:
-            assert location.shape[0] == len(remove_locationss)
-            for i, remove_locations in enumerate(remove_locationss):
-                location[i, remove_locations] = -float("inf")
-        return location
-
-
-class GRUNet(BaseGRUNet):
-    def __init__(self, input_dim, traj_type_dim, hidden_dim, output_dim, time_dim, n_layers, embed_size, reference_to_label):
-        super(GRUNet, self).__init__(reference_to_label, input_dim, embed_size, traj_type_dim, hidden_dim, n_layers, time_dim)
-
-        self.hidden_dim = hidden_dim
-        self.n_layers = n_layers
-        if self.n_layers >= 2:
-            print("CONSTRUCTING")
-        self.time_dim = time_dim
-        self.output_dim = output_dim
-
-        # output_dim + time_dim because we also want to predict the time
-        self.fc = nn.Linear(hidden_dim, output_dim+time_dim)
-        
     
-    def decode(self, embedding, remove_locationss=None):
-        out = self.fc(self.relu(embedding))
+    def decode(self, encoded):
+        out = self.fc(self.relu(encoded))
         # split the last dimension into location and time
-        location, time = torch.split(out, [self.output_dim, self.time_dim], dim=-1)
+        log_location_probs, log_time_probs = torch.split(out, [self.n_locations, self.time_dim], dim=-1)
+        log_location_probs = F.log_softmax(log_location_probs, dim=-1)
+        log_time_probs = F.log_softmax(log_time_probs, dim=-1)
 
-        # remove the locations that are in remove_locations
-        location = self.remove_location(location, remove_locationss)
+        return log_location_probs, log_time_probs
+
+
+
+class MetaGRUNet(GRUNet):
+    def __init__(self, meta_network, n_locations, location_embedding_dim, time_dim, traj_type_dim, hidden_dim, reference_to_label):
+        super(MetaGRUNet, self).__init__(n_locations, location_embedding_dim, time_dim, traj_type_dim, hidden_dim, reference_to_label)
         
-        # convert to log_probs
-        location = F.log_softmax(location, dim=-1)
-        time = F.log_softmax(time, dim=-1)
-        return location, time        
-
-
-class MetaGRUNet(BaseGRUNet):
-    def __init__(self, meta_network, input_dim, traj_type_dim, hidden_dim, output_dim, time_dim, n_layers, embed_size, reference_to_label):
-        self.hidden_dim = hidden_dim+meta_network.n_classes+meta_network.n_margin
-        super(MetaGRUNet, self).__init__(reference_to_label, input_dim, embed_size, traj_type_dim, self.hidden_dim, n_layers, time_dim)
         self.meta_net = meta_network
+        del self.location_embedding
+        if hasattr(self.meta_net, "location_embedding"):
+            # assert location_embedding_dim == self.meta_net.memory_dim, "location_embedding_dim should be {}, but it is {}".format(self.meta_net.memory_dim, location_embedding_dim)
+            self.location_embedding = self.meta_net.location_embedding
+        else:
+            self.location_embedding = nn.Embedding(TrajectoryDataset.vocab_size(n_locations), location_embedding_dim)
 
-        self.fc1 = nn.Linear(self.hidden_dim, embed_size)
-        self.fc2 = nn.Linear(embed_size, self.hidden_dim)
-        self.fc_time = nn.Linear(self.hidden_dim, time_dim)
+        self.fc = None
+        self.fc_location = nn.Linear(hidden_dim, self.meta_net.input_dim)
+        self.fc_time = nn.Linear(hidden_dim, time_dim)
+
     
-    def decode(self, embedding, remove_locationss=None):
-        out = self.fc1(embedding)
-        out = self.fc2(self.relu(out))
-        # softmax
+    def decode(self, embedding):
+        out = self.fc_location(embedding)
         location = self.meta_net(out)
-        # remove the locations that are in remove_locations
-        location = self.remove_location(location, remove_locationss)
-        time = self.fc_time(out)
-        time = F.log_softmax(time, dim=-1)
+        # when meta net returns a list, it is multi-resolution task learning
+        time = F.log_softmax(self.fc_time(embedding), dim=-1)
         return location, time
 
+def compute_loss_meta_gru_net(target_locations, target_times, output_locations, output_times, coef_location, coef_time):
+    if type(target_locations) != list:
+        output_locations = [output_locations[-1]]
+        target_locations = [target_locations]
+
+    n_locations = output_locations[-1].shape[-1]
+    loss = []
+    for i in range(len(target_locations)):
+        location_dim = output_locations[i].shape[-1]
+        output_locations[i] = output_locations[i].view(-1, location_dim)
+        target_locations[i] = target_locations[i].view(-1)
+        loss.append(F.nll_loss(output_locations[i], target_locations[i], ignore_index=TrajectoryDataset.ignore_idx(n_locations)) * coef_location)
+    loss.append(F.nll_loss(output_times.view(-1, output_times.shape[-1]), target_times.view(-1)) * coef_time)
+    return loss
+
+def compute_loss_gru_meta_gru_net(target_paths, target_times, output_locations, output_times, coef_location, coef_time):
+    output_locations = output_locations.view(-1, 4)
+    target_paths = target_paths.view(-1)
+    loss_location = torch.nn.functional.nll_loss(output_locations, target_paths, ignore_index=4, reduction='mean') * coef_location
+    loss_time = torch.nn.functional.nll_loss(output_times.view(-1, output_times.shape[-1]), target_times.view(-1)) * coef_time
+    return loss_location, loss_time
+
+    
 
 class MetaNetwork(nn.Module):
-    def __init__(self, input_dim, hidden_dim, output_dim):
+    '''
+    this class is a meta network, does not have any memory funtion
+    that is, the hidden state is directory converted to log distribution on locations by MLP
+    '''
+
+    def __init__(self, input_dim, hidden_dim, output_dim, n_classes, activate):
+        '''
+        output_dim := location_dim
+        '''
         super(MetaNetwork, self).__init__()
-        self.hidden_dim = hidden_dim
-        self.fc1 = nn.Linear(input_dim, hidden_dim)
-        self.fc2 = nn.Linear(hidden_dim, output_dim)
-        self.relu = nn.ReLU()
-        self.n_classes = input_dim
+        if activate == "relu":
+            self.activate = nn.ReLU()
+        elif activate == "leaky_relu":
+            self.activate = nn.LeakyReLU()
+        elif activate == "sigmoid":
+            self.activate = nn.Sigmoid()
+        else:
+            raise NotImplementedError("activate should be relu or sigmoid, but it is {}".format(activate))
 
-    def forward(self, x):
-        out = self.fc1(x)
-        out = self.fc2(self.relu(out))
-        return F.log_softmax(out, dim=-1)
-
-
-class MetaAttentionNetwork(nn.Module):
-    """
-    This network is pre-trained using the probability distributions
-    This intends to implicitly memory n_memories distributions by self.embeddings
-
-    input: query := (batch_size * embed_dim)
-    output: log_probs := (batch_size * n_locations)
-    """
-    
-    def __init__(self, memory_dim, hidden_dim, n_locations, n_classes):
-        super(MetaAttentionNetwork, self).__init__()
+        self.input_dim = input_dim
+        self.query_to_scores = nn.Sequential(nn.Linear(hidden_dim, hidden_dim), self.activate, nn.Linear(hidden_dim, output_dim))
+        self.class_to_query = nn.Sequential(nn.Linear(n_classes, hidden_dim), self.activate, nn.Linear(hidden_dim, hidden_dim))
+        self.hidden_to_query_ = nn.Sequential(nn.Linear(input_dim, hidden_dim), self.activate, nn.Linear(hidden_dim, hidden_dim))
         self.n_classes = n_classes
-        self.memory_dim = memory_dim
-        self.n_margin = 0
 
-        # prepare the trainable parameters with size n_memories * memory_dim * 2
-        self.embeddings = nn.Parameter(torch.empty(memory_dim*2, n_classes+self.n_margin))
-        self.embeddings_bias = nn.Parameter(torch.empty(memory_dim*2))
-        self.init_embeddings()
-        self.embeddings_query = nn.Linear(n_classes+self.n_margin, memory_dim)
+    def forward(self, hidden):
+        # hidden: batch_size * (seq_len) * n_classes
+        hidden = hidden.view(hidden.shape[0], -1, hidden.shape[-1])
         
-        self.fc1 = nn.Linear(memory_dim, hidden_dim)
-        self.fc2 = nn.Linear(hidden_dim, n_locations)
-        self.relu = nn.ReLU()
-
-    def init_embeddings(self):
-        with torch.no_grad():
-            torch.nn.init.kaiming_uniform_(self.embeddings, a=math.sqrt(5))
-            fan_in, _ = torch.nn.init._calculate_fan_in_and_fan_out(self.embeddings)
-            bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
-            torch.nn.init.uniform_(self.embeddings_bias, -bound, bound)
-
-    def forward(self, query):
-        # memory
-        keys = self.embeddings.T[:, :self.memory_dim] + self.embeddings_bias[:self.memory_dim]
-        values = self.embeddings.T[:, self.memory_dim:] + self.embeddings_bias[self.memory_dim:]
-
-        if query.shape[-1] > self.n_classes+self.n_margin:
-            query, input_embeddings = torch.split(query, [self.n_classes+self.n_margin, query.shape[-1]-self.n_classes-self.n_margin], dim=-1)
-            query = F.softmax(query, dim=-1)
-            if query.shape[0] > 1:
-                # print(query[0][1])
-                pass
+        query = self.hidden_to_query(hidden)
+        # print(hidden.shape, query.shape)
+        scores = self.compute_scores(query)
+        return F.log_softmax(scores, dim=-1)
+    
+    def hidden_to_query(self, hidden):
+       # for pre_training
+        if hidden.shape[-1] == self.n_classes:
+            # hidden: batch_size * seq_len * n_classes
+            query = self.class_to_query(hidden)
         else:
-            input_embeddings = torch.zeros(query.shape[0], self.memory_dim, device=query.device)
-         
-        query = self.embeddings_query(query)
-        extracted_memory = attention(query, keys, values)
-        extracted_memory = extracted_memory + input_embeddings
+            query = self.hidden_to_query_(hidden)
+        # output hidden: batch_size * seq_len * memory_dim
+        return query
 
-        # convert memory to log_probs
-        out = self.fc1(extracted_memory)
-        out = self.fc2(self.relu(out))
-        return F.log_softmax(out, dim=-1)
+    def compute_scores(self, query):
+        scores = self.query_to_scores(query)
+        return scores
+    
+    def remove_class_to_query(self):
+        self.class_to_query.requires_grad_(False)
+
+
+class BaseQuadTreeNetwork(nn.Module):
+    def __init__(self, n_locations, memory_dim, hidden_dim, n_classes, activate):
+        super(BaseQuadTreeNetwork, self).__init__()
+
+        if activate == "relu":
+            self.activate = nn.ReLU()
+        elif activate == "leaky_relu":
+            self.activate = nn.LeakyReLU()
+        elif activate == "sigmoid":
+            self.activate = nn.Sigmoid()
+        else:
+            raise NotImplementedError("activate should be relu or sigmoid, but it is {}".format(activate))
+
+        self.tree = construct_default_quadtree(int(np.sqrt(n_locations))-2)
+        self.tree.make_self_complete()
+        self.memory_dim = memory_dim
+        self.n_locations = len(self.tree.get_leafs())
+        self.n_classes = n_classes
+        self.class_to_query = nn.Linear(n_classes, self.memory_dim)
+        self.hidden_to_query_ = nn.Sequential(nn.Linear(hidden_dim, hidden_dim), self.activate, nn.Linear(hidden_dim, self.memory_dim))
     
 
-    def fix_meta_embedding(self):
-        # set the meta network to not require gradients
-        for name, param in self.named_parameters():
-            if name.startswith("embeddings"):
-                param.requires_grad = False
-
-    def unfix_meta_embedding(self):
-        # set the meta network to not require gradients
-        for name, param in self.named_parameters():
-            if name.startswith("embeddings"):
-                param.requires_grad = True
-
-class MetaAttentionNetworkDirect(MetaAttentionNetwork):
-    # query: batch_size * embed_dim
-    def forward(self, query):
-        if query.shape[-1] == self.n_classes:
-            query = self.embeddings_query(query)
-            input_embedings = torch.zeros(query.shape[0], self.memory_dim, device=query.device)
-        else:
-            query, input_embedings = torch.split(query, [self.memory_dim, query.shape[-1]-self.memory_dim], dim=-1)
-
-        # memory
-        keys = self.embeddings.T[:, :self.memory_dim] + self.embeddings_bias[:self.memory_dim]
-        values = self.embeddings.T[:, self.memory_dim:] + self.embeddings_bias[self.memory_dim:]
-
-        extracted_memory = attention(query, keys, values) + input_embedings
-
-        # convert memory to log_probs
-        out = self.fc1(extracted_memory)
-        out = self.fc2(self.relu(out))
-        return F.log_softmax(out, dim=-1)
+    def forward(self, hidden, target=None):
+        # hidden: batch_size * (seq_len) * n_classes
+        if target is not None:
+            assert target.shape[:-1] == hidden.shape[:-1]
+            assert target.shape[-1] == self.tree.max_depth, "target.shape[-1] should be {}, but it is {}".format(self.depth, target.shape[-1])
+        
+        if len(hidden.shape) == 2:
+            hidden = hidden.view(hidden.shape[0], 1, hidden.shape[1])
+        
+        query = self.hidden_to_query(hidden)
+        # print(hidden.shape, query.shape)
+        scores = self.compute_scores(query, target=target)
+        distributions_for_all_depths = self.to_location_distribution(scores, target_depth=0)
+        return distributions_for_all_depths
     
+    def compute_scores(self, query, target=None):
+        '''
+        scores: batch_size * (seq_len) * (4^depth+4^depth-1+...+4)
+        '''
+        original_shape = query.shape
+        keys = self.make_keys(query.shape, target=target)
+
+        # matmal key and field
+        query = query.view(original_shape[0] * original_shape[1], -1, self.memory_dim)
+        keys = keys.view(original_shape[0] * original_shape[1], -1, self.memory_dim)
+        scores = torch.bmm(keys, query.transpose(-2,-1)).view(*original_shape[:-1], -1, 4)
+        return scores
+
+    def hidden_to_query(self, hidden):
+       # for pre_training
+        if hidden.shape[-1] == self.n_classes:
+            query = self.class_to_query(hidden)
+        else:
+            query = self.hidden_to_query_(hidden)
+        return query
+    
+    def make_states(self, key, tconvs=None, target=None):
+        '''
+        convert key to keys of the nodes in the tree
+        if target is given, keys are the nodes in the path that is determined by the target
+        for each key, target can specify a path (list of inputs with length depth)
+        therefore, the shape of the target should be the same as the shape of the input except the last dimension
+        that is, when target = None -> output: batch_size * (seq_len) * (4^depth+4^depth-1+...+4) * memory_dim
+        when target != None -> output: batch_size * (seq_len) * depth * memory_dim
+        '''
+        pass
+
+    def make_keys(self, shape, target=None):
+        '''
+        convert state to key by self.state_to_key (MLP)
+        '''
+        states = self.make_states(shape)
+        keys = self.state_to_key(states)
+
+        return keys
+    
+    def to_location_distribution(self, scores, target_depth=-1):
+        '''
+        scores: batch_size * seq_len * n_nodes / 4 * 4
+        convert the output of forward without target to the log distribution for the depth
+        if the depth is -1, the depth is the maximum depth of the tree
+        if the depth is 0, return distributions of all layers (i.e., list of batch_size * seq_len * num_nodes at the depth)
+        '''
+        assert scores.shape[-2] == len(self.tree.get_all_nodes()) - len(self.tree.get_leafs()), "the range of the input distribution should be should be {}, but it is {}".format(len(self.tree.get_all_nodes()) - len(self.tree.get_leafs()), scores.shape[-2])
+
+        scores = scores.view(*scores.shape[:-2], -1)
+        def make_mask(tree, depth):
+            # mask masks the nodes that are below the depth
+            all_node_size_except_root = len(tree.get_all_nodes())-1
+            ids = list(range(sum([4**depth_ for depth_ in range(1,depth)]))) + list(range(sum([4**depth_ for depth_ in range(1,depth+1)]), all_node_size_except_root))
+            # ids = list(range(sum([4**depth_ for depth_ in range(1,depth+1)]), all_node_size_except_root))
+            mask = torch.ones_like(scores).to(scores.device)
+            mask[..., ids] = 0
+            return mask
+        
+        def get_log_distribution_at_depth(scores, depth):
+            # scores is sorted according to the node.id in ascending order
+            # therefore, this function returns the distribution sorted according to the node.state_list[0] in ascending order at the depth
+            ids = list(range(sum([4**depth_ for depth_ in range(1,depth)]), sum([4**depth_ for depth_ in range(1,depth+1)])))
+            distribution = F.log_softmax(scores[..., ids], dim=-1)
+            return distribution
+        
+        summed_scores = torch.zeros_like(scores).to(scores.device)
+        for depth in range(1,self.tree.max_depth+1):
+            mask = make_mask(self.tree, depth)
+            summed_scores += scores * mask
+
+        if target_depth == 0:
+            return [get_log_distribution_at_depth(summed_scores, depth) for depth in range(1, self.tree.max_depth+1)]
+        elif target_depth == -1:
+            target_depth = self.tree.max_depth
+        
+        return get_log_distribution_at_depth(summed_scores, target_depth)
+    
+    def remove_class_to_query(self):
+        self.class_to_query.requires_grad_(False)
+
+class LinearQuadTreeNetwork(BaseQuadTreeNetwork):
+    def __init__(self, n_locations, memory_dim, hidden_dim, n_classes, activate, multilayer=False):
+        super().__init__(n_locations, memory_dim, hidden_dim, n_classes, activate)
+        if multilayer:
+            self.linears = nn.ModuleList([nn.Sequential(nn.Linear(self.memory_dim, self.memory_dim), self.activate, nn.Linear(self.memory_dim, 4*self.memory_dim)) for _ in range(self.tree.max_depth)])
+        else:
+            self.linears = nn.ModuleList([nn.Linear(self.memory_dim, 4*self.memory_dim) for _ in range(self.tree.max_depth)])
+        self.input_dim = hidden_dim
+        # state_to_key is the standard MLP
+        # self.state_to_key = nn.Sequential(nn.Linear(self.memory_dim, self.memory_dim), self.activate, nn.Linear(self.memory_dim, self.memory_dim))
+        self.state_to_key = nn.Linear(self.memory_dim, self.memory_dim)
+        self.root_value = nn.Embedding(1, self.memory_dim)
+
+    def make_states(self, shape):
+        '''
+        root_state: batch_size * seq_len * memory_dim
+        output: batch_size * seq_len * (4^depth+4^depth-1+...+4) * memory_dim
+        From the root_state, recursively apply the linear operation to the state until it reaches the maximum depth
+        because the linear layer is (memory_dim, 4*memory_dim), each layer has 4 times parameters (nodes) than the previous layer
+        '''
+        # print(shape)
+        device = self.root_value.weight.device
+        states = []
+        ith_state = self.root_value(torch.zeros(*shape[:-1], device=device).long())
+        for linear in self.linears:
+            ith_state = linear(ith_state).view(ith_state.shape[0], ith_state.shape[1], -1, self.memory_dim)
+            states.append(ith_state)
+        states = torch.concat(states, dim=-2)
+        states = states[..., self.tree.node_id_to_hidden_id[1:], :]
+
+        return states
+
+# in this class, location embedding comes from the tconvs with input of the self.root_value(1)
+# this class requires privtree
+class FullLinearQuadTreeNetwork(LinearQuadTreeNetwork):
+    def __init__(self, n_locations, memory_dim, hidden_dim, location_embedding_dim, privtree, activate):
+        # n_classes = len(privtree.get_leafs())
+        self.location_embedding_dim = location_embedding_dim
+        n_classes = len(privtree.merged_leafs)
+        super().__init__(n_locations, memory_dim, hidden_dim, n_classes, activate)
+        self.privtree = privtree
+        self.root_value = nn.Embedding(3, self.memory_dim)
+        # 0 -> states, 1 -> start value, 2 -> ignore value
+        self.leaf_ids = self.privtree.get_leaf_ids_in_tree(self.tree)
+        self.hidden_ids = torch.tensor([self.tree.node_id_to_hidden_id[node_id] for node_id in self.leaf_ids])
+        # self.node_ids = torch.tensor(self.privtree.get_leaf_ids_in_tree(self.tree))
+        self.class_to_query = nn.Linear(location_embedding_dim, self.memory_dim)
+        # self.class_to_query = nn.Sequential(nn.Linear(location_embedding_dim, self.memory_dim), self.activate, nn.Linear(self.memory_dim, self.memory_dim))
+        self.state_to_location_embedding = nn.Linear(self.memory_dim, location_embedding_dim)
+
+    def hidden_to_query(self, hidden):
+       # for pre_training
+        if hidden.shape[-1] == self.n_classes:
+            # hidden: batch_size * seq_len * n_classes
+            node_embeddings = self.location_embedding(self.hidden_ids.to(hidden.device), True) # n_classes * memory_dim
+            node_embeddings_ = torch.zeros(self.n_classes, self.location_embedding_dim, device=hidden.device)
+            for i, leafs in enumerate(self.privtree.merged_leafs):
+                for leaf in leafs:
+                    index = self.leaf_ids.index(leaf.id)
+                    node_embeddings_[i] += node_embeddings[index]
+
+            location_embeddings = hidden.matmul(node_embeddings_) # batch_size * memory_dim
+            query = self.class_to_query(location_embeddings)
+        else:
+            query = self.hidden_to_query_(hidden)
+        # output hidden: batch_size * seq_len * memory_dim
+        return query
+    
+    def location_embedding(self, location, is_node_id=False):
+        # virtual input for grad_sample
+        batch_size = location.shape[0]
+        start_value = self.root_value(torch.ones(batch_size, device=location.device).long()).view(batch_size, -1, 1, self.memory_dim)
+        ignore_value = self.root_value(torch.ones(batch_size, device=location.device).long()*2).view(batch_size, -1, 1, self.memory_dim)
+        states = self.make_states([batch_size, 1, 1])
+        # add the start value to states
+        states = torch.cat([states, start_value], dim=-2)
+        # add the ignore value to states
+        states = torch.cat([states, ignore_value], dim=-2)
+
+        if not is_node_id:
+            n_nodes_above_the_leafs_except_root = len(self.tree.get_all_nodes()) - len(self.tree.get_leafs()) -1
+            location = location + n_nodes_above_the_leafs_except_root
+        states = states[list(range(batch_size)), ..., location.view(-1).tolist(), :]
+        location_embeddings = self.state_to_location_embedding(states).view(batch_size, -1)
+        return location_embeddings
+
+
+
+class GRUQuadTreeNetwork(nn.Module):
+    def __init__(self, tree, memory_dim, n_classes, n_layers, activate="relu") -> None:
+        super(GRUQuadTreeNetwork, self).__init__()
+
+        self.depth = tree.max_depth
+        self.n_classes = n_classes
+        self.memory_dim = int(memory_dim/2)
+        self.n_margin = 0
+        # self.gru_cell = DPGRUCell(4, self.memory_dim, True)
+        self.gru_cells = torch.nn.ModuleList([DPGRUCell(4, self.memory_dim, True)])
+        for _ in range(n_layers-1):
+            self.gru_cells.append(DPGRUCell(self.memory_dim, self.memory_dim, True))
+        self.tree = tree
+        self.tree.make_self_complete()
+        self.embeddings_query = nn.Linear(n_classes, self.memory_dim*2)
+        self.hidden_to_key = nn.Linear(self.memory_dim, self.memory_dim)
+
+        if activate == "relu":
+            self.activate = nn.ReLU()
+        elif activate == "leaky_relu":
+            self.activate = nn.LeakyReLU()
+        elif activate == "sigmoid":
+            self.activate = nn.Sigmoid()
+        else:
+            raise NotImplementedError("activate should be relu or sigmoid, but it is {}".format(activate))
+
+
+    # if target is given, output is the distribution on the tree path to the target
+    # else, output is the distribution of all locations
+    def forward(self, hidden, target=None):
+        if target is not None:
+            assert target.shape[:-1] == hidden.shape[:-1]
+            assert target.shape[-1] == self.depth, "target.shape[-1] should be {}, but it is {}".format(self.depth, target.shape[-1])
+            node_size = 4 * self.tree.max_depth
+        else:
+            node_size = len(self.tree.get_all_nodes())-1
+        hidden = self.convert_hidden(hidden)
+
+        field, query = torch.split(hidden, [self.memory_dim, self.memory_dim], dim=-1)
+        keys = self.deconv(field, target=target)
+
+
+        # matmal key and field
+        query = query.view(-1, 1, self.memory_dim)
+        keys = keys.view(-1, node_size, self.memory_dim)
+        scores = torch.bmm(query, keys.transpose(-2,-1)).view(*hidden.shape[:-1], self.depth, 4)
+
+        if target is None:
+            # self.set_probs_to_tree(scores)
+            # nodes = self.tree.get_leafs()
+            # # sort nodes accoring to the node.state_list[0] in ascending order
+            # nodes = sorted(nodes, key=lambda node: node.state_list[0])
+            # distribution = torch.stack([node.prob for node in nodes], dim=-1).view(*hidden.shape[:-1], (len(nodes)))
+            distribution = F.log_softmax(scores.view(*hidden.shape[:-1], -1, 4), dim=-1)
+        else:
+            # distribution becomes (*hidden.shape[:-1], 4*depth)
+            distribution = F.log_softmax(scores, dim=-1)
+        return distribution
+    
+    def convert_hidden(self, hidden):
+       # for pre_training
+        if hidden.shape[-1] == self.n_classes:
+            hidden = self.embeddings_query(hidden)
+        return hidden
+    
+    def deconv(self, query, gru_cells=None, target=None):
+        '''
+        '''
+            
+        original_shape = query.shape
+        query = query.view(query.shape[0], -1, query.shape[-1])
+        batch_size = query.shape[0]
+        seq_len = query.shape[1]
+        if gru_cells is None:
+            gru_cells = self.gru_cells
+        if target is not None:
+            target = target.view(batch_size, seq_len, -1)
+    
+        def choose_field(fields, target, seq_i, depth):
+            if target is None or depth == -1:
+                return fields
+            else:
+                assert len(fields) == 4, "the number of fields should be 4, but it is {}".format(len(fields))
+                target = target[:, seq_i, depth].int()
+                target[target == 4] = 0
+                return [fields[target.tolist(), :, list(range(len(target))), :].permute(1,0,2)]
+
+        places = [F.one_hot(torch.tensor([place]*batch_size), num_classes=4).float().to(query.device) for place in range(4)]
+        seq_outputs = []
+        for seq_i in range(seq_len):
+            fields = [[[query[:, seq_i]]*len(gru_cells)]]
+            outputs = []
+            for depth in range(self.depth):
+                fields_at_depth = []
+                outputs_at_depth = []
+                for query_ in choose_field(fields[-1], target, seq_i, depth-1):
+                    for place in places:
+                        hidden = []
+                        for i, gru_cell in enumerate(gru_cells):
+                            # print(depth, place.shape, query_[i].shape)
+                            hidden.append(gru_cell(place, query_[i]))
+                            place = hidden[-1]
+                        outputs_at_depth.append(self.hidden_to_key(place))
+                        fields_at_depth.append(torch.stack(hidden, dim=0))
+                fields.append(torch.stack(fields_at_depth, dim=0))
+                outputs.append(torch.stack(outputs_at_depth, dim=0))
+            seq_outputs.append(torch.concat(outputs, dim=0))
+        seq_outputs = torch.stack(seq_outputs, dim=-2).permute(1,2,0,3).view(*original_shape[:-1], -1, original_shape[-1])
+        return seq_outputs
+
+    def set_probs_to_tree(self, scores):
+        '''
+        '''
+        device = next(self.parameters()).device
+
+        self.tree.root_node.prob = torch.zeros(scores.shape[:-1]).to(device)
+        for node in self.tree.get_all_nodes():
+            if node.children is not None:
+                children_ids = [child.id-1 for child in node.children]
+                assert len(children_ids) == 4, "the number of children should be 4, but it is {}".format(len(children_ids))
+                # choose values of children_ids from the last dimension of scores and softmax
+                # the dimensionarity of scores is variable
+                children_scores = scores[..., children_ids]
+                children_distribution = F.log_softmax(children_scores, dim=-1)
+                # assert torch.exp(children_distribution).sum(dim=-1).allclose(torch.ones(query.shape[:-1]).to(device), atol=1e-4), "the sum of children_distribution should be 1, but it is {}".format(torch.exp(children_distribution).sum(dim=-1))
+                for i in range(4):
+                    node.children[i].prob = node.prob + children_distribution[..., i]
+
     def remove_embeddings_query(self):
         self.embeddings_query.requires_grad_(False)
-        self.n_margin = self.memory_dim - self.n_classes
-
-class MetaClassNetwork(nn.Module):
-    def __init__(self, embed_dim, hidden_dim, output_dim, n_classes):
-        super(MetaClassNetwork, self).__init__()
-        self.hidden_dim = hidden_dim
-        self.fc1 = nn.Linear(embed_dim, hidden_dim)
-        self.fc2 = nn.Linear(hidden_dim, output_dim)
-        self.relu = nn.ReLU()
-        self.embeddings = nn.Linear(n_classes, embed_dim)
-        self.n_classes = n_classes
-
-    def one_hot_class_embedding(self, one_hot):
-        return self.embeddings(one_hot)
-    
-    def forward(self, x):
-
-        if x.shape[-1] > self.n_classes:
-            class_allocation, input_embeddings = torch.split(x, [self.n_classes, x.shape[-1]-self.n_classes], dim=-1)
-            # embeddings = self.one_hot_class_embedding(torch.softmax(class_allocation, dim=-1))
-            embeddings = self.one_hot_class_embedding(class_allocation)
-
-            # class_allocation = class_allocation.reshape(original_shape[0], original_shape[1], -1)
-            embeddings = input_embeddings + embeddings
-            # embeddings = input_embeddings
-        else:
-            embeddings = self.one_hot_class_embedding(x)
-
-        out = self.fc1(embeddings)
-        out = self.fc2(self.relu(out))
-        return F.log_softmax(out, dim=-1)
-    
-    def fix_meta_embedding(self):
-        # set the meta network to not require gradients
-        for name, param in self.named_parameters():
-            if name.startswith("embeddings"):
-                param.requires_grad = False
-    
-
-def attention(query, keys, values):
-    # query: batch_size * embed_dim
-    # keys: n_memories * embed_dim
-    # values: n_memories * embed_dim
-    scores = query.matmul(keys.transpose(0, 1))
-    scores /= math.sqrt(query.shape[-1])
-    scores = F.softmax(scores, dim=-1)
-    output = scores.matmul(values)
-    return output
+        self.n_margin = - self.n_classes

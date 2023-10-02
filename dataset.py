@@ -65,6 +65,10 @@ class TrajectoryDataset(Dataset):
         return n_locations+2
     
     @staticmethod
+    def vocab_size(n_locations):
+        return n_locations+3
+    
+    @staticmethod
     def time_end_idx(n_split):
         return n_split
 
@@ -105,7 +109,7 @@ class TrajectoryDataset(Dataset):
         return {label: self.make_reference(label) for label in self.label_to_format.keys()}
     
     #Init dataset
-    def __init__(self, data, time_data, n_locations, n_time_split, max_time, dataset_name="dataset"):
+    def __init__(self, data, time_data, n_locations, n_time_split, dataset_name="dataset"):
         assert len(data) == len(time_data)
         
         self.data = data
@@ -116,10 +120,11 @@ class TrajectoryDataset(Dataset):
         self.format_to_label, self.label_to_format = make_label_info(data)
         self.labels = self._compute_dataset_labels()
         self.label_to_reference = self._make_label_to_reference()
+        self.reference_to_label_ = {reference: label for label, reference in self.label_to_reference.items()}
         self.references = [self.label_to_reference[label] for label in self.labels]
-        self.reference_to_label = {reference: label for label, reference in self.label_to_reference.items()}
+        self.references = [tuple([traj[0]] + list(reference[1:])) for reference, traj in zip(self.references, self.data)]
         self.n_time_split = n_time_split
-        self.max_time = max_time
+        self.max_time = max([max(time_traj) for time_traj in time_data])
 
         self.time_label_trajs = []
         for time_traj in self.time_data:
@@ -127,6 +132,9 @@ class TrajectoryDataset(Dataset):
 
         self.time_ranges = [(self._label_to_time(i), self._label_to_time(i+1)) for i in range(n_time_split)]
 
+    def reference_to_label(self, reference):
+        reference = tuple([0] + list(reference[1:]))
+        return self.reference_to_label_[reference]
 
     def __str__(self):
         return self.dataset_name
@@ -165,6 +173,8 @@ class TrajectoryDataset(Dataset):
         locations = [location for location, _ in locations_count]
         logger.info(f"top {10} locations: " + str(locations_count[:10]))
 
+        (save_path.parent / "imgs").mkdir(exist_ok=True)
+
         next_location_count_path = save_path.parent / f"next_location_count.json"
         if next_location_count_path.exists():
             logger.info(f"load next location count from {next_location_count_path}")
@@ -174,6 +184,7 @@ class TrajectoryDataset(Dataset):
                 next_location_counts = {int(key): value for key, value in next_location_counts.items()}
         else:
             # compute the next location probability for each location
+            print("compute next location count")
             next_location_counts = {}
             for location in tqdm.tqdm(range(self.n_locations)):
                 next_location_count = compute_next_location_count(location, self.data, self.n_locations)
@@ -183,9 +194,10 @@ class TrajectoryDataset(Dataset):
                     continue
                 # visualize the next location distribution
                 next_location_distribution = np.array(next_location_count) / np.sum(next_location_count)
-                plot_density(next_location_distribution, self.n_locations, save_path.parent / f"real_next_location_distribution_{location}.png")
+                plot_density(next_location_distribution, self.n_locations, save_path.parent / "imgs" / f"real_next_location_distribution_{location}.png")
             
             # save the next location distribution
+            logger.info(f"save next location count to {next_location_count_path}")
             with open(next_location_count_path, "w") as f:
                 json.dump(next_location_counts, f)
 
@@ -199,6 +211,7 @@ class TrajectoryDataset(Dataset):
                 first_next_location_counts = json.load(f)
                 first_next_location_counts = {int(key): value for key, value in first_next_location_counts.items()}
         else:
+            print("compute first next location count")
             # compute the next location probability for each location
             first_next_location_counts = {}
             for location in tqdm.tqdm(range(self.n_locations)):
@@ -209,9 +222,10 @@ class TrajectoryDataset(Dataset):
                     continue
                 # visualize the next location distribution
                 first_next_location_distribution = np.array(first_next_location_count) / np.sum(first_next_location_count)
-                plot_density(first_next_location_distribution, self.n_locations, save_path.parent / f"real_first_next_location_distribution_{location}.png")
+                plot_density(first_next_location_distribution, self.n_locations, save_path.parent / "imgs" / f"real_first_next_location_distribution_{location}.png")
             
             # save the next location distribution
+            logger.info(f"save first next location count to {first_next_location_count_path}")
             with open(first_next_location_count_path, "w") as f:
                 json.dump(first_next_location_counts, f)
 

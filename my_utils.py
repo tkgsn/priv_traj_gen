@@ -124,44 +124,44 @@ def compute_distance_distribution_(pairs, distance_matrix, n_bins_for_distance):
     
     return prob
 
-def load_time_dataset(data_dir, *, logger):
+# def load_time_dataset(data_dir, *, logger):
 
 
-    if data_dir.parts[2] == "taxi":
-        max_seq_len = 2
-        real_time_traj = []
-        data_path = data_dir / "training_data.csv"
-        trajectories = load_dataset(data_path, logger=logger)
-        for traj in trajectories:
-            real_time_traj.append(list(range(len(traj))) + [max_seq_len])
-    else:
-        time_data_path = data_dir / "training_data_time.csv"
-        real_time_traj = load_dataset(time_data_path, logger=logger)
+#     if data_dir.parts[2] == "taxi":
+#         max_seq_len = 2
+#         real_time_traj = []
+#         data_path = data_dir / "training_data.csv"
+#         trajectories = load_dataset(data_path, logger=logger)
+#         for traj in trajectories:
+#             real_time_traj.append(list(range(len(traj))) + [max_seq_len])
+#     else:
+#         time_data_path = data_dir / "training_data_time.csv"
+#         real_time_traj = load_dataset(time_data_path, logger=logger)
 
     
-    return real_time_traj
+#     return real_time_traj
 
 
-def load_dataset(data_dir, *, logger):
-    trajectories = []
+# def load_dataset(data_dir, *, logger):
+#     trajectories = []
 
-    # for data_dir in data_dirs:
-    logger.info(f"load data from {data_dir}")
-    data = pd.read_csv(data_dir, header=None).astype(str).values
-    for trajectory in data:
-        trajectory = [int(float(v)) for v in trajectory if (v != 'nan')]
-        trajectories.append(trajectory)
-    logger.info(f"length of dataset: {len(trajectories)}")
+#     # for data_dir in data_dirs:
+#     logger.info(f"load data from {data_dir}")
+#     data = load(data_dir)
+#     for trajectory in data:
+#         trajectory = [int(v) for v in trajectory]
+#         trajectories.append(trajectory)
+#     logger.info(f"length of dataset: {len(trajectories)}")
 
-    if data_dir.parts[2] == "taxi":
-        new = []
-        for trajectory in trajectories:
-            if len(trajectory) > 1 and trajectory[0] != trajectory[-1]:
-                new.append([trajectory[0], trajectory[-1]])
-            else:
-                new.append([trajectory[0]])
-        trajectories = new
-    return trajectories
+#     if data_dir.parts[2] == "taxi":
+#         new = []
+#         for trajectory in trajectories:
+#             if len(trajectory) > 1 and trajectory[0] != trajectory[-1]:
+#                 new.append([trajectory[0], trajectory[-1]])
+#             else:
+#                 new.append([trajectory[0]])
+#         trajectories = new
+#     return trajectories
                  
 def get_datadir():
     with open(f"config.json", "r") as f:
@@ -435,25 +435,111 @@ def clustering(global_distribution, distance_matrix, n_classes):
         
     return location_to_class
 
-
-def privtree_clustering(count, theta):
-    n_bins = int(np.sqrt(len(count))) -2
-
-    # lat_range and lon range do not matter, here
+def construct_default_quadtree(n_bins):
     with open(pathlib.Path("./") / "dataset_configs" / "peopleflow.json", "r") as f:
         configs = json.load(f)
     lat_range = configs["lat_range"]
     lon_range = configs["lon_range"]
-
     ranges = Grid.make_ranges_from_latlon_range_and_nbins(lat_range, lon_range, n_bins)
     quad_tree = QuadTree(ranges)
+    return quad_tree
+
+def privtree_clustering(count, theta):
+    n_bins = int(np.sqrt(len(count))) -2
+    quad_tree = construct_default_quadtree(n_bins)
     quad_tree.register_count(count)
+    print(f"privtree by {theta}")
     priv_tree(quad_tree, theta=theta)
 
+
+    # if leaf.count is less than 1000, then the leaf is merged to a brother whose count is also less than 1000
+    classes = []
+    leafs = quad_tree.get_leafs()
+    parents_of_leafs = list(set([leaf.parent for leaf in leafs]))
+    for parent in parents_of_leafs:
+        # print(parent.state_list)
+        children = parent.children
+        merged = []
+        for child in children:
+            if not hasattr(child, "count"):
+                continue
+            if child.count < theta/3:
+                print(f"merge {child} in parent: {parent}")
+                merged.append(child)
+            else:
+                classes.append([child])
+        if len(merged) > 0:
+            classes.append(merged)
+
     location_to_class = {}
-    for i, leaf in enumerate(quad_tree.get_leafs()):
-        state_list = leaf.state_list
-        for state in state_list:
-            location_to_class[state] = i
+    for i, leafs in enumerate(classes):
+        for leaf in leafs:
+            state_list = leaf.state_list
+            for state in state_list:
+                location_to_class[state] = i
+
+    # classes = [[leaf] for leaf in quad_tree.get_leafs()]
+    # quad_tree.merged_leafs = classes
+    # location_to_class = {}
+    # for i, leaf in enumerate(quad_tree.get_leafs()):
+    #     state_list = leaf.state_list
+    #     for state in state_list:
+    #         location_to_class[state] = i
     
-    return location_to_class
+    quad_tree.merged_leafs = classes
+    return location_to_class, quad_tree
+
+
+def save(save_path, trajectories, option="w"):
+    "if a record is string that includes "," or " ", it causes error"
+    with open(save_path, option) as f:
+        for trajectory in trajectories:
+            for record in trajectory:
+                if record == str:
+                    assert "," not in record, f"record {record} includes ','"
+                    assert " " not in record, f"record {record} includes ' '"
+                    f.write(f"{record},")
+                elif hasattr(record, "__iter__"):
+                    f.write(" ".join([str(v) for v in record]))
+                    f.write(",")
+                else:
+                    f.write(f"{record},")
+            # remove last ","
+            f.seek(f.tell()-1)
+            f.write("\n")
+
+
+def compute_num_params(model, logger):
+    num_params = 0
+    for param in model.parameters():
+        num_params += param.numel()
+    logger.info(f"number of parameters: {num_params}")
+
+def load(save_path, size=0):
+    if size != 0:
+        # count the number of lines in the text
+        with open(save_path, "r") as f:
+            for i, _ in enumerate(f):
+                pass
+        n_lines = i + 1
+        # sample lines
+        indice = np.random.choice(n_lines, size=size, replace=False)
+    else:
+        indice = None
+
+    trajectories = []
+    with open(save_path, "r") as f:
+        for i, line in enumerate(f.readlines()):
+            if indice is not None and i not in indice:
+                continue
+            trajectory = []
+            for record in line.split(","):
+                record = record.strip()
+                if record == "":
+                    continue
+                if " " in record:
+                    trajectory.append([float(v) for v in record.split(" ")])
+                else:
+                    trajectory.append(int(float(record)))
+            trajectories.append(trajectory)
+    return trajectories

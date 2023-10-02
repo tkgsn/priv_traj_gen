@@ -1,13 +1,12 @@
 import argparse
 from logging import getLogger, config
 import pickle
-from my_utils import get_datadir, load_dataset
+from my_utils import get_datadir, save
 import json
 import pandas as pd
 import numpy as np
 from grid import Grid
 import tqdm
-from data_pre_processing import save_state_with_nan_padding
 import pathlib
 import osmnx as ox
 import networkx as nx
@@ -241,4 +240,4 @@ if __name__ == "__main__":
     else:
         post_processed_trajs = post_process(args.dataset, args.data_name, args.training_data_name, args.save_name, 0, args.is_real, logger=logger)
         logger.info(f"save post processed trajs to {save_path}")
-        save_state_with_nan_padding(save_path, post_processed_trajs)
+        save(save_path, post_processed_trajs)
