@@ -267,6 +267,13 @@ def make_raw_data_test(seed, max_size, mode, is_variable, n_bins):
     
 
 def make_raw_data_rotation(seed, max_size, n_bins):
+    data_dir = get_datadir() / "rotation" / str(max_size) / f"bin{n_bins}_seed{seed}"
+    save_path = data_dir / "training_data.csv"
+
+    if save_path.exists():
+        print("already exists")
+        return
+    
     depth = 2
     assert n_bins >= 6
     np.random.seed(seed)
@@ -276,7 +283,7 @@ def make_raw_data_rotation(seed, max_size, n_bins):
     candidates_for_the_start_locations = []
     for state in states:
         location_id_in_the_depth = tree.get_location_id_in_the_depth(state, depth)
-        if (location_id_in_the_depth % 2 == 0) and (location_id_in_the_depth < 4**(depth)-2):
+        if (location_id_in_the_depth % 2 == 0) and (location_id_in_the_depth < 4**1 + 4**(2)-2):
             candidates_for_the_start_locations.append(state)
     
     trajs = []
@@ -293,8 +300,6 @@ def make_raw_data_rotation(seed, max_size, n_bins):
         end_location = np.random.choice(end_node.state_list)
         trajs.append([start_location, mediate_location, end_location])
 
-    data_dir = get_datadir() / "rotation" / str(max_size) / f"bin{n_bins}_seed{seed}"
-    save_path = data_dir / "training_data.csv"
 
     data_dir.mkdir(parents=True, exist_ok=True)
     
@@ -307,10 +312,18 @@ def make_raw_data_rotation(seed, max_size, n_bins):
     print("save to", time_save_path)
     save(time_save_path, times)
 
-    return trajs
 
 def make_raw_data_random(seed, max_size, n_bins):
-    n_candidate_locations = 10
+    data_dir = get_datadir() / "random" / str(max_size) / f"bin{n_bins}_seed{seed}"
+    save_path = data_dir / "training_data.csv"
+
+    if save_path.exists():
+        print("already exists")
+        return
+    else:
+        save_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    n_candidate_locations = 1
     np.random.seed(seed)
 
     n_locations = (n_bins+2)**2
@@ -323,20 +336,15 @@ def make_raw_data_random(seed, max_size, n_bins):
         end_location = np.random.choice(candidates_for_the_end_locations)
         trajs.append([start_location, end_location])
 
-    data_dir = get_datadir() / "random" / str(max_size) / f"bin{n_bins}_seed{seed}"
-    save_path = data_dir / "training_data.csv"
-
-    data_dir.mkdir(parents=True, exist_ok=True)
+    print("save to", save_path)
     save(save_path, trajs)
 
     times = []
     time_save_path = data_dir / "training_data_time.csv"
-    for i in range(len(trajs)):
-        times.append([0,1])
-        
+    times = [[0,1]]*len(trajs)
+    print("save to", time_save_path)
     save(time_save_path, times)
-    
-    return trajs
+
 
 def make_raw_data_test_quadtree(seed, max_size, n_bins):
 
@@ -560,6 +568,8 @@ if __name__ == "__main__":
             trajs = make_raw_data_test_quadtree(args.seed, args.max_size, args.n_bins)
         elif args.original_data_name == 'rotation':
             make_raw_data_rotation(args.seed, args.max_size, args.n_bins)
+        elif args.original_data_name == 'random':
+            make_raw_data_random(args.seed, args.max_size, args.n_bins)
         else:
             trajs = make_raw_data_test(args.seed, args.max_size, "normal", True, args.n_bins)
             trajs = make_raw_data_distance_test(args.seed, args.max_size)

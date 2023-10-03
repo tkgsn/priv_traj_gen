@@ -538,7 +538,7 @@ class FullLinearQuadTreeNetwork(LinearQuadTreeNetwork):
 
     def hidden_to_query(self, hidden):
        # for pre_training
-        if hidden.shape[-1] == self.n_classes:
+        if hasattr(self, "class_to_query"):
             # hidden: batch_size * seq_len * n_classes
             node_embeddings = self.location_embedding(self.hidden_ids.to(hidden.device), True) # n_classes * memory_dim
             node_embeddings_ = torch.zeros(self.n_classes, self.location_embedding_dim, device=hidden.device)
