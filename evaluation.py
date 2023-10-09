@@ -79,6 +79,11 @@ def count_source_locations(trajs):
         start_locations.append(traj[0])
     return Counter(start_locations)
 
+def count_passing_locations(trajectories):
+    # count the appearance of locations
+    passing_locations = sum(trajectories, [])
+    return Counter(passing_locations)
+
 def count_target_locations(trajs):
     target_locations = []
     for traj in trajs:
@@ -118,6 +123,8 @@ def compute_distances(distance_matrix, trajs):
             distance += distance_matrix[traj[i]][traj[i+1]]
         distances.append(distance)
     return distances
+
+
 
 def compute_distance_distribution(distance_matrix, trajs, n_bins):
     distances = compute_distances(distance_matrix, trajs)

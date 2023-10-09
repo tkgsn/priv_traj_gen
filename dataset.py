@@ -219,7 +219,7 @@ class TrajectoryDataset(Dataset):
                         next_location_counts = {}
                         for label, traj in tqdm.tqdm(zip(self.labels, self.data)):
                             reference = self.label_to_reference[label]
-                            if len(reference) < 2:
+                            if len(reference) < 3:
                                 continue
                             if reference[2] != 2:
                                 continue
@@ -238,8 +238,7 @@ class TrajectoryDataset(Dataset):
                         logger.info(f"save {target_index} second order next location count to {next_location_count_path}")
                         with open(next_location_count_path, "w") as f:
                             # convert the key to str for json writing
-                            next_location_counts = {str(key): value for key, value in next_location_counts.items()}
-                            json.dump(next_location_counts, f)
+                            json.dump({str(key): value for key, value in next_location_counts.items()}, f)
 
                 return next_location_counts
 

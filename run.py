@@ -16,7 +16,7 @@ from opacus.utils.batch_memory_manager import BatchMemoryManager
 from opacus import PrivacyEngine
 from pytorchtools import EarlyStopping
 
-from evaluation import count_source_locations, count_target_locations, compute_distribution_from_count, compute_route_count, compute_distance_distribution, compute_destination_count, compute_next_location_distribution, compute_global_distribution, make_target_distributions_of_all_layers, evaluate_next_location_on_test_dataset, compute_distribution_js_for_each_depth
+from evaluation import count_source_locations, count_target_locations, compute_distribution_from_count, compute_route_count, compute_distance_distribution, compute_destination_count, compute_next_location_distribution, compute_global_distribution, make_target_distributions_of_all_layers, evaluate_next_location_on_test_dataset, compute_distribution_js_for_each_depth, count_passing_locations
 from data_post_processing import post_process_chengdu
 
 def evaluate(epoch):
@@ -48,6 +48,8 @@ def evaluate(epoch):
 
     # compute top second order base locations
     top_second_order_base_locations = sorted(dataset.second_order_next_location_counts, key=lambda x: sum(dataset.second_order_next_location_counts[x]), reverse=True)[:10]
+    # logger.info(f"top 10 second order next locations: {top_second_order_base_locations}")
+    # logger.info(f"top 10 second order next locations counts: {[sum(second_order_next_location_counts[index]) for index in top_second_order_base_locations]}")
     second_order_test_traj, second_order_test_traj_time = make_second_order_test_data(top_second_order_base_locations, args.dataset)
     second_order_test_dataset = TrajectoryDataset(second_order_test_traj, second_order_test_traj_time, n_locations, args.n_split)
     second_order_test_data_loader = torch.utils.data.DataLoader(second_order_test_dataset, num_workers=0, shuffle=False, pin_memory=True, batch_size=args.batch_size, collate_fn=test_dataset.make_padded_collate(args.remove_first_value))
@@ -93,6 +95,12 @@ def evaluate(epoch):
                     js = jensenshannon(gene_global_distributions[i], global_distributions[i])**2
                     global_jss.append(js)
             results["global_js"] = global_jss
+        
+        if args.evaluate_passing:
+            count = count_passing_locations(trajectories)
+            original_source_distribution = compute_distribution_from_count(count, dataset.n_locations)
+            count = count_passing_locations(generated_trajs)
+            generated_source_distribution = compute_distribution_from_count(count, dataset.n_locations)
 
         if args.evaluate_source:
             count = count_source_locations(trajectories)
@@ -108,7 +116,7 @@ def evaluate(epoch):
             count = count_target_locations(generated_trajs)
             generated_target_distribution = compute_distribution_from_count(count, dataset.n_locations)
             target_js = jensenshannon(original_target_distribution, generated_target_distribution)**2
-            results["target_js"] = target_js
+            results["target_js"] = target_js    
 
         if args.evaluate_route:
             route_jss = []
@@ -131,21 +139,6 @@ def evaluate(epoch):
                 destination_js = jensenshannon(original_destination_distribution, generated_destination_distribution)**2
                 destination_jss.append(destination_js)
             results["destination_js"] = destination_jss
-
-        if args.evaluate_empirical_next_location:
-            next_location_jss = []
-            generated_next_location_distributions = []
-            target_next_location_distributions = []
-            for location in top_base_locations[:n_test_locations]:
-                generated_next_location_distribution = compute_next_location_distribution(location, generated_trajs, dataset.n_locations)
-                if generated_next_location_distribution is None:
-                    logger.info(f"WARNING: this base location {location} does not appear in the generated dataset.")
-                else:
-                    generated_next_location_distributions.append(generated_next_location_distribution)
-                    target_next_location_distributions.append(next_location_distributions[location])
-
-            next_location_jss.append(compute_distribution_js_for_each_depth(torch.tensor(generated_next_location_distributions), torch.tensor(target_next_location_distributions)))
-            results["empirical_next_location_js"] = next_location_jss
         
         if args.evaluate_distance:
             n_bins = 100
@@ -323,13 +316,15 @@ def train_with_discrete_time(generator, optimizer, loss_model, input_locations, 
 
 
 def make_second_order_test_data(top_second_order_base_locations, dataset_name):
-    if dataset_name == "peopleflow":
+    if dataset_name == "peopleflow" or dataset_name == "rotation":
         n_test_location = len(top_second_order_base_locations)
         pad = np.ones((n_test_location, 1), dtype=int) * len(top_second_order_base_locations)
         first_locations = [v[0] for v in top_second_order_base_locations]
         second_locations = [v[1] for v in top_second_order_base_locations]
         test_traj = np.concatenate([np.array(first_locations).reshape(-1,1), np.array(second_locations).reshape(-1,1), pad], axis=1).tolist()
         test_traj_time = [[0, 800, 1200]]*n_test_location
+        if dataset_name == "rotation":
+            test_traj_time = [[0, 1, 2]]*n_test_location
     else:
         # throw not implemented error
         raise NotImplementedError
@@ -534,6 +529,7 @@ if __name__ == "__main__":
     parser.add_argument('--eval_initial', action='store_true')
     parser.add_argument('--evaluate_first_next_location', action='store_true')
     parser.add_argument('--evaluate_second_next_location', action='store_true')
+    parser.add_argument('--evaluate_second_order_next_location', action='store_true')
     parser.add_argument('--evaluate_global', action='store_true')
     parser.add_argument('--evaluate_source', action='store_true')
     parser.add_argument('--evaluate_target', action='store_true')
