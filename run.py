@@ -30,17 +30,14 @@ def evaluate(epoch):
     next_location_counts = dataset.next_location_counts
     first_next_location_counts = dataset.first_next_location_counts
     second_next_location_counts = dataset.second_next_location_counts
+    second_order_next_location_counts = dataset.second_order_next_location_counts
     global_counts = dataset.global_counts
 
     next_location_distributions = {key: noise_normalize(next_location_count) for key, next_location_count in next_location_counts.items()}
     first_next_location_distributions = {key: noise_normalize(first_next_location_count) for key, first_next_location_count in first_next_location_counts.items()}
     second_next_location_distributions = {key: noise_normalize(second_next_location_count) for key, second_next_location_count in second_next_location_counts.items()}
+    second_order_next_location_distributions = {key: noise_normalize(second_order_next_location_count) for key, second_order_next_location_count in second_order_next_location_counts.items()}
     global_distributions = [noise_normalize(global_count) for global_count in global_counts]
-    noisy_global_distributions = [noise_normalize(add_noise(global_count, args.global_clip+1, args.epsilon)) for global_count in global_counts]
-    for i in range(len(noisy_global_distributions)):
-        if noisy_global_distributions[i] == None:
-            noisy_global_distributions[i] = [1/dataset.n_locations] * dataset.n_locations
-    noisy_global_distributions = torch.tensor(noisy_global_distributions)
     n_test_locations = min(args.n_test_locations, sum(np.array(global_counts[0])>0))
     # logger.info(f"n_test_locations is set as min of args.n_test_locations and the number of locations appearing as the base location {args.n_test_locations}, {sum(np.array(global_counts[0])>0)}")
     top_base_locations = np.argsort(global_counts[0])[::-1]
@@ -49,7 +46,12 @@ def evaluate(epoch):
     test_dataset = TrajectoryDataset(test_traj, test_traj_time, n_locations, args.n_split)
     test_data_loader = torch.utils.data.DataLoader(test_dataset, num_workers=0, shuffle=False, pin_memory=True, batch_size=args.batch_size, collate_fn=test_dataset.make_padded_collate(args.remove_first_value))
 
-    param["global_distributions"] = noisy_global_distributions.tolist()
+    # compute top second order base locations
+    top_second_order_base_locations = sorted(dataset.second_order_next_location_counts, key=lambda x: sum(dataset.second_order_next_location_counts[x]), reverse=True)[:10]
+    second_order_test_traj, second_order_test_traj_time = make_second_order_test_data(top_second_order_base_locations, args.dataset)
+    second_order_test_dataset = TrajectoryDataset(second_order_test_traj, second_order_test_traj_time, n_locations, args.n_split)
+    second_order_test_data_loader = torch.utils.data.DataLoader(second_order_test_dataset, num_workers=0, shuffle=False, pin_memory=True, batch_size=args.batch_size, collate_fn=test_dataset.make_padded_collate(args.remove_first_value))
+
     distance_matrix = np.load(data_path.parent.parent / f"distance_matrix_bin{int(np.sqrt(n_locations)) -2}.npy")
 
     generator.eval()
@@ -60,10 +62,13 @@ def evaluate(epoch):
             jss = evaluate_next_location_on_test_dataset(first_next_location_distributions, test_data_loader, eval_generator, 1)
             results["first_next_location_js"] = jss
 
-
         if args.evaluate_second_next_location and (dataset.seq_len > 2):
             jss = evaluate_next_location_on_test_dataset(second_next_location_distributions, test_data_loader, eval_generator, 2)
             results["second_next_location_js"] = jss
+
+        if args.evaluate_second_order_next_location and (dataset.seq_len > 2):
+            jss = evaluate_next_location_on_test_dataset(second_order_next_location_distributions, second_order_test_data_loader, eval_generator, 2, 2)
+            results["second_order_next_location_js"] = jss
 
 
         if args.evaluate_global or args.evaluate_source or args.evaluate_target or args.evaluate_route or args.evaluate_destination or args.evaluate_distance:
@@ -317,6 +322,19 @@ def train_with_discrete_time(generator, optimizer, loss_model, input_locations, 
     return losses
 
 
+def make_second_order_test_data(top_second_order_base_locations, dataset_name):
+    if dataset_name == "peopleflow":
+        n_test_location = len(top_second_order_base_locations)
+        pad = np.ones((n_test_location, 1), dtype=int) * len(top_second_order_base_locations)
+        first_locations = [v[0] for v in top_second_order_base_locations]
+        second_locations = [v[1] for v in top_second_order_base_locations]
+        test_traj = np.concatenate([np.array(first_locations).reshape(-1,1), np.array(second_locations).reshape(-1,1), pad], axis=1).tolist()
+        test_traj_time = [[0, 800, 1200]]*n_test_location
+    else:
+        # throw not implemented error
+        raise NotImplementedError
+    return test_traj, test_traj_time
+
 def make_test_data(data_path, top_base_locations, n_test_location, dataset_name):
     n_test_location = min(n_test_location, len(top_base_locations))
     test_data_dir = data_path
@@ -325,7 +343,10 @@ def make_test_data(data_path, top_base_locations, n_test_location, dataset_name)
         test_traj_time = load_dataset(test_data_dir / "test_data_time.csv", logger=logger)
     else:
         pad = np.ones((n_test_location, 1), dtype=int) * len(top_base_locations)
-        if dataset_name == "chengdu":
+        if dataset_name == "peopleflow":
+            test_traj = np.concatenate([np.array(top_base_locations[:n_test_location]).reshape(-1,1), pad, np.array(top_base_locations[:n_test_location]).reshape(-1,1)], axis=1).tolist()
+            test_traj_time = [[0, 800, 1200]]*n_test_location
+        elif dataset_name == "chengdu":
             test_traj = np.concatenate([np.array(top_base_locations[:n_test_location]).reshape(-1,1), pad], axis=1).tolist()
             test_traj_time = [[0, 800, 1439]]*n_test_location
         elif dataset_name == "taxi" or dataset_name == "random":
@@ -377,6 +398,12 @@ def train_epoch(data_loader, generator, optimizer):
 
 def construct_generator(data_loader):
 
+    noisy_global_distributions = [noise_normalize(add_noise(global_count, args.global_clip+1, args.epsilon)) for global_count in dataset.global_counts]
+    for i in range(len(noisy_global_distributions)):
+        if noisy_global_distributions[i] == None:
+            noisy_global_distributions[i] = [1/dataset.n_locations] * dataset.n_locations
+    noisy_global_distributions = torch.tensor(noisy_global_distributions)
+    param["global_distributions"] = noisy_global_distributions.tolist()
     distance_matrix = np.load(data_path.parent.parent / f"distance_matrix_bin{int(np.sqrt(n_locations)) -2}.npy")
 
     target_next_location_distributions = []
@@ -565,13 +592,13 @@ if __name__ == "__main__":
     dataset.compute_auxiliary_information(save_path, logger)
     param["format_to_label"] = dataset.format_to_label
     param["label_to_format"] = dataset.label_to_format
-
-    data_loader = torch.utils.data.DataLoader(dataset, num_workers=0, shuffle=True, pin_memory=True, batch_size=args.batch_size, collate_fn=dataset.make_padded_collate(args.remove_first_value))
-    logger.info(f"len of the dataset: {len(dataset)}")
-    
     if args.batch_size == 0:
         args.batch_size = int(np.sqrt(len(dataset)))
         logger.info("batch size is set as " + str(args.batch_size))
+        
+    data_loader = torch.utils.data.DataLoader(dataset, num_workers=0, shuffle=True, pin_memory=True, batch_size=args.batch_size, collate_fn=dataset.make_padded_collate(args.remove_first_value))
+    logger.info(f"len of the dataset: {len(dataset)}")
+
 
     generator, eval_generator, loss_model, optimizer, data_loader, privacy_engine = construct_generator(data_loader)
 

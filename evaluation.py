@@ -37,7 +37,7 @@ def compute_distribution_js_for_each_depth(distribution, target_distribution):
         next_location_js_for_all_depth.append(jensenshannon(target_next_location_distribution_for_all_depth[depth-1], generated_next_location_distribution_for_all_depth[depth-1], axis=1)**2)
     return np.stack(next_location_js_for_all_depth, axis=1).tolist()
 
-def evaluate_next_location_on_test_dataset(next_location_distributions, data_loader, generator, target_index):
+def evaluate_next_location_on_test_dataset(next_location_distributions, data_loader, generator, target_index, order=1):
     jss = []
     for mini_batch in data_loader:
         if hasattr(generator, "transition_matrix"):
@@ -51,7 +51,14 @@ def evaluate_next_location_on_test_dataset(next_location_distributions, data_loa
             output = generator([input_locations, input_times], references)[0]
             output = output[-1] if type(output) == list else output
             output = torch.exp(output).cpu().detach().numpy()[:, target_index]
-        targets = torch.tensor([next_location_distributions[traj[target_index].item()] for traj in input_locations])
+        # catch the key error
+        try:
+            if order == 1:
+                targets = torch.tensor([next_location_distributions[traj[target_index].item()] for traj in input_locations])
+            elif order == 2:
+                targets = torch.tensor([next_location_distributions[(traj[target_index-1].item(), traj[target_index].item())].tolist() for traj in input_locations])
+        except KeyError:
+            continue
         jss.append(compute_distribution_js_for_each_depth(output, targets))
     return jss
 

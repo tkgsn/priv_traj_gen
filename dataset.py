@@ -177,38 +177,76 @@ class TrajectoryDataset(Dataset):
             logger.info(f"top {10} locations: " + str(locations_count[:10]))
             (save_path.parent / "imgs").mkdir(exist_ok=True)
 
-            def make_next_location_count(target_index):
-                # coompute the first next location dsitribution
-                first_next_location_count_path = save_path.parent / f"{target_index}_next_location_count.json"
-                if first_next_location_count_path.exists():
-                    logger.info(f"load {target_index} next location count from {first_next_location_count_path}")
-                    # load the next location distribution
-                    with open(first_next_location_count_path) as f:
-                        first_next_location_counts = json.load(f)
-                        first_next_location_counts = {int(key): value for key, value in first_next_location_counts.items()}
-                else:
-                    print(f"compute {target_index} next location count")
-                    # compute the next location probability for each location
-                    first_next_location_counts = {}
-                    for location in tqdm.tqdm(range(self.n_locations)):
-                        first_next_location_count = compute_next_location_count(location, self.data, self.n_locations, target_index)
-                        first_next_location_counts[location] = (list(first_next_location_count))
-                        if sum(first_next_location_count) == 0:
-                            # logger.info(f"no next location at location {location}")
-                            continue
-                        # visualize the next location distribution
-                        first_next_location_distribution = np.array(first_next_location_count) / np.sum(first_next_location_count)
-                        plot_density(first_next_location_distribution, self.n_locations, save_path.parent / "imgs" / f"real_{target_index}_next_location_distribution_{location}.png")
-                    
-                    # save the next location distribution
-                    logger.info(f"save {target_index} next location count to {first_next_location_count_path}")
-                    with open(first_next_location_count_path, "w") as f:
-                        json.dump(first_next_location_counts, f)
-                return first_next_location_counts
+            def make_next_location_count(target_index, order=1):
+                if order == 1:
+                    # coompute the first next location dsitribution
+                    next_location_count_path = save_path.parent / f"{target_index}_next_location_count.json"
+                    if next_location_count_path.exists():
+                        logger.info(f"load {target_index} next location count from {next_location_count_path}")
+                        # load the next location distribution
+                        with open(next_location_count_path) as f:
+                            next_location_counts = json.load(f)
+                            next_location_counts = {int(key): value for key, value in next_location_counts.items()}
+                    else:
+                        print(f"compute {target_index} next location count")
+                        # compute the next location probability for each location
+                        next_location_counts = {}
+                        for location in tqdm.tqdm(range(self.n_locations)):
+                            next_location_count = compute_next_location_count(location, self.data, self.n_locations, target_index)
+                            next_location_counts[location] = (list(next_location_count))
+                            if sum(next_location_count) == 0:
+                                # logger.info(f"no next location at location {location}")
+                                continue
+                            # visualize the next location distribution
+                            next_location_distribution = np.array(next_location_count) / np.sum(next_location_count)
+                            plot_density(next_location_distribution, self.n_locations, save_path.parent / "imgs" / f"real_{target_index}_next_location_distribution_{location}.png")
+                        
+                        # save the next location distribution
+                        logger.info(f"save {target_index} next location count to {next_location_count_path}")
+                        with open(next_location_count_path, "w") as f:
+                            json.dump(next_location_counts, f)
+                elif order == 2:
+                    next_location_count_path = save_path.parent / f"{target_index}_second_order_next_location_count.json"
+                    if next_location_count_path.exists():
+                        logger.info(f"load {target_index} second order next location count from {next_location_count_path}")
+                        # load the next location distribution
+                        with open(next_location_count_path) as f:
+                            next_location_counts = json.load(f)
+                            next_location_counts = {eval(key): value for key, value in next_location_counts.items()}
+                    else:
+                        print(f"compute {target_index} second order next location count")
+                        # compute the next location probability for each location
+                        next_location_counts = {}
+                        for label, traj in tqdm.tqdm(zip(self.labels, self.data)):
+                            reference = self.label_to_reference[label]
+                            if len(reference) < 2:
+                                continue
+                            if reference[2] != 2:
+                                continue
+
+                            if str((traj[0], traj[1])) not in next_location_counts:
+                                next_location_counts[(traj[0], traj[1])] = [0 for _ in range(self.n_locations)]
+                            next_location_counts[(traj[0], traj[1])][traj[2]] += 1
+
+                        # find the top10 keys
+                        top10_indice = sorted(next_location_counts, key=lambda x: sum(next_location_counts[x]), reverse=True)[:10]
+                        for index in top10_indice:
+                            next_location_distribution = np.array(next_location_counts[index]) / np.sum(next_location_counts[index])
+                            plot_density(next_location_distribution, self.n_locations, save_path.parent / "imgs" / f"real_{target_index}_second_order_next_location_distribution_{index}.png")
+                        
+                        # save the next location distribution
+                        logger.info(f"save {target_index} second order next location count to {next_location_count_path}")
+                        with open(next_location_count_path, "w") as f:
+                            # convert the key to str for json writing
+                            next_location_counts = {str(key): value for key, value in next_location_counts.items()}
+                            json.dump(next_location_counts, f)
+
+                return next_location_counts
 
             self.next_location_counts = make_next_location_count(0)
             self.first_next_location_counts = make_next_location_count(1)
             self.second_next_location_counts = make_next_location_count(2)
+            self.second_order_next_location_counts = make_next_location_count(0, order=2)
 
             # time_ranges := [(0, max_time/n_split), (max_time/n_split, 2*max_time/n_split), ..., (max_time*(n_split-1)/n_split, max_time)]
             real_global_counts = []
