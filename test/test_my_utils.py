@@ -3,7 +3,7 @@ import unittest
 # add parent path
 import sys
 sys.path.append('./')
-from my_utils import save, load
+from my_utils import save, load, set_budget, depth_clustering
 
 class DataPreProcessingTestCase(unittest.TestCase):
     def __init__(self, *args, **kwargs):
@@ -22,6 +22,16 @@ class DataPreProcessingTestCase(unittest.TestCase):
         save('test_data', data)
         data_loaded = load('test_data')
         self.assertEqual(data, data_loaded)
+
+    def test_set_budget(self):
+        set_budget(10000, 62)
+
+    def test_depth_clustering(self):
+        n_bins = 14
+        location_to_class, quad_tree = depth_clustering(n_bins)
+        self.assertEqual(len(set(location_to_class.keys())), (n_bins+2)**2)
+        self.assertEqual(len(set(location_to_class.values())), 16)
+        self.assertEqual(len(quad_tree.get_leafs()), 16)
 
 if __name__ == "__main__":
     unittest.main()
