@@ -447,39 +447,29 @@ def construct_default_quadtree(n_bins):
     quad_tree = QuadTree(ranges)
     return quad_tree
 
-def depth_clustering(n_data, epsilon):
-    n_bins = int(np.sqrt(n_data)) -2
+def set_budget(n_data, n_bins, k=0.018, depth=2):
+
+    n_sample = lambda n_data: n_data / (4**depth)
+    n_poi = (n_bins+2)**2
+
+    return k * n_poi * np.log(n_poi) / (n_sample(n_data))
+
+def depth_clustering(n_bins, depth=2):
     quad_tree = construct_default_quadtree(n_bins)
 
-
-    # if leaf.count is less than 1000, then the leaf is merged to a brother whose count is also less than 1000
-    classes = []
-    leafs = quad_tree.get_leafs()
-    parents_of_leafs = list(set([leaf.parent for leaf in leafs]))
-    for parent in parents_of_leafs:
-        # print(parent.state_list)
-        children = parent.children
-        merged = []
-        for child in children:
-            if not hasattr(child, "count"):
-                continue
-            if child.count < theta/3:
-                print(f"merge {child} in parent: {parent}")
-                merged.append(child)
-            else:
-                classes.append([child])
-        if len(merged) > 0:
-            classes.append(merged)
-
-    location_to_class = {}
-    for i, leafs in enumerate(classes):
-        for leaf in leafs:
-            state_list = leaf.state_list
-            for state in state_list:
-                location_to_class[state] = i
+    # devide until quat_tree reaches to the depth
+    for i in range(depth):
+        for leaf in quad_tree.get_leafs():
+            quad_tree.divide(leaf)
     
-    return location_to_class, quad_tree
+    location_to_class = {}
+    for i, leaf in enumerate(quad_tree.get_leafs()):
+        state_list = leaf.state_list
+        for state in state_list:
+            location_to_class[state] = i
 
+    quad_tree.merged_leafs = [[leaf] for leaf in quad_tree.get_leafs()]
+    return location_to_class, quad_tree
 
 def privtree_clustering(count, theta):
     n_bins = int(np.sqrt(len(count))) -2

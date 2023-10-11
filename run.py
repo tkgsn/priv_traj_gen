@@ -9,7 +9,7 @@ from scipy.spatial.distance import jensenshannon
 from collections import Counter
 import scipy
 
-from my_utils import get_datadir, clustering, privtree_clustering, noise_normalize, add_noise, plot_density, make_trajectories, set_logger, construct_default_quadtree, save, load, compute_num_params
+from my_utils import get_datadir, clustering, privtree_clustering, depth_clustering, noise_normalize, add_noise, plot_density, make_trajectories, set_logger, construct_default_quadtree, save, load, compute_num_params, set_budget
 from dataset import TrajectoryDataset
 from models import compute_loss_meta_gru_net, compute_loss_gru_meta_gru_net, Markov1Generator, MetaGRUNet, MetaNetwork, FullLinearQuadTreeNetwork
 import torch.nn.functional as F
@@ -388,7 +388,8 @@ def construct_generator(data_loader):
     #         noisy_global_distributions[i] = [1/dataset.n_locations] * dataset.n_locations
     # noisy_global_distributions = torch.tensor(noisy_global_distributions)
     # param["global_distributions"] = noisy_global_distributions.tolist()
-    distance_matrix = np.load(data_path.parent.parent / f"distance_matrix_bin{int(np.sqrt(n_locations)) -2}.npy")
+    n_bins = int(np.sqrt(n_locations)) -2
+    distance_matrix = np.load(data_path.parent.parent / f"distance_matrix_bin{n_bins}.npy")
 
     target_next_location_distributions = []
     numpy_target_next_location_distributions = []
@@ -400,7 +401,7 @@ def construct_generator(data_loader):
         location_to_class, privtree = privtree_clustering(dataset.global_counts[0], theta=args.privtree_theta)
     elif args.clustering == "depth":
         logger.info("use depth clustering")
-        raise NotImplementedError
+        location_to_class, privtree = depth_clustering(n_bins)
     else:
         logger.info("use distance clustering")
         location_to_class = clustering(dataset.global_counts[0], distance_matrix, args.n_classes)
@@ -591,6 +592,10 @@ if __name__ == "__main__":
     data_loader = torch.utils.data.DataLoader(dataset, num_workers=0, shuffle=True, pin_memory=True, batch_size=args.batch_size, collate_fn=dataset.make_padded_collate(args.remove_first_value, args.remove_duplicate))
     logger.info(f"len of the dataset: {len(dataset)}")
 
+    # decide the budget for the pre-training
+    # this is for depth_clustering with depth = 2
+    args.epsilon = min([args.epsilon, set_budget(len(dataset), int(np.sqrt(n_locations)) -2)])
+    logger.info(f"epsilon is set as: {args.epsilon}")
 
     generator, eval_generator, loss_model, optimizer, data_loader, privacy_engine = construct_generator(data_loader)
 
