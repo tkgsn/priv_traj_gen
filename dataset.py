@@ -7,7 +7,7 @@ from evaluation import compute_next_location_count, compute_global_counts_from_t
 from collections import Counter
 import json
 import tqdm
-
+import pathlib
 
 def make_format_to_label(traj_list):
     format_to_label = {}
@@ -79,6 +79,9 @@ class TrajectoryDataset(Dataset):
     def time_to_label(time, n_time_split, max_time):
         if time == 0:
             return 0
+        elif time == max_time:
+            return n_time_split
+        assert time <= max_time, f"time {time} is larger than max_time {max_time}"
         return int(time//(max_time/n_time_split))+1
     
     def _time_to_label(self, time):
@@ -86,7 +89,7 @@ class TrajectoryDataset(Dataset):
 
     @staticmethod
     def label_to_time(label, n_time_split, max_time):
-        return int(label*max_time/n_time_split)
+        return max([int((label-1)*max_time/n_time_split),0])
     
     def _label_to_time(self, label):
         return TrajectoryDataset.label_to_time(label, self.n_time_split, self.max_time)
@@ -109,7 +112,7 @@ class TrajectoryDataset(Dataset):
         return {label: self.make_reference(label) for label in self.label_to_format.keys()}
     
     #Init dataset
-    def __init__(self, data, time_data, n_locations, n_time_split, dataset_name="dataset"):
+    def __init__(self, data, time_data, n_locations, n_time_split, real_start=True, dataset_name="dataset"):
         assert len(data) == len(time_data)
         
         self.data = data
@@ -122,7 +125,10 @@ class TrajectoryDataset(Dataset):
         self.label_to_reference = self._make_label_to_reference()
         self.reference_to_label_ = {reference: label for label, reference in self.label_to_reference.items()}
         self.references = [self.label_to_reference[label] for label in self.labels]
-        self.references = [tuple([traj[0]] + list(reference[1:])) for reference, traj in zip(self.references, self.data)]
+        if real_start:
+            self.references = [tuple([traj[0]] + list(reference[1:])) for reference, traj in zip(self.references, self.data)]
+        else:
+            self.references = [tuple([-1] + list(reference[1:])) for reference in self.references]
         self.n_time_split = n_time_split
         self.max_time = max([max(time_traj) for time_traj in time_data])
 
@@ -168,77 +174,62 @@ class TrajectoryDataset(Dataset):
 
 
     def compute_auxiliary_information(self, save_path, logger):
-        
+
+        (save_path.parent / "imgs").mkdir(exist_ok=True)
         if not self.computed_auxiliary_information:
 
             # find the top appearing locations in the dataset
             locations_count = Counter([location for trajectory in self.data for location in trajectory]).most_common(self.n_locations)
             locations = [location for location, _ in locations_count]
             logger.info(f"top {10} locations: " + str(locations_count[:10]))
-            (save_path.parent / "imgs").mkdir(exist_ok=True)
 
             def make_next_location_count(target_index, order=1):
                 if order == 1:
-                    # coompute the first next location dsitribution
-                    next_location_count_path = save_path.parent / f"{target_index}_next_location_count.json"
-                    if next_location_count_path.exists():
-                        logger.info(f"load {target_index} next location count from {next_location_count_path}")
-                        # load the next location distribution
-                        with open(next_location_count_path) as f:
-                            next_location_counts = json.load(f)
-                            next_location_counts = {int(key): value for key, value in next_location_counts.items()}
-                    else:
-                        print(f"compute {target_index} next location count")
-                        # compute the next location probability for each location
-                        next_location_counts = {}
-                        for location in tqdm.tqdm(range(self.n_locations)):
-                            next_location_count = compute_next_location_count(location, self.data, self.n_locations, target_index)
-                            next_location_counts[location] = (list(next_location_count))
-                            if sum(next_location_count) == 0:
-                                # logger.info(f"no next location at location {location}")
+                    print(f"compute {target_index} next location count")
+                    # compute the next location probability for each location
+                    next_location_counts = {}
+                    for label, traj in tqdm.tqdm(zip(self.labels, self.data)):
+                        reference = self.label_to_reference[label]
+
+                        if target_index == 0:
+                            # count next location by the marginal way
+                            for i in range(1,len(reference)):
+                                if not (reference[i] == max(reference[:i+1])):
+                                    continue
+                                if traj[i-1] not in next_location_counts:
+                                    next_location_counts[traj[i-1]] = [0 for _ in range(self.n_locations)]
+                                next_location_counts[traj[i-1]][traj[i]] += 1
+                        elif target_index == 1:
+                            # count next location by the first next location
+                            if len(reference) < 2:
                                 continue
-                            # visualize the next location distribution
-                            next_location_distribution = np.array(next_location_count) / np.sum(next_location_count)
-                            plot_density(next_location_distribution, self.n_locations, save_path.parent / "imgs" / f"real_{target_index}_next_location_distribution_{location}.png")
-                        
-                        # save the next location distribution
-                        logger.info(f"save {target_index} next location count to {next_location_count_path}")
-                        with open(next_location_count_path, "w") as f:
-                            json.dump(next_location_counts, f)
-                elif order == 2:
-                    next_location_count_path = save_path.parent / f"{target_index}_second_order_next_location_count.json"
-                    if next_location_count_path.exists():
-                        logger.info(f"load {target_index} second order next location count from {next_location_count_path}")
-                        # load the next location distribution
-                        with open(next_location_count_path) as f:
-                            next_location_counts = json.load(f)
-                            next_location_counts = {eval(key): value for key, value in next_location_counts.items()}
-                    else:
-                        print(f"compute {target_index} second order next location count")
-                        # compute the next location probability for each location
-                        next_location_counts = {}
-                        for label, traj in tqdm.tqdm(zip(self.labels, self.data)):
-                            reference = self.label_to_reference[label]
+                            if traj[0] not in next_location_counts:
+                                next_location_counts[traj[0]] = [0 for _ in range(self.n_locations)]
+                            next_location_counts[traj[0]][traj[1]] += 1
+                        elif target_index == 2:
+                            # count next location by the second next location
                             if len(reference) < 3:
                                 continue
                             if reference[2] != 2:
                                 continue
+                            if traj[1] not in next_location_counts:
+                                next_location_counts[traj[1]] = [0 for _ in range(self.n_locations)]
+                            next_location_counts[traj[1]][traj[2]] += 1
 
-                            if str((traj[0], traj[1])) not in next_location_counts:
-                                next_location_counts[(traj[0], traj[1])] = [0 for _ in range(self.n_locations)]
-                            next_location_counts[(traj[0], traj[1])][traj[2]] += 1
+                elif order == 2:
+                    print(f"compute {target_index} second order next location count")
+                    # compute the next location probability for each location
+                    next_location_counts = {}
+                    for label, traj in tqdm.tqdm(zip(self.labels, self.data)):
+                        reference = self.label_to_reference[label]
+                        if len(reference) < 3:
+                            continue
+                        if reference[2] != 2:
+                            continue
 
-                        # find the top10 keys
-                        top10_indice = sorted(next_location_counts, key=lambda x: sum(next_location_counts[x]), reverse=True)[:10]
-                        for index in top10_indice:
-                            next_location_distribution = np.array(next_location_counts[index]) / np.sum(next_location_counts[index])
-                            plot_density(next_location_distribution, self.n_locations, save_path.parent / "imgs" / f"real_{target_index}_second_order_next_location_distribution_{index}.png")
-                        
-                        # save the next location distribution
-                        logger.info(f"save {target_index} second order next location count to {next_location_count_path}")
-                        with open(next_location_count_path, "w") as f:
-                            # convert the key to str for json writing
-                            json.dump({str(key): value for key, value in next_location_counts.items()}, f)
+                        if (traj[0], traj[1]) not in next_location_counts:
+                            next_location_counts[(traj[0], traj[1])] = [0 for _ in range(self.n_locations)]
+                        next_location_counts[(traj[0], traj[1])][traj[2]] += 1
 
                 return next_location_counts
 
@@ -247,16 +238,16 @@ class TrajectoryDataset(Dataset):
             self.second_next_location_counts = make_next_location_count(2)
             self.second_order_next_location_counts = make_next_location_count(0, order=2)
 
-            # time_ranges := [(0, max_time/n_split), (max_time/n_split, 2*max_time/n_split), ..., (max_time*(n_split-1)/n_split, max_time)]
             real_global_counts = []
-            for time in range(self.n_time_split+1):
-                real_global_count = compute_global_counts_from_time_label(self.data, self.time_label_trajs, time, self.n_locations)
+            for time in range(1,self.n_time_split+1):
+                real_global_count = Counter({location:0 for location in range(self.n_locations)})
+                real_global_count.update(compute_global_counts_from_time_label(self.data, self.time_label_trajs, time))
+                real_global_count = list(real_global_count.values())
                 real_global_counts.append(real_global_count)
                 if sum(real_global_count) == 0:
                     logger.info(f"no location at time {time}")
                     continue
-                real_global_distribution = np.array(real_global_count) / np.sum(real_global_count)
-                plot_density(real_global_distribution, self.n_locations, save_path.parent / "imgs" / f"real_global_distribution_{int(time)}.png")
+                plot_density(real_global_count, self.n_locations, save_path.parent / "imgs" / f"real_global_distribution_{int(time)}.png")
             global_counts_path = save_path.parent / f"global_count.json"
             # save the global counts
             with open(global_counts_path, "w") as f:
@@ -272,11 +263,13 @@ class TrajectoryDataset(Dataset):
             time_label_count = Counter(self.time_label_trajs)
             time_distribution = {label: time_label_count[label] / len(self.time_label_trajs) for label in time_label_count.keys()}
 
+            logger.info(f"load distance matrix from" + str(pathlib.Path("/data") / str(save_path).split("/")[3]  / f"distance_matrix_bin{int(np.sqrt(self.n_locations)) -2}.npy"))
+            self.distance_matrix = np.load(pathlib.Path("/data") / str(save_path).split("/")[3]  / f"distance_matrix_bin{int(np.sqrt(self.n_locations)) -2}.npy")
             self.computed_auxiliary_information = True
         # return locations, next_location_counts, first_next_location_counts, real_global_counts, label_count, time_distribution, reference_distribution
 
 
-    def make_padded_collate(self, remove_first_value=False):
+    def make_padded_collate(self, remove_first_value=False, remove_duplicate=False):
         start_idx = TrajectoryDataset.start_idx(self.n_locations)
         ignore_idx = TrajectoryDataset.ignore_idx(self.n_locations)
         time_end_idx = TrajectoryDataset.time_end_idx(self.n_time_split)
@@ -302,12 +295,13 @@ class TrajectoryDataset(Dataset):
 
                 # convert the duplicated state of target to the ignore_idx
                 # if the label is "010", then the second 0 is converted to the ignore_idx
-                checked_target = ["a"]
-                for i in range(1,len(format)):
-                    if format[i] not in checked_target:
-                        checked_target.append(format[i])
-                        continue
-                    target[i] = ignore_idx
+                if remove_duplicate:
+                    checked_target = ["a"]
+                    for i in range(1,len(format)):
+                        if format[i] not in checked_target:
+                            checked_target.append(format[i])
+                            continue
+                        target[i] = ignore_idx
 
                 if remove_first_value:
                     target[0] = ignore_idx

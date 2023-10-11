@@ -31,8 +31,14 @@ class BaseReferenceGenerator(nn.Module):
         log_location_probs = output
 
         pointer = len(sampled)
-        if pointer == 1 and reference[0][0] != -1:
-            locations = torch.tensor([v[0] for v in reference]).view(-1, 1).to(output.device)
+        if pointer == 1:
+            if reference[0][0] != -1:
+                locations = torch.tensor([v[0] for v in reference]).view(-1, 1).to(output.device)
+            elif torch.allclose(reference[:, 0], -1*torch.ones_like(reference[:, 0])):
+                location_probs = torch.exp(log_location_probs).view(log_location_probs.shape[0], -1)
+                locations = location_probs.multinomial(1)
+            else:
+                raise NotImplementedError("the first element of the reference should be -1, but it is {}".format(reference[0][0]))
         else:
             passed_locations = torch.concatenate([v for v in sampled[1:]], dim=1).view(-1, len(sampled)-1)
             log_location_probs = self.remove_location(log_location_probs, passed_locations)
@@ -141,16 +147,22 @@ class BaseTimeReferenceGenerator(BaseReferenceGenerator):
 
     def post_process(self, output, sampled, reference):
         """
-        reference is a tuple of ints
-        the length of the reference is the length of the trajectory
-        the first element is the start location
-        the rest of the elements are references to a first appearance of the location in the trajectory
-        i.e., (x, 1, 0, 1) induces (x, y, x, y) where x and y are locations
+        output is a tuple of (location, time)
+        location is post processed by super().post_process
+        time is sampled from the time distribution
+        time starts with 1 and a next time should be larger than or equal to the previous time
         """
         
         log_location_probs, log_time_probs = output
         locations = super().post_process(log_location_probs, [v[0] for v in sampled], reference)
-        times = torch.exp(log_time_probs).multinomial(1)
+        if len(sampled) == 1:
+            times = torch.ones_like(locations)
+        else:
+            # choose a time that is larger than the previous time
+            previous_times = sampled[-1][1]
+            passed_times = [list(range(time-1)) for time in previous_times]
+            log_time_probs = self.remove_location(log_time_probs, passed_times)
+            times = torch.exp(log_time_probs).multinomial(1)+1
 
         return [locations, times]
     
@@ -178,7 +190,7 @@ class GRUNet(BaseTimeReferenceGenerator):
         self.time_dim = time_dim
         self.hidden_dim = hidden_dim
         self.gru = DPGRUCell(location_embedding_dim+time_dim, hidden_dim, True)
-        self.fc = nn.Linear(hidden_dim, n_locations+time_dim)
+        self.fc = nn.Linear(hidden_dim, n_locations+time_dim-1)
         self.location_embedding = nn.Embedding(TrajectoryDataset.vocab_size(n_locations), location_embedding_dim)
         self.start_idx = TrajectoryDataset.start_idx(n_locations)
         self.relu = nn.ReLU()
@@ -254,7 +266,7 @@ class GRUNet(BaseTimeReferenceGenerator):
     def decode(self, encoded):
         out = self.fc(self.relu(encoded))
         # split the last dimension into location and time
-        log_location_probs, log_time_probs = torch.split(out, [self.n_locations, self.time_dim], dim=-1)
+        log_location_probs, log_time_probs = torch.split(out, [self.n_locations, self.time_dim-1], dim=-1)
         log_location_probs = F.log_softmax(log_location_probs, dim=-1)
         log_time_probs = F.log_softmax(log_time_probs, dim=-1)
 
@@ -276,8 +288,7 @@ class MetaGRUNet(GRUNet):
 
         self.fc = None
         self.fc_location = nn.Linear(hidden_dim, self.meta_net.input_dim)
-        self.fc_time = nn.Linear(hidden_dim, time_dim)
-
+        self.fc_time = nn.Linear(hidden_dim, time_dim-1)
     
     def decode(self, embedding):
         out = self.fc_location(embedding)
@@ -298,7 +309,7 @@ def compute_loss_meta_gru_net(target_locations, target_times, output_locations, 
         output_locations[i] = output_locations[i].view(-1, location_dim)
         target_locations[i] = target_locations[i].view(-1)
         loss.append(F.nll_loss(output_locations[i], target_locations[i], ignore_index=TrajectoryDataset.ignore_idx(n_locations)) * coef_location)
-    loss.append(F.nll_loss(output_times.view(-1, output_times.shape[-1]), target_times.view(-1)) * coef_time)
+    loss.append(F.nll_loss(output_times.view(-1, output_times.shape[-1]), (target_times-1).view(-1)) * coef_time)
     return loss
 
 def compute_loss_gru_meta_gru_net(target_paths, target_times, output_locations, output_times, coef_location, coef_time):

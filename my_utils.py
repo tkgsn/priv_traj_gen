@@ -13,6 +13,9 @@ import seaborn as sns
 import tqdm
 from grid import Grid, QuadTree, priv_tree
 
+
+
+
 # make a dataset for pre-training
 def make_trajectories(global_distribution, reference_distribution, transition_matrix, time_distribution, n_samples):
     seq_len = max([len(v) for v in time_distribution.keys()])
@@ -443,6 +446,40 @@ def construct_default_quadtree(n_bins):
     ranges = Grid.make_ranges_from_latlon_range_and_nbins(lat_range, lon_range, n_bins)
     quad_tree = QuadTree(ranges)
     return quad_tree
+
+def depth_clustering(n_data, epsilon):
+    n_bins = int(np.sqrt(n_data)) -2
+    quad_tree = construct_default_quadtree(n_bins)
+
+
+    # if leaf.count is less than 1000, then the leaf is merged to a brother whose count is also less than 1000
+    classes = []
+    leafs = quad_tree.get_leafs()
+    parents_of_leafs = list(set([leaf.parent for leaf in leafs]))
+    for parent in parents_of_leafs:
+        # print(parent.state_list)
+        children = parent.children
+        merged = []
+        for child in children:
+            if not hasattr(child, "count"):
+                continue
+            if child.count < theta/3:
+                print(f"merge {child} in parent: {parent}")
+                merged.append(child)
+            else:
+                classes.append([child])
+        if len(merged) > 0:
+            classes.append(merged)
+
+    location_to_class = {}
+    for i, leafs in enumerate(classes):
+        for leaf in leafs:
+            state_list = leaf.state_list
+            for state in state_list:
+                location_to_class[state] = i
+    
+    return location_to_class, quad_tree
+
 
 def privtree_clustering(count, theta):
     n_bins = int(np.sqrt(len(count))) -2
