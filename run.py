@@ -415,6 +415,7 @@ def construct_generator(data_loader):
     else:
         logger.info("use distance clustering")
         location_to_class = clustering(dataset.global_counts[0], distance_matrix, args.n_classes)
+    # class needs to correspond to node ids
     args.n_classes = len(set(location_to_class.values()))
     
     for i in range(args.n_classes):
@@ -473,7 +474,7 @@ def construct_generator(data_loader):
             meta_network = MetaNetwork(args.memory_hidden_dim, args.memory_dim, dataset.n_locations, args.n_classes, "relu").cuda(args.cuda_number)
             args.train_all_layers = False
         elif args.network_type == "fulllinear_quadtree":
-            meta_network = FullLinearQuadTreeNetwork(dataset.n_locations, args.memory_dim, args.memory_hidden_dim, args.location_embedding_dim, privtree, "relu").cuda(args.cuda_number)
+            meta_network = FullLinearQuadTreeNetwork(dataset.n_locations, args.memory_dim, args.memory_hidden_dim, args.location_embedding_dim, privtree, "relu", consistent=args.consistent).cuda(args.cuda_number)
     
         param["n_params_meta_network"] = compute_num_params(meta_network, logger)
         
@@ -536,6 +537,7 @@ if __name__ == "__main__":
     parser.add_argument('--remove_first_value', action='store_true')
     parser.add_argument('--remove_duplicate', action='store_true')
     parser.add_argument('--real_start', action='store_true')
+    parser.add_argument('--consistent', action='store_true')
     parser.add_argument('--eval_initial', action='store_true')
     parser.add_argument('--evaluate_first_next_location', action='store_true')
     parser.add_argument('--evaluate_second_next_location', action='store_true')
