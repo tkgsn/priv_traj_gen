@@ -455,7 +455,7 @@ class BaseQuadTreeNetwork(nn.Module):
 
         return keys
     
-    def to_location_distribution(self, scores, target_depth=-1):
+    def to_location_distribution(self, scores, target_depth=-1, consistent=False):
         '''
         scores: batch_size * seq_len * n_nodes / 4 * 4
         convert the output of forward without target to the log distribution for the depth
