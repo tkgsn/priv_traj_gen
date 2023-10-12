@@ -464,21 +464,24 @@ class BaseQuadTreeNetwork(nn.Module):
         '''
         assert scores.shape[-2] == len(self.tree.get_all_nodes()) - len(self.tree.get_leafs()), "the range of the input distribution should be should be {}, but it is {}".format(len(self.tree.get_all_nodes()) - len(self.tree.get_leafs()), scores.shape[-2])
 
-        scores = scores.view(*scores.shape[:-2], -1)
+        # scores = scores.view(*scores.shape[:-2], -1)
         def make_mask(tree, depth):
             # mask masks the nodes that are below the depth
-            all_node_size_except_root = len(tree.get_all_nodes())-1
-            ids = list(range(sum([4**depth_ for depth_ in range(1,depth)]))) + list(range(sum([4**depth_ for depth_ in range(1,depth+1)]), all_node_size_except_root))
+            all_node_size_except_root = int((len(tree.get_all_nodes())-1)/4)
+            ids = list(range(sum([4**depth_ for depth_ in range(0,depth-1)]))) + list(range(sum([4**depth_ for depth_ in range(0,depth)]), all_node_size_except_root))
             # ids = list(range(sum([4**depth_ for depth_ in range(1,depth+1)]), all_node_size_except_root))
             mask = torch.ones_like(scores).to(scores.device)
-            mask[..., ids] = 0
+            mask[...,ids,:] = 0
             return mask
         
         def get_log_distribution_at_depth(scores, depth):
-            # scores is sorted according to the node.id in ascending order
-            # therefore, this function returns the distribution sorted according to the node.state_list[0] in ascending order at the depth
-            ids = list(range(sum([4**depth_ for depth_ in range(1,depth)]), sum([4**depth_ for depth_ in range(1,depth+1)])))
-            distribution = F.log_softmax(scores[..., ids], dim=-1)
+            # scores is sorted according to the node.state_id[0]
+            if consistent:
+                pass
+            else:
+                scores = scores.view(*scores.shape[:-2], -1)[..., self.tree.node_id_to_hidden_id[1:]]
+                ids = list(range(sum([4**depth_ for depth_ in range(1,depth)]), sum([4**depth_ for depth_ in range(1,depth+1)])))
+                distribution = F.log_softmax(scores[..., ids], dim=-1)
             return distribution
         
         summed_scores = torch.zeros_like(scores).to(scores.device)
