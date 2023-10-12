@@ -213,6 +213,7 @@ class QuadTree(Grid):
                 condition = condition and QuadTree.divide(leaf)
         self.register_id()
         self.node_id_to_hidden_id = self._make_hidden_ids()
+        self.hidden_id_to_node_id = {hidden_id:node_id for node_id, hidden_id in enumerate(self.node_id_to_hidden_id)}
         self.location_id_to_node_id = self._make_location_id_to_node_id()
         self.is_complete = True
 
@@ -242,7 +243,7 @@ class QuadTree(Grid):
         id_to_hidden_id = dict(sorted(id_to_hidden_id.items(), key=lambda x:x[0]))
         
         # the root node does not correspond to any location
-        return [100000000] + list(id_to_hidden_id.values())
+        return [0] + list(id_to_hidden_id.values())
 
     def set_coordinate(self):
         nodes = self.get_all_nodes()
