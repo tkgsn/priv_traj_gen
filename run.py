@@ -144,7 +144,7 @@ def evaluate(generator, dataset, args, epoch):
                     results[f"{key}_jss"] = [compute_js(real_counter, len(dataset.data), counter_, n_gene_traj, n_vocabs) for counter_, real_counter in zip(counter, real_counters[key])]
                 else:
                     results[f"{key}_js"] = compute_js(real_counters[key], len(dataset.data), counter, n_gene_traj, n_vocabs)
-
+    generator.train()
 
     return results
 
@@ -474,7 +474,7 @@ def construct_generator(data_loader):
             meta_network = MetaNetwork(args.memory_hidden_dim, args.memory_dim, dataset.n_locations, args.n_classes, "relu").cuda(args.cuda_number)
             args.train_all_layers = False
         elif args.network_type == "fulllinear_quadtree":
-            meta_network = FullLinearQuadTreeNetwork(dataset.n_locations, args.memory_dim, args.memory_hidden_dim, args.location_embedding_dim, privtree, "relu", consistent=args.consistent).cuda(args.cuda_number)
+            meta_network = FullLinearQuadTreeNetwork(dataset.n_locations, args.memory_dim, args.memory_hidden_dim, args.location_embedding_dim, privtree, "relu", is_consistent=args.consistent).cuda(args.cuda_number)
     
         param["n_params_meta_network"] = compute_num_params(meta_network, logger)
         
@@ -633,7 +633,6 @@ if __name__ == "__main__":
         logger.info(f"save param to {save_path / 'params.json'}")
         with open(save_path / "params.json", "w") as f:
             json.dump(param, f)
-        generator.train()
             
         # when n_epochs is 0, only evaluate
         if args.n_epochs == 0:

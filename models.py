@@ -377,7 +377,7 @@ class MetaNetwork(nn.Module):
 
 
 class BaseQuadTreeNetwork(nn.Module):
-    def __init__(self, n_locations, memory_dim, hidden_dim, n_classes, activate, consistent=True):
+    def __init__(self, n_locations, memory_dim, hidden_dim, n_classes, activate, is_consistent=True):
         super(BaseQuadTreeNetwork, self).__init__()
 
         if activate == "relu":
@@ -396,7 +396,8 @@ class BaseQuadTreeNetwork(nn.Module):
         self.n_classes = n_classes
         self.class_to_query = nn.Linear(n_classes, self.memory_dim)
         self.hidden_to_query_ = nn.Sequential(nn.Linear(hidden_dim, hidden_dim), self.activate, nn.Linear(hidden_dim, self.memory_dim))
-        self.consistent = consistent
+        self.is_consistent = is_consistent
+        self.consistent = False
 
     def forward(self, hidden):
 
@@ -492,6 +493,14 @@ class BaseQuadTreeNetwork(nn.Module):
         # self.class_to_query.requires_grad_(False)
         del self.class_to_query
 
+    def train(self, mode=True):
+        self.consistent = False
+        return super().train(mode)
+
+    def eval(self):
+        self.consistent = True & self.is_consistent
+        return super().eval()
+
 class LinearQuadTreeNetwork(BaseQuadTreeNetwork):
     def __init__(self, n_locations, memory_dim, hidden_dim, n_classes, activate, multilayer=False):
         super().__init__(n_locations, memory_dim, hidden_dim, n_classes, activate)
@@ -526,12 +535,12 @@ class LinearQuadTreeNetwork(BaseQuadTreeNetwork):
 # in this class, location embedding comes from the tconvs with input of the self.root_value(1)
 # this class requires privtree
 class FullLinearQuadTreeNetwork(LinearQuadTreeNetwork):
-    def __init__(self, n_locations, memory_dim, hidden_dim, location_embedding_dim, privtree, activate):
+    def __init__(self, n_locations, memory_dim, hidden_dim, location_embedding_dim, privtree, activate, is_consistent):
         # n_classes = len(privtree.get_leafs())
         self.location_embedding_dim = location_embedding_dim
         n_classes = len(privtree.merged_leafs)
         self.n_locations = n_locations
-        super().__init__(n_locations, memory_dim, hidden_dim, n_classes, activate)
+        super().__init__(n_locations, memory_dim, hidden_dim, n_classes, activate, is_consistent)
         self.privtree = privtree
         self.root_value = nn.Embedding(3, self.memory_dim)
         # 0 -> states, 1 -> start value, 2 -> ignore value
