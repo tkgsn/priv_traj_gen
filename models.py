@@ -31,8 +31,14 @@ class BaseReferenceGenerator(nn.Module):
         log_location_probs = output
 
         pointer = len(sampled)
-        if pointer == 1 and reference[0][0] != -1:
-            locations = torch.tensor([v[0] for v in reference]).view(-1, 1).to(output.device)
+        if pointer == 1:
+            if reference[0][0] != -1:
+                locations = torch.tensor([v[0] for v in reference]).view(-1, 1).to(output.device)
+            elif torch.allclose(reference[:, 0], -1*torch.ones_like(reference[:, 0])):
+                location_probs = torch.exp(log_location_probs).view(log_location_probs.shape[0], -1)
+                locations = location_probs.multinomial(1)
+            else:
+                raise NotImplementedError("the first element of the reference should be -1, but it is {}".format(reference[0][0]))
         else:
             passed_locations = torch.concatenate([v for v in sampled[1:]], dim=1).view(-1, len(sampled)-1)
             log_location_probs = self.remove_location(log_location_probs, passed_locations)
@@ -141,16 +147,22 @@ class BaseTimeReferenceGenerator(BaseReferenceGenerator):
 
     def post_process(self, output, sampled, reference):
         """
-        reference is a tuple of ints
-        the length of the reference is the length of the trajectory
-        the first element is the start location
-        the rest of the elements are references to a first appearance of the location in the trajectory
-        i.e., (x, 1, 0, 1) induces (x, y, x, y) where x and y are locations
+        output is a tuple of (location, time)
+        location is post processed by super().post_process
+        time is sampled from the time distribution
+        time starts with 1 and a next time should be larger than or equal to the previous time
         """
         
         log_location_probs, log_time_probs = output
         locations = super().post_process(log_location_probs, [v[0] for v in sampled], reference)
-        times = torch.exp(log_time_probs).multinomial(1)
+        if len(sampled) == 1:
+            times = torch.ones_like(locations)
+        else:
+            # choose a time that is larger than the previous time
+            previous_times = sampled[-1][1]
+            passed_times = [list(range(time-1)) for time in previous_times]
+            log_time_probs = self.remove_location(log_time_probs, passed_times)
+            times = torch.exp(log_time_probs).multinomial(1)+1
 
         return [locations, times]
     
@@ -178,7 +190,7 @@ class GRUNet(BaseTimeReferenceGenerator):
         self.time_dim = time_dim
         self.hidden_dim = hidden_dim
         self.gru = DPGRUCell(location_embedding_dim+time_dim, hidden_dim, True)
-        self.fc = nn.Linear(hidden_dim, n_locations+time_dim)
+        self.fc = nn.Linear(hidden_dim, n_locations+time_dim-1)
         self.location_embedding = nn.Embedding(TrajectoryDataset.vocab_size(n_locations), location_embedding_dim)
         self.start_idx = TrajectoryDataset.start_idx(n_locations)
         self.relu = nn.ReLU()
@@ -254,7 +266,7 @@ class GRUNet(BaseTimeReferenceGenerator):
     def decode(self, encoded):
         out = self.fc(self.relu(encoded))
         # split the last dimension into location and time
-        log_location_probs, log_time_probs = torch.split(out, [self.n_locations, self.time_dim], dim=-1)
+        log_location_probs, log_time_probs = torch.split(out, [self.n_locations, self.time_dim-1], dim=-1)
         log_location_probs = F.log_softmax(log_location_probs, dim=-1)
         log_time_probs = F.log_softmax(log_time_probs, dim=-1)
 
@@ -276,8 +288,7 @@ class MetaGRUNet(GRUNet):
 
         self.fc = None
         self.fc_location = nn.Linear(hidden_dim, self.meta_net.input_dim)
-        self.fc_time = nn.Linear(hidden_dim, time_dim)
-
+        self.fc_time = nn.Linear(hidden_dim, time_dim-1)
     
     def decode(self, embedding):
         out = self.fc_location(embedding)
@@ -290,15 +301,16 @@ def compute_loss_meta_gru_net(target_locations, target_times, output_locations, 
     if type(target_locations) != list:
         output_locations = [output_locations[-1]] if type(output_locations) == list else [output_locations]
         target_locations = [target_locations]
-
     n_locations = output_locations[-1].shape[-1]
     loss = []
     for i in range(len(target_locations)):
         location_dim = output_locations[i].shape[-1]
         output_locations[i] = output_locations[i].view(-1, location_dim)
         target_locations[i] = target_locations[i].view(-1)
-        loss.append(F.nll_loss(output_locations[i], target_locations[i], ignore_index=TrajectoryDataset.ignore_idx(n_locations)) * coef_location)
-    loss.append(F.nll_loss(output_times.view(-1, output_times.shape[-1]), target_times.view(-1)) * coef_time)
+        # print(i, output_locations[i], target_locations[i])
+        coef = (i+1)/len(target_locations)
+        loss.append(coef*F.nll_loss(output_locations[i], target_locations[i], ignore_index=TrajectoryDataset.ignore_idx(n_locations)) * coef_location)
+    loss.append(F.nll_loss(output_times.view(-1, output_times.shape[-1]), (target_times).view(-1)) * coef_time)
     return loss
 
 def compute_loss_gru_meta_gru_net(target_paths, target_times, output_locations, output_times, coef_location, coef_time):
@@ -366,7 +378,7 @@ class MetaNetwork(nn.Module):
 
 
 class BaseQuadTreeNetwork(nn.Module):
-    def __init__(self, n_locations, memory_dim, hidden_dim, n_classes, activate):
+    def __init__(self, n_locations, memory_dim, hidden_dim, n_classes, activate, is_consistent=True):
         super(BaseQuadTreeNetwork, self).__init__()
 
         if activate == "relu":
@@ -385,29 +397,26 @@ class BaseQuadTreeNetwork(nn.Module):
         self.n_classes = n_classes
         self.class_to_query = nn.Linear(n_classes, self.memory_dim)
         self.hidden_to_query_ = nn.Sequential(nn.Linear(hidden_dim, hidden_dim), self.activate, nn.Linear(hidden_dim, self.memory_dim))
-    
+        self.is_consistent = is_consistent
+        self.consistent = False
 
-    def forward(self, hidden, target=None):
-        # hidden: batch_size * (seq_len) * n_classes
-        if target is not None:
-            assert target.shape[:-1] == hidden.shape[:-1]
-            assert target.shape[-1] == self.tree.max_depth, "target.shape[-1] should be {}, but it is {}".format(self.depth, target.shape[-1])
-        
+    def forward(self, hidden):
+
         if len(hidden.shape) == 2:
             hidden = hidden.view(hidden.shape[0], 1, hidden.shape[1])
         
         query = self.hidden_to_query(hidden)
         # print(hidden.shape, query.shape)
-        scores = self.compute_scores(query, target=target)
+        scores = self.compute_scores(query)
         distributions_for_all_depths = self.to_location_distribution(scores, target_depth=0)
         return distributions_for_all_depths
     
-    def compute_scores(self, query, target=None):
+    def compute_scores(self, query):
         '''
         scores: batch_size * (seq_len) * (4^depth+4^depth-1+...+4)
         '''
         original_shape = query.shape
-        keys = self.make_keys(query.shape, target=target)
+        keys = self.make_keys(query.shape)
 
         # matmal key and field
         query = query.view(original_shape[0] * original_shape[1], -1, self.memory_dim)
@@ -424,7 +433,7 @@ class BaseQuadTreeNetwork(nn.Module):
             query = self.hidden_to_query_(hidden)
         return query
     
-    def make_states(self, key, tconvs=None, target=None):
+    def make_states(self, key):
         '''
         convert key to keys of the nodes in the tree
         if target is given, keys are the nodes in the path that is determined by the target
@@ -435,7 +444,7 @@ class BaseQuadTreeNetwork(nn.Module):
         '''
         pass
 
-    def make_keys(self, shape, target=None):
+    def make_keys(self, shape):
         '''
         convert state to key by self.state_to_key (MLP)
         '''
@@ -447,44 +456,51 @@ class BaseQuadTreeNetwork(nn.Module):
     def to_location_distribution(self, scores, target_depth=-1):
         '''
         scores: batch_size * seq_len * n_nodes / 4 * 4
+        scores is sorted according to node_id
         convert the output of forward without target to the log distribution for the depth
         if the depth is -1, the depth is the maximum depth of the tree
         if the depth is 0, return distributions of all layers (i.e., list of batch_size * seq_len * num_nodes at the depth)
         '''
         assert scores.shape[-2] == len(self.tree.get_all_nodes()) - len(self.tree.get_leafs()), "the range of the input distribution should be should be {}, but it is {}".format(len(self.tree.get_all_nodes()) - len(self.tree.get_leafs()), scores.shape[-2])
-
-        scores = scores.view(*scores.shape[:-2], -1)
-        def make_mask(tree, depth):
-            # mask masks the nodes that are below the depth
-            all_node_size_except_root = len(tree.get_all_nodes())-1
-            ids = list(range(sum([4**depth_ for depth_ in range(1,depth)]))) + list(range(sum([4**depth_ for depth_ in range(1,depth+1)]), all_node_size_except_root))
-            # ids = list(range(sum([4**depth_ for depth_ in range(1,depth+1)]), all_node_size_except_root))
-            mask = torch.ones_like(scores).to(scores.device)
-            mask[..., ids] = 0
-            return mask
         
         def get_log_distribution_at_depth(scores, depth):
-            # scores is sorted according to the node.id in ascending order
-            # therefore, this function returns the distribution sorted according to the node.state_list[0] in ascending order at the depth
-            ids = list(range(sum([4**depth_ for depth_ in range(1,depth)]), sum([4**depth_ for depth_ in range(1,depth+1)])))
-            distribution = F.log_softmax(scores[..., ids], dim=-1)
+            # scores is sorted according to node.id
+            if self.consistent:
+                scores = F.log_softmax(scores, dim=-1)
+                distribution = torch.zeros(*scores.shape[:-2], 4**depth).to(scores.device)
+                for i in range(depth):
+                    ids = list(range(sum([4**depth_ for depth_ in range(0,i)]), sum([4**depth_ for depth_ in range(0,i+1)])))
+                    score_at_depth_i = scores[...,ids,:].view(*scores.shape[:-2],-1).repeat_interleave(4**(depth-i-1), dim=-1)
+                    distribution += score_at_depth_i
+                hidden_ids = list(range(sum([4**depth_ for depth_ in range(0,i+1)])-1, sum([4**depth_ for depth_ in range(0,i+2)])-1))
+                node_ids = [self.tree.hidden_id_to_node_id[id] for id in hidden_ids]
+                distribution = distribution[...,[id-node_ids[0] for id in node_ids]]
+            else:
+                hidden_ids = list(range(scores.shape[-1] * scores.shape[-2]))
+                node_ids = [self.tree.hidden_id_to_node_id[id] for id in hidden_ids]
+                scores = scores.view(*scores.shape[:-2], -1)[..., [id-node_ids[0] for id in node_ids]]
+                ids = list(range(sum([4**depth_ for depth_ in range(1,depth)]), sum([4**depth_ for depth_ in range(1,depth+1)])))
+                distribution = F.log_softmax(scores[..., ids], dim=-1)
             return distribution
         
-        summed_scores = torch.zeros_like(scores).to(scores.device)
-        for depth in range(1,self.tree.max_depth+1):
-            mask = make_mask(self.tree, depth)
-            summed_scores += scores * mask
-
         if target_depth == 0:
-            return [get_log_distribution_at_depth(summed_scores, depth) for depth in range(1, self.tree.max_depth+1)]
+            return [get_log_distribution_at_depth(scores, depth) for depth in range(1, self.tree.max_depth+1)]
         elif target_depth == -1:
             target_depth = self.tree.max_depth
         
-        return get_log_distribution_at_depth(summed_scores, target_depth)
+        return get_log_distribution_at_depth(scores, target_depth)
     
     def remove_class_to_query(self):
         # self.class_to_query.requires_grad_(False)
         del self.class_to_query
+
+    def train(self, mode=True):
+        self.consistent = False
+        return super().train(mode)
+
+    def eval(self):
+        self.consistent = True & self.is_consistent
+        return super().eval()
 
 class LinearQuadTreeNetwork(BaseQuadTreeNetwork):
     def __init__(self, n_locations, memory_dim, hidden_dim, n_classes, activate, multilayer=False):
@@ -514,24 +530,24 @@ class LinearQuadTreeNetwork(BaseQuadTreeNetwork):
             ith_state = linear(ith_state).view(ith_state.shape[0], ith_state.shape[1], -1, self.memory_dim)
             states.append(ith_state)
         states = torch.concat(states, dim=-2)
-        states = states[..., self.tree.node_id_to_hidden_id[1:], :]
 
         return states
 
 # in this class, location embedding comes from the tconvs with input of the self.root_value(1)
 # this class requires privtree
 class FullLinearQuadTreeNetwork(LinearQuadTreeNetwork):
-    def __init__(self, n_locations, memory_dim, hidden_dim, location_embedding_dim, privtree, activate):
+    def __init__(self, n_locations, memory_dim, hidden_dim, location_embedding_dim, privtree, activate, is_consistent):
         # n_classes = len(privtree.get_leafs())
         self.location_embedding_dim = location_embedding_dim
         n_classes = len(privtree.merged_leafs)
-        super().__init__(n_locations, memory_dim, hidden_dim, n_classes, activate)
+        self.n_locations = n_locations
+        super().__init__(n_locations, memory_dim, hidden_dim, n_classes, activate, is_consistent)
         self.privtree = privtree
         self.root_value = nn.Embedding(3, self.memory_dim)
         # 0 -> states, 1 -> start value, 2 -> ignore value
         self.leaf_ids = self.privtree.get_leaf_ids_in_tree(self.tree)
-        self.hidden_ids = torch.tensor([self.tree.node_id_to_hidden_id[node_id] for node_id in self.leaf_ids])
-        # self.node_ids = torch.tensor(self.privtree.get_leaf_ids_in_tree(self.tree))
+        # self.hidden_ids = torch.tensor([self.tree.node_id_to_hidden_id[node_id] for node_id in self.leaf_ids])
+        self.node_ids = torch.tensor(self.privtree.get_leaf_ids_in_tree(self.tree))
         self.class_to_query = nn.Linear(location_embedding_dim, self.memory_dim)
         # self.class_to_query = nn.Sequential(nn.Linear(location_embedding_dim, self.memory_dim), self.activate, nn.Linear(self.memory_dim, self.memory_dim))
         self.state_to_location_embedding = nn.Linear(self.memory_dim, location_embedding_dim)
@@ -540,7 +556,7 @@ class FullLinearQuadTreeNetwork(LinearQuadTreeNetwork):
        # for pre_training
         if hasattr(self, "class_to_query"):
             # hidden: batch_size * seq_len * n_classes
-            node_embeddings = self.location_embedding(self.hidden_ids.to(hidden.device), True) # n_classes * memory_dim
+            node_embeddings = self.location_embedding(self.node_ids.to(hidden.device), True) # n_classes * memory_dim_
             node_embeddings_ = torch.zeros(self.n_classes, self.location_embedding_dim, device=hidden.device)
             for i, leafs in enumerate(self.privtree.merged_leafs):
                 for leaf in leafs:
@@ -566,11 +582,23 @@ class FullLinearQuadTreeNetwork(LinearQuadTreeNetwork):
         states = torch.cat([states, ignore_value], dim=-2)
 
         if not is_node_id:
-            n_nodes_above_the_leafs_except_root = len(self.tree.get_all_nodes()) - len(self.tree.get_leafs()) -1
-            location = location + n_nodes_above_the_leafs_except_root
-        states = states[list(range(batch_size)), ..., location.view(-1).tolist(), :]
+            # input is a state, which is in the order of from upper left to lower right
+            # but we need to access to location embedding which is sorted according to node.id
+            location_ = []
+            for loc in location.view(-1).tolist():
+                if loc < self.n_locations:
+                    location_.append(self.tree.state_to_node_id_path(loc)[-1]-1)
+                else:
+                    location_.append(loc)
+            location = location_
+        else:
+            location = location -1
+            # because the first node is the root node and make_states does not include the root node
+            location = location.view(-1).tolist()
+        states = states[list(range(batch_size)), ..., location, :]
         location_embeddings = self.state_to_location_embedding(states).view(batch_size, -1)
         return location_embeddings
+    
 
 
 
@@ -603,17 +631,12 @@ class GRUQuadTreeNetwork(nn.Module):
 
     # if target is given, output is the distribution on the tree path to the target
     # else, output is the distribution of all locations
-    def forward(self, hidden, target=None):
-        if target is not None:
-            assert target.shape[:-1] == hidden.shape[:-1]
-            assert target.shape[-1] == self.depth, "target.shape[-1] should be {}, but it is {}".format(self.depth, target.shape[-1])
-            node_size = 4 * self.tree.max_depth
-        else:
-            node_size = len(self.tree.get_all_nodes())-1
+    def forward(self, hidden):
+        node_size = len(self.tree.get_all_nodes())-1
         hidden = self.convert_hidden(hidden)
 
         field, query = torch.split(hidden, [self.memory_dim, self.memory_dim], dim=-1)
-        keys = self.deconv(field, target=target)
+        keys = self.deconv(field)
 
 
         # matmal key and field
@@ -621,16 +644,7 @@ class GRUQuadTreeNetwork(nn.Module):
         keys = keys.view(-1, node_size, self.memory_dim)
         scores = torch.bmm(query, keys.transpose(-2,-1)).view(*hidden.shape[:-1], self.depth, 4)
 
-        if target is None:
-            # self.set_probs_to_tree(scores)
-            # nodes = self.tree.get_leafs()
-            # # sort nodes accoring to the node.state_list[0] in ascending order
-            # nodes = sorted(nodes, key=lambda node: node.state_list[0])
-            # distribution = torch.stack([node.prob for node in nodes], dim=-1).view(*hidden.shape[:-1], (len(nodes)))
-            distribution = F.log_softmax(scores.view(*hidden.shape[:-1], -1, 4), dim=-1)
-        else:
-            # distribution becomes (*hidden.shape[:-1], 4*depth)
-            distribution = F.log_softmax(scores, dim=-1)
+        distribution = F.log_softmax(scores.view(*hidden.shape[:-1], -1, 4), dim=-1)
         return distribution
     
     def convert_hidden(self, hidden):

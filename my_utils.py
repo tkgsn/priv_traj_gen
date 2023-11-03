@@ -13,6 +13,9 @@ import seaborn as sns
 import tqdm
 from grid import Grid, QuadTree, priv_tree
 
+
+
+
 # make a dataset for pre-training
 def make_trajectories(global_distribution, reference_distribution, transition_matrix, time_distribution, n_samples):
     seq_len = max([len(v) for v in time_distribution.keys()])
@@ -345,18 +348,36 @@ def global_clipping(trajectories, global_clip):
     return clipped_trajectories
 
 
-def plot_density(next_location_distribution, n_locations, save_path):
+def plot_density(counts, n_locations, save_path, anotation=None):
+
+    if type(counts) is Counter:
+        counts_ = [0 for i in range(n_locations)]
+        for key, value in counts.items():
+            counts_[key] = value
+        counts = counts_
+        
     if np.sqrt(n_locations).is_integer():
+            
         n_x = int(np.sqrt(n_locations))
         n_y = int(np.sqrt(n_locations))
-        values = np.array(next_location_distribution).reshape(n_x, n_y)
+        values = np.rot90(np.array(counts).reshape(n_x, n_y))
         plt.figure(figsize=(10, 10))
         ax = sns.heatmap(values, cmap="YlGnBu", vmin=0, vmax=values.max(), square=True, cbar_kws={"shrink": 0.8})
+        if anotation is not None:
+            x_anotation_ = anotation % n_x
+            y_anotation_ = int(anotation / n_y)
+            # rotate by 90
+            y_anotation = n_x -1 - x_anotation_
+            x_anotation = y_anotation_
+            ax.annotate('X', xy=(x_anotation + 0.5, y_anotation + 0.5), color='red', fontsize=20, ha='center', va='center')
         plt.savefig(save_path)
         plt.close()
     else:
-        # print("cannot plot density because n_locations is not a square number")
-        pass
+        # in this case, we plot bar graph
+        plt.figure(figsize=(10, 10))
+        plt.bar(range(n_locations), counts)
+        plt.savefig(save_path)
+        plt.close()
 
 def add_noise(values, sensitivity, epsilon):
     # add Laplace noise
@@ -443,6 +464,30 @@ def construct_default_quadtree(n_bins):
     ranges = Grid.make_ranges_from_latlon_range_and_nbins(lat_range, lon_range, n_bins)
     quad_tree = QuadTree(ranges)
     return quad_tree
+
+def set_budget(n_data, n_bins, k=0.018, depth=2):
+
+    n_sample = lambda n_data: n_data / (4**depth)
+    n_poi = (n_bins+2)**2
+
+    return k * n_poi * np.log(n_poi) / (n_sample(n_data))
+
+def depth_clustering(n_bins, depth=2):
+    quad_tree = construct_default_quadtree(n_bins)
+
+    # devide until quat_tree reaches to the depth
+    for i in range(depth):
+        for leaf in quad_tree.get_leafs():
+            quad_tree.divide(leaf)
+    
+    location_to_class = {}
+    for i, leaf in enumerate(quad_tree.get_leafs()):
+        state_list = leaf.state_list
+        for state in state_list:
+            location_to_class[state] = i
+
+    quad_tree.merged_leafs = [[leaf] for leaf in quad_tree.get_leafs()]
+    return location_to_class, quad_tree
 
 def privtree_clustering(count, theta):
     n_bins = int(np.sqrt(len(count))) -2

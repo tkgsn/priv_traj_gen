@@ -10,6 +10,7 @@ import os
 import pathlib
 import json
 import linecache
+import make_pair_to_route
 
 def make_raw_data_peopleflow():
     format = '%H:%M:%S'
@@ -345,6 +346,61 @@ def make_raw_data_random(seed, max_size, n_bins):
     print("save to", time_save_path)
     save(time_save_path, times)
 
+def make_raw_data_geolife():
+    # the format of plt_file: records follow after the 6 raws for auxiliary information
+    # the format of a record: lat, lon, unused, altitude, days since dec. 30 1899, date, time
+    # https://heremaps.github.io/pptk/tutorials/viewer/geolife.html
+
+    # define the directory path
+    dir_path = '/data/geolife/Data/{:03}/Trajectory/'
+    plt_files = []
+
+    # loop through all the directories and files
+    for i in range(181):
+        path = dir_path.format(i)
+        if os.path.exists(path):
+            files = os.listdir(path)
+            files = [os.path.join(path, f) for f in files if f.endswith('.plt')]
+            plt_files.extend(files)
+        else:
+            print(f'{path} does not exist')
+
+    def read_plt_file(plt_file):
+        with open(plt_file, 'r') as f:
+            # skip the first 6 lines
+            for i in range(6):
+                next(f)
+
+            # read the remaining lines
+            traj = []
+            base = 0
+            total_minutes = 0
+            for i, line in enumerate(f):
+                lat, lon, _, _, _, _, time = line.strip().split(',')
+                lat, lon = float(lat), float(lon)
+                hours, minutes, seconds = map(int, time.split(':'))
+                # when the time is smaller than the previous time, it means the next day
+                if total_minutes > base + (hours * 60 + minutes) * 60 + seconds:
+                    base += 1439 * 60
+                total_minutes = base + (hours * 60 + minutes) * 60 + seconds
+
+                if not (-90 < lat < 90 and -180 < lon < 180):
+                    continue
+
+                traj.append((total_minutes, lat, lon))
+
+        return traj
+
+    save_path = "/data/geolife/raw_data.csv"
+    with open(save_path, 'w') as f:
+        for plt_file in plt_files:
+            traj = read_plt_file(plt_file)
+            # traj is written in the format of "total_minutes lat lon,total_minutes lat lon,..."
+            f.write(','.join(map(lambda x: ' '.join(map(str, x)), traj)) + '\n')
+
+    np.random.seed(args.seed)
+    trajs = load(save_path, args.max_size)
+    return trajs
 
 def make_raw_data_test_quadtree(seed, max_size, n_bins):
 
@@ -498,24 +554,82 @@ def make_raw_data_taxi():
 
     return trajs
 
-def make_raw_data_chengdu():
-    latlons = []
-    property_path = "/data/chengdu/raw/edge_property.txt"
-    with open(property_path, "r") as f:
-        for line in f:
-            latlon = line.split("LINESTRING")[1][1:-3].split(",")
-            lon, lat = np.average([list(map(float,latlon_.split())) for latlon_ in latlon], axis=0)
-            latlons.append([lat, lon])
 
-    data_path = "/data/chengdu/raw/trajs_demo.csv"
+def process_map_matched_data(data_dir, trajs):
+    """
+    map matched data is a sequence of edges
+    we convert the sequence of edges to a sequence of points
+    That is, we convert an edge to a point (the start point) and apply it to the all edges
+    """
+    nodes_edges = make_pair_to_route.load_edges(data_dir)
+
+    new_trajs = []
+    for traj in trajs:
+        edge_id = traj[0]
+        new_traj = [nodes_edges[edge_id][0], nodes_edges[edge_id][1]]
+        for edge in traj[1:]:
+            new_traj.append(nodes_edges[edge][1])
+        new_trajs.append(new_traj)
+    return new_trajs, nodes_edges
+
+def load_map_matched_data(data_dir):
+    """
+    return a list of map matched trajs
+    a traj is a sequence of edges
+    """
+
+    data_path = pathlib.Path(data_dir) / "training_data.csv"
     original_trajs = []
 
     with open(data_path, "r") as f:
         for line in f:
             traj = [int(x) for x in line.split()][:-1]
             original_trajs.append([v for v in traj])
+    
+    data_path = pathlib.Path(data_dir) / "training_data_time.csv"
+    original_time_trajs = []
 
-    return [[[i,float(latlons[state-1][0]), float(latlons[state-1][1])] for i, state in enumerate(traj)] for traj in original_trajs]
+    with open(data_path, "r") as f:
+        for line in f:
+            traj = [int(x) for x in line.split()]
+            original_time_trajs.append([v for v in traj])
+
+    return original_trajs, original_time_trajs
+
+def make_raw_data_from_map_matched_data(data_dir):
+
+    original_trajs, original_time_trajs = load_map_matched_data(data_dir)
+    processed_trajs, nodes_edges = process_map_matched_data(data_dir, original_trajs)
+
+    # add tentative time information
+    trajs = []
+    for i in range(len(processed_trajs)):
+        traj = processed_trajs[i]
+        time_traj = original_time_trajs[i] + [0]
+        new_traj = []
+        # print(traj, time_traj)
+        for j in range(len(traj)):
+            new_traj.append([time_traj[j], traj[j][0], traj[j][1]])
+        trajs.append(new_traj)
+
+    # # find the border
+    # lats = []
+    # lons = []
+    # for start_latlon, end_latlon, _ in nodes_edges[1:]:
+    #     lats.append(start_latlon[0])
+    #     lons.append(start_latlon[1])
+    #     lats.append(end_latlon[0])
+    #     lons.append(end_latlon[1])
+
+    # max_lat = max(lats)
+    # min_lat = min(lats)
+    # max_lon = max(lons)
+    # min_lon = min(lons)
+    # lat_range = [min_lat, max_lat]
+    # lon_range = [min_lon, max_lon]
+
+    # return trajs, lat_range, lon_range
+    return trajs
 
 
 if __name__ == "__main__":
@@ -543,23 +657,15 @@ if __name__ == "__main__":
             save_path.parent.parent.mkdir(parents=True, exist_ok=True)
             print("save raw data to", save_path.parent.parent / "raw_data.csv")
             save(save_path.parent.parent / "raw_data.csv", trajs)
+        elif args.original_data_name == "geolife":
+            trajs = make_raw_data_geolife()
+        elif args.original_data_name == "geolife_mm":
+            trajs = make_raw_data_from_map_matched_data(save_path.parent / "MTNet")
         elif args.original_data_name == "chengdu":
-            trajs = make_raw_data_chengdu()
-            lats = []
-            lons = []
-            for traj in trajs:
-                for record in traj:
-                    lats.append(record[1])
-                    lons.append(record[2])
-            max_lat = max(lats)
-            min_lat = min(lats)
-            max_lon = max(lons)
-            min_lon = min(lons)
-            lat_range = [min_lat, max_lat]
-            lon_range = [min_lon, max_lon]
-            data_path = "dataset_configs/chengdu.json"
-            with open(data_path, "w") as f:
-                json.dump({"lat_range": lat_range, "lon_range": lon_range}, f)
+            trajs = make_raw_data_from_map_matched_data(save_path.parent / "MTNet")
+            # data_path = "dataset_configs/chengdu.json"
+            # with open(data_path, "w") as f:
+                # json.dump({"lat_range": lat_range, "lon_range": lon_range}, f)
         elif args.original_data_name == 'circle':
             trajs = make_raw_data_test_circle(args.seed, args.max_size) 
         elif args.original_data_name == 'return':
@@ -575,64 +681,19 @@ if __name__ == "__main__":
             trajs = make_raw_data_distance_test(args.seed, args.max_size)
     else:
         print("load raw data from", save_path.parent.parent / "raw_data.csv", args.max_size, "data")
-        # trajs = pd.read_csv(save_path.parent.parent / "raw_data.csv", header=None).values.tolist()
-        # remove nan
-        # trajs = [[record.split() for record in traj if type(record) == str] for traj in trajs]
         np.random.seed(args.seed)
         trajs = load(save_path.parent.parent / "raw_data.csv", args.max_size)
 
     save_path.parent.mkdir(parents=True, exist_ok=True)
     if trajs is not None:
-        # np.random.seed(args.seed)
-        # if args.max_size != 0:
-        #     print("shuffle trajectories and choose the first", args.max_size, "trajectories")
-        #     # shuffle trajectories and real_time_traj with the same order without using numpy
-        #     p = np.random.permutation(len(trajs))
-        #     trajs = [trajs[i] for i in p]
-        #     trajs = trajs[:args.max_size]
 
-        if args.original_data_name == 'chengdu':
+        np.random.seed(args.seed)
+        if args.max_size != 0:
+            print("shuffle trajectories and choose the first", args.max_size, "trajectories")
+            # shuffle trajectories and real_time_traj with the same order without using numpy
+            p = np.random.permutation(len(trajs))
+            trajs = [trajs[i] for i in p]
+            trajs = trajs[:args.max_size]
 
-            # time_trajs = [[0,800,1439]] * len(trajs)
-            # save_dir = save_path.parent / "start_end"
-            # save_dir.mkdir(parents=True, exist_ok=True)
-            print("save raw data to", save_path)
-            save(save_path, trajs)
-            # print("save raw time data to", save_dir )
-            # save(save_dir / "training_data_time.csv", time_trajs)
-            # data_path = "/data/chengdu/raw/edge_property.txt"
-            # latlons = []
-            # with open(data_path) as f:
-            #     for line in f:
-            #         raw = line.split("LINESTRING")[1][1:-3].split(",")
-            #         lon, lat = np.average([list(map(float,latlon.split())) for latlon in raw], axis=0)
-            #         latlons.append([lat, lon])
-            # lats = []
-            # lons = []
-            # for latlon in latlons:
-            #     lats.append(latlon[0])
-            #     lons.append(latlon[1])
-            # max_lat = max(lats)
-            # min_lat = min(lats)
-            # max_lon = max(lons)
-            # min_lon = min(lons)
-            # lat_range = [min_lat, max_lat]
-            # lon_range = [min_lon, max_lon]
-            # json_file = {"lat_range": lat_range, "lon_range": lon_range, "start_hour": 0, "end_hour": 23, "n_bins": args.n_bins, "save_name": args.max_size, "dataset": "chengdu"}
-            # with open(save_path.parent / f"bin{args.n_bins}_startendTrue" / "params.json", "w") as f:
-            #     json.dump(json_file, f)
-            # gps = pd.DataFrame(latlons)
-            # gps.to_csv(save_dir / f"gps.csv", header=None, index=None)
-            # if not pathlib.Path("/data/chengdu/1000/start_end/distance_matrix.npy").exists():
-            #     print("compute distance matrix and save to", save_dir / "distance_matrix.npy")
-            #     def get_latlon(state):
-            #         return gps.iloc[state].tolist()
-            #     distance_matrix = compute_distance_matrix(get_latlon, len(gps))
-            #     np.save(save_dir/f'distance_matrix.npy',distance_matrix)
-            # else:
-            #     # copy /data/chengdu/1000/start_end/distance_matrix.npy to save_dir / "distance_matrix.npy"
-            #     print("copy distance matrix from /data/chengdu/1000/start_end/distance_matrix.npy to", save_dir / "distance_matrix.npy")
-            #     os.system(f"cp /data/chengdu/1000/start_end/distance_matrix.npy {save_dir}/distance_matrix.npy")
-        else:
-            print("save raw data to", save_path)
-            save(save_path, trajs)
+        print("save raw data to", save_path)
+        save(save_path, trajs)

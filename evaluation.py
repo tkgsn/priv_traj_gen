@@ -4,9 +4,11 @@ from scipy.spatial.distance import jensenshannon
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from my_utils import construct_default_quadtree
+from my_utils import construct_default_quadtree, noise_normalize
 from collections import Counter
 import numpy as np
+
+
 
 def make_target_distributions_of_all_layers(target_distribution, tree):
     # from the location distribution on the all states (i.e., leafs), make the target distribution of all layers
@@ -56,7 +58,7 @@ def evaluate_next_location_on_test_dataset(next_location_distributions, data_loa
             if order == 1:
                 targets = torch.tensor([next_location_distributions[traj[target_index].item()] for traj in input_locations])
             elif order == 2:
-                targets = torch.tensor([next_location_distributions[(traj[target_index-1].item(), traj[target_index].item())].tolist() for traj in input_locations])
+                targets = torch.tensor([next_location_distributions[(traj[target_index-1].item(), traj[target_index].item())] for traj in input_locations])
         except KeyError:
             continue
         jss.append(compute_distribution_js_for_each_depth(output, targets))
@@ -79,18 +81,22 @@ def count_source_locations(trajs):
         start_locations.append(traj[0])
     return Counter(start_locations)
 
+def count_passing_locations(trajs):
+    # count the appearance of locations
+    passing_locations = sum(trajs, [])
+    return Counter(passing_locations)
+
 def count_target_locations(trajs):
     target_locations = []
     for traj in trajs:
         target_locations.append(traj[-1])
     return Counter(target_locations)
 
-def compute_distribution_from_count(count, n_locations):
+def compute_distribution_from_count(count, n_locations, n_trajs):
     distribution = np.zeros(n_locations)
     for key, value in count.items():
         distribution[key] = value
-    distribution = distribution / np.sum(distribution)
-    return distribution
+    return distribution / n_trajs
 
 # compute the route distribution
 # i.e., given the source location, compute the probability of each location passing through
@@ -100,7 +106,8 @@ def compute_route_count(trajs, source_location):
     # compute the route distribution
     route_locations = []
     for traj in trajs_from_source:
-        route_locations.extend(traj[1:])
+        route_locations_ = list(set(traj[1:]) - set([source_location]))
+        route_locations.extend(route_locations_)
     route_count = Counter(route_locations)
     return route_count
 
@@ -119,13 +126,15 @@ def compute_distances(distance_matrix, trajs):
         distances.append(distance)
     return distances
 
-def compute_distance_distribution(distance_matrix, trajs, n_bins):
+
+
+def compute_distance_count(distance_matrix, trajs, n_bins):
     distances = compute_distances(distance_matrix, trajs)
     # make histogram using n_bins
-    hist, bin_edges = np.histogram(distances, bins=n_bins)
+    hist, _ = np.histogram(distances, bins=n_bins)
     # compute prob
-    distribution = hist / np.sum(hist)
-    return distribution
+    count = {key:v for key, v in enumerate(hist)}
+    return count
 
 
 def compute_next_location_distribution(target, trajectories, n_locations):
@@ -158,64 +167,60 @@ def compute_next_location_count(target, trajectories, n_locations, target_index=
 
 
 # compute each count for each time split
-# ex) traj [3,24,25,3], time_traj [0,3,3,4,5]
-# at time 0 -> 3
-# at time 3 -> 24,25
-# at time 4 -> 3
-def compute_global_counts_from_time_label(trajs, time_label_trajs, time_label, n_locations):
+# ex) traj [3,24,25,3], time_traj [1,3,3,4]
+# at time 1~3 -> 3
+# at time 3~4 -> 24,25
+# at time 4~ -> 3
+# note at time 2 -> 3
+def compute_global_counts_from_time_label(trajs, time_label_trajs, time_label):
     # find the locations at time
-    def locations_at_time(traj, time_label_traj, time):
-        indice = [i for i, t in enumerate(time_label_traj) if t == time]
-        return [traj[i] for i in indice]
+    def locations_at_time(traj, time_label_traj, time_label):
+        # if time_label in time_label_traj, return the locations at time
+        # else, return the final location of the index that is the closest to the time_label
+        assert time_label >= 1, "time_label should be larger than 1 because 0 is the start signal"
+        if time_label in time_label_traj:
+            indice = [i for i, t in enumerate(time_label_traj) if t == time_label]
+            return [traj[i] for i in indice]
+        else:
+            indice = [i for i, t in enumerate(time_label_traj) if t <= time_label]
+            return [[traj[i] for i in indice][-1]]
     
-    locations = []
-    for traj, time_label_traj in zip(trajs, time_label_trajs):
-        locations.extend(locations_at_time(traj, time_label_traj, time_label))
-    location_count = Counter({location:0 for location in range(n_locations)})
-    location_count.update(locations)
-    location_count = [count for _, count in location_count.items()]
+    locations = sum([locations_at_time(traj, time_label_traj, time_label) for traj, time_label_traj in zip(trajs, time_label_trajs)], [])
+    location_count = Counter(locations)
 
     return location_count
 
 
+# def compute_global_counts(trajectories, real_time_traj, time, n_locations, time_to_label):
+#     def location_at_time(trajectory, time_traj, t):
+#         if t == 0:
+#             return int(trajectory[0])
 
-def compute_global_counts(trajectories, real_time_traj, time, n_locations, time_to_label):
-    def location_at_time(trajectory, time_traj, t):
-        if t == 0:
-            return int(trajectory[0])
-
-        label = time_to_label(t)
-        time_label_traj = [time_to_label(time) for time in time_traj]
-        if label not in time_label_traj:
-            return None
-        elif time_label_traj.index(label) == len(trajectory):
-            return None
-        else:
-            return trajectory[time_label_traj.index(label)]
+#         label = time_to_label(t)
+#         time_label_traj = [time_to_label(time) for time in time_traj]
+#         if label not in time_label_traj:
+#             return None
+#         elif time_label_traj.index(label) == len(trajectory):
+#             return None
+#         else:
+#             return trajectory[time_label_traj.index(label)]
             
-    locations = []
-    count = 0
-    for trajectory, time_traj in zip(trajectories, real_time_traj):
-        if 1+len(trajectory) != len(time_traj):
-            # print("BUG, NEED TO BE FIXED", trajectory, time_traj)
-            count += 1
-        else:
-            locations.append(location_at_time(trajectory, time_traj, time))
+#     locations = []
+#     count = 0
+#     for trajectory, time_traj in zip(trajectories, real_time_traj):
+#         if 1+len(trajectory) != len(time_traj):
+#             # print("BUG, NEED TO BE FIXED", trajectory, time_traj)
+#             count += 1
+#         else:
+#             location = location_at_time(trajectory, time_traj, time)
+#             if location is not None:
+#                 locations.append(location)
 
-    # count each location and conver to probability
-    location_count = {i:0 for i in range(n_locations)}
-    for location in locations:
-        if location is not None:
-            location_count[location] += 1
-    location_counts = {location: count for location, count in location_count.items()}
-    return list(location_counts.values())
+#     # count each location
+#     location_count = Counter(locations)
+#     return location_count
 
-def compute_global_distribution(trajectories, real_time_traj, time, n_locations, time_to_label):
-    global_counts = compute_global_counts(trajectories, real_time_traj, time, n_locations, time_to_label)
-    global_distribution = []
-    summation = sum(global_counts)
-    if summation == 0:
-        return None
-    for count in global_counts:
-        global_distribution.append(count / sum(global_counts))
-    return global_distribution
+# def compute_global_distribution(trajectories, real_time_traj, time, n_locations, time_to_label):
+#     global_counts = compute_global_counts(trajectories, real_time_traj, time, n_locations, time_to_label)
+#     global_distribution = compute_distribution_from_count(global_counts, n_locations)
+#     return global_distribution

@@ -6,8 +6,10 @@ import tqdm
 from torch import nn, optim
 import json
 from scipy.spatial.distance import jensenshannon
+from collections import Counter
+import pathlib
 
-from my_utils import get_datadir, clustering, privtree_clustering, noise_normalize, add_noise, plot_density, make_trajectories, set_logger, construct_default_quadtree, save, load, compute_num_params
+from my_utils import get_datadir, clustering, privtree_clustering, depth_clustering, noise_normalize, add_noise, plot_density, make_trajectories, set_logger, construct_default_quadtree, save, load, compute_num_params, set_budget
 from dataset import TrajectoryDataset
 from models import compute_loss_meta_gru_net, compute_loss_gru_meta_gru_net, Markov1Generator, MetaGRUNet, MetaNetwork, FullLinearQuadTreeNetwork
 import torch.nn.functional as F
@@ -15,166 +17,15 @@ from opacus.utils.batch_memory_manager import BatchMemoryManager
 
 from opacus import PrivacyEngine
 from pytorchtools import EarlyStopping
-
-from evaluation import count_source_locations, count_target_locations, compute_distribution_from_count, compute_route_count, compute_distance_distribution, compute_destination_count, compute_next_location_distribution, compute_global_distribution, make_target_distributions_of_all_layers, evaluate_next_location_on_test_dataset, compute_distribution_js_for_each_depth
-from data_post_processing import post_process_chengdu
-
-def evaluate(epoch):
-
-    if epoch % args.eval_interval != 0:
-        return
-    if epoch == 0 and not args.eval_initial:
-        return
-    # clipped_trajectories = global_clipping(trajectories, args.global_clip)
-    # clipped_trajectories = trajectories
-    next_location_counts = dataset.next_location_counts
-    first_next_location_counts = dataset.first_next_location_counts
-    second_next_location_counts = dataset.second_next_location_counts
-    second_order_next_location_counts = dataset.second_order_next_location_counts
-    global_counts = dataset.global_counts
-
-    next_location_distributions = {key: noise_normalize(next_location_count) for key, next_location_count in next_location_counts.items()}
-    first_next_location_distributions = {key: noise_normalize(first_next_location_count) for key, first_next_location_count in first_next_location_counts.items()}
-    second_next_location_distributions = {key: noise_normalize(second_next_location_count) for key, second_next_location_count in second_next_location_counts.items()}
-    second_order_next_location_distributions = {key: noise_normalize(second_order_next_location_count) for key, second_order_next_location_count in second_order_next_location_counts.items()}
-    global_distributions = [noise_normalize(global_count) for global_count in global_counts]
-    n_test_locations = min(args.n_test_locations, sum(np.array(global_counts[0])>0))
-    # logger.info(f"n_test_locations is set as min of args.n_test_locations and the number of locations appearing as the base location {args.n_test_locations}, {sum(np.array(global_counts[0])>0)}")
-    top_base_locations = np.argsort(global_counts[0])[::-1]
-    param["test_locations"] = top_base_locations[:n_test_locations].tolist()
-    test_traj, test_traj_time = make_test_data(data_path, top_base_locations, n_test_locations, args.dataset)
-    test_dataset = TrajectoryDataset(test_traj, test_traj_time, n_locations, args.n_split)
-    test_data_loader = torch.utils.data.DataLoader(test_dataset, num_workers=0, shuffle=False, pin_memory=True, batch_size=args.batch_size, collate_fn=test_dataset.make_padded_collate(args.remove_first_value))
-
-    # compute top second order base locations
-    top_second_order_base_locations = sorted(dataset.second_order_next_location_counts, key=lambda x: sum(dataset.second_order_next_location_counts[x]), reverse=True)[:10]
-    second_order_test_traj, second_order_test_traj_time = make_second_order_test_data(top_second_order_base_locations, args.dataset)
-    second_order_test_dataset = TrajectoryDataset(second_order_test_traj, second_order_test_traj_time, n_locations, args.n_split)
-    second_order_test_data_loader = torch.utils.data.DataLoader(second_order_test_dataset, num_workers=0, shuffle=False, pin_memory=True, batch_size=args.batch_size, collate_fn=test_dataset.make_padded_collate(args.remove_first_value))
-
-    distance_matrix = np.load(data_path.parent.parent / f"distance_matrix_bin{int(np.sqrt(n_locations)) -2}.npy")
-
-    generator.eval()
-    with torch.no_grad():
-        results = {}
-
-        if args.evaluate_first_next_location:
-            jss = evaluate_next_location_on_test_dataset(first_next_location_distributions, test_data_loader, eval_generator, 1)
-            results["first_next_location_js"] = jss
-
-        if args.evaluate_second_next_location and (dataset.seq_len > 2):
-            jss = evaluate_next_location_on_test_dataset(second_next_location_distributions, test_data_loader, eval_generator, 2)
-            results["second_next_location_js"] = jss
-
-        if args.evaluate_second_order_next_location and (dataset.seq_len > 2):
-            jss = evaluate_next_location_on_test_dataset(second_order_next_location_distributions, second_order_test_data_loader, eval_generator, 2, 2)
-            results["second_order_next_location_js"] = jss
+import evaluation
 
 
-        if args.evaluate_global or args.evaluate_source or args.evaluate_target or args.evaluate_route or args.evaluate_destination or args.evaluate_distance:
-            generated = eval_generator.make_sample(dataset.references, min([1000, len(dataset.references)]))
-            if len(generated) == 2:
-                # when n_data == 2 it causes bug
-                generated_trajs, generated_time_trajs = generated
-                generated_time_trajs = dataset.convert_time_label_trajs_to_time_trajs(generated_time_trajs)
-            else:
-                generated_trajs = generated
-                generated_time_trajs = dataset.time_label_trajs
-            if (args.dataset == "chengdu") and args.post_process:
-                generated_trajs = post_process_chengdu(generated_trajs)
 
-        if args.evaluate_global:
-            gene_global_distributions = [compute_global_distribution(generated_trajs, generated_time_trajs, time, dataset.n_locations, dataset._time_to_label) for time in [i[0] for i in dataset.time_ranges]]
-            global_jss = []
-            for i in range(len(dataset.time_ranges)):
-                if gene_global_distributions[i] is None or global_distributions[i] is None:
-                    global_jss.append(1)
-                else:
-                    js = jensenshannon(gene_global_distributions[i], global_distributions[i])**2
-                    global_jss.append(js)
-            results["global_js"] = global_jss
-
-        if args.evaluate_source:
-            count = count_source_locations(trajectories)
-            original_source_distribution = compute_distribution_from_count(count, dataset.n_locations)
-            count = count_source_locations(generated_trajs)
-            generated_source_distribution = compute_distribution_from_count(count, dataset.n_locations)
-            source_js = jensenshannon(original_source_distribution, generated_source_distribution)**2
-            results["source_js"] = source_js
-
-        if args.evaluate_target:
-            count = count_target_locations(trajectories)
-            original_target_distribution = compute_distribution_from_count(count, dataset.n_locations)
-            count = count_target_locations(generated_trajs)
-            generated_target_distribution = compute_distribution_from_count(count, dataset.n_locations)
-            target_js = jensenshannon(original_target_distribution, generated_target_distribution)**2
-            results["target_js"] = target_js
-
-        if args.evaluate_route:
-            route_jss = []
-            for location in top_base_locations[:n_test_locations]:
-                count = compute_route_count(trajectories, location)
-                original_route_distribution = compute_distribution_from_count(count, dataset.n_locations)
-                count = compute_route_count(generated_trajs, location)
-                generated_route_distribution = compute_distribution_from_count(count, dataset.n_locations)
-                route_js = jensenshannon(original_route_distribution, generated_route_distribution)**2
-                route_jss.append(route_js)
-            results["route_js"] = route_jss
-
-        if args.evaluate_destination:
-            destination_jss = []
-            for location in top_base_locations[:n_test_locations]:
-                count = compute_destination_count(trajectories, location)
-                original_destination_distribution = compute_distribution_from_count(count, dataset.n_locations)
-                count = compute_destination_count(generated_trajs, location)
-                generated_destination_distribution = compute_distribution_from_count(count, dataset.n_locations)
-                destination_js = jensenshannon(original_destination_distribution, generated_destination_distribution)**2
-                destination_jss.append(destination_js)
-            results["destination_js"] = destination_jss
-
-        if args.evaluate_empirical_next_location:
-            next_location_jss = []
-            generated_next_location_distributions = []
-            target_next_location_distributions = []
-            for location in top_base_locations[:n_test_locations]:
-                generated_next_location_distribution = compute_next_location_distribution(location, generated_trajs, dataset.n_locations)
-                if generated_next_location_distribution is None:
-                    logger.info(f"WARNING: this base location {location} does not appear in the generated dataset.")
-                else:
-                    generated_next_location_distributions.append(generated_next_location_distribution)
-                    target_next_location_distributions.append(next_location_distributions[location])
-
-            next_location_jss.append(compute_distribution_js_for_each_depth(torch.tensor(generated_next_location_distributions), torch.tensor(target_next_location_distributions)))
-            results["empirical_next_location_js"] = next_location_jss
-        
-        if args.evaluate_distance:
-            n_bins = 100
-            original_distance_distribution = compute_distance_distribution(distance_matrix, trajectories, n_bins)
-            generated_distance_distribution = compute_distance_distribution(distance_matrix, generated_trajs, n_bins)
-            distance_js = jensenshannon(original_distance_distribution, generated_distance_distribution)**2
-            results["distance_js"] = distance_js
-
-
-    logger.info(f"evaluation: {results}")
-
-    resultss.append(results)
-    args.end_epoch = early_stopping.epoch
-    args.end_loss = early_stopping.best_score
-    args.results = resultss
-
-    param.update(vars(args))
-    logger.info(f"save param to {save_path / 'params.json'}")
-    with open(save_path / "params.json", "w") as f:
-        json.dump(param, f)
-    
-    generator.train()
-
-
-def train_meta_network(meta_network, next_location_distributions, n_iter, early_stopping, distribution="dirichlet"):
+def train_meta_network(meta_network, next_location_counts, n_iter, early_stopping, distribution="dirichlet"):
     device = next(iter(meta_network.parameters())).device
     optimizer = optim.Adam(meta_network.parameters(), lr=0.001)
     n_classes = meta_network.n_classes
-    n_locations = len(next_location_distributions[0])
+    n_locations = len(next_location_counts[0])
     batch_size = 100
     epoch = 0
     n_bins = int(np.sqrt(n_locations)) -2
@@ -185,7 +36,14 @@ def train_meta_network(meta_network, next_location_distributions, n_iter, early_
         return [node.id for node in tree.get_nodes(depth)]
     # make test data
     test_input = torch.eye(n_classes).to(device)
-    
+
+    original_targets = torch.zeros(n_classes, n_locations).to(device)
+    for i in range(n_classes):
+        original_targets[i] = torch.tensor(next_location_counts[i])
+        original_targets[i][original_targets[i] < 0] = 0
+        original_targets[i] = original_targets[i] / original_targets[i].sum()
+
+
     with tqdm.tqdm(range(n_iter)) as pbar:
         for epoch in pbar:
             # make input: (batch_size, n_classes)
@@ -203,7 +61,10 @@ def train_meta_network(meta_network, next_location_distributions, n_iter, early_
             # target is the distribution generated by sum of next_location_distributions weighted by input
             target = torch.zeros(input.shape[0], n_locations).to(device)
             for i in range(n_classes):
-                target += input[:,i].reshape(-1,1) * next_location_distributions[i]
+                target += input[:,i].reshape(-1,1) * next_location_counts[i]
+            # normalize target
+            target[target < 0] = 0
+            target = target / target.sum(dim=1).reshape(-1,1)
             
             losses = []
             loss = 0
@@ -217,7 +78,7 @@ def train_meta_network(meta_network, next_location_distributions, n_iter, early_
                         loss += F.kl_div(meta_network_output[:,ids,:], target[:,ids,:], reduction='batchmean') * 4**(tree.max_depth-depth-1)
                 else:
                     batch_size = meta_network_output[0].shape[0]
-                    test_target = make_target_distributions_of_all_layers(target, tree)
+                    test_target = evaluation.make_target_distributions_of_all_layers(target, tree)
                     train_all_layers = True
                     if train_all_layers:
                         # meta_network_output = meta_network.to_location_distribution(meta_network_output, target_depth=0)
@@ -239,10 +100,10 @@ def train_meta_network(meta_network, next_location_distributions, n_iter, early_
         
 
             # test
-            with torch.no_grad():
-                meta_network_output = meta_network(test_input)
-                meta_network_output = meta_network_output[-1] if type(meta_network_output) == list else meta_network_output
-                loss = F.kl_div(meta_network_output[:n_classes].view(-1, n_locations), next_location_distributions, reduction='batchmean')
+            # with torch.no_grad():
+            #     meta_network_output = meta_network(test_input)
+            #     meta_network_output = meta_network_output[-1] if type(meta_network_output) == list else meta_network_output
+            #     loss = F.kl_div(meta_network_output[:n_classes].view(-1, n_locations), original_targets, reduction='batchmean')
                 # loss = compute_loss_meta_quad_tree_attention_net(meta_network_output, next_location_distributions, meta_network.tree, True)
 
             pbar.set_description(f"loss: {loss.item()} ({[v.item() for v in losses]})")
@@ -322,65 +183,6 @@ def train_with_discrete_time(generator, optimizer, loss_model, input_locations, 
     return losses
 
 
-def make_second_order_test_data(top_second_order_base_locations, dataset_name):
-    if dataset_name == "peopleflow":
-        n_test_location = len(top_second_order_base_locations)
-        pad = np.ones((n_test_location, 1), dtype=int) * len(top_second_order_base_locations)
-        first_locations = [v[0] for v in top_second_order_base_locations]
-        second_locations = [v[1] for v in top_second_order_base_locations]
-        test_traj = np.concatenate([np.array(first_locations).reshape(-1,1), np.array(second_locations).reshape(-1,1), pad], axis=1).tolist()
-        test_traj_time = [[0, 800, 1200]]*n_test_location
-    else:
-        # throw not implemented error
-        raise NotImplementedError
-    return test_traj, test_traj_time
-
-def make_test_data(data_path, top_base_locations, n_test_location, dataset_name):
-    n_test_location = min(n_test_location, len(top_base_locations))
-    test_data_dir = data_path
-    if (test_data_dir / "test_data.csv").exists() and (test_data_dir / "test_data_time.csv").exists():
-        test_traj = load_dataset(test_data_dir / "test_data.csv", logger=logger)
-        test_traj_time = load_dataset(test_data_dir / "test_data_time.csv", logger=logger)
-    else:
-        pad = np.ones((n_test_location, 1), dtype=int) * len(top_base_locations)
-        if dataset_name == "peopleflow":
-            test_traj = np.concatenate([np.array(top_base_locations[:n_test_location]).reshape(-1,1), pad, np.array(top_base_locations[:n_test_location]).reshape(-1,1)], axis=1).tolist()
-            test_traj_time = [[0, 800, 1200]]*n_test_location
-        elif dataset_name == "chengdu":
-            test_traj = np.concatenate([np.array(top_base_locations[:n_test_location]).reshape(-1,1), pad], axis=1).tolist()
-            test_traj_time = [[0, 800, 1439]]*n_test_location
-        elif dataset_name == "taxi" or dataset_name == "random":
-            test_traj = np.concatenate([np.array(top_base_locations[:n_test_location]).reshape(-1,1), pad], axis=1).tolist()
-            test_traj_time = [[0, 1]]*n_test_location
-        elif dataset_name == "rotation":
-            first_locations = np.array(top_base_locations[:n_test_location])
-            tree = construct_default_quadtree(int(np.sqrt(n_locations)) -2)
-            tree.make_self_complete()
-            first_locations_ = []
-            second_locations = []
-            for first_location in first_locations:
-                first_location_id_in_the_depth = tree.get_location_id_in_the_depth(first_location, 2)
-                second_location_id_in_the_depth = first_location_id_in_the_depth + 1
-                second_location_node_id = tree.node_id_to_hidden_id.index(second_location_id_in_the_depth)
-                second_location_node = tree.get_node_by_id(second_location_node_id)
-                second_location_candidates = second_location_node.state_list
-                # choose the second location that appears the most
-                second_location = max(second_location_candidates, key=lambda x: sum(dataset.second_next_location_counts[x]))
-                if sum(dataset.second_next_location_counts[second_location]) == 0:
-                    print("this area does not appear as the second location")
-                    continue
-                first_locations_.append(first_location)
-                second_locations.append(second_location)
-            first_locations = np.array(first_locations_)
-            second_locations = np.array(second_locations)
-            test_traj = np.concatenate([first_locations.reshape(-1,1), second_locations.reshape(-1,1), pad], axis=1).tolist()
-            test_traj_time = [[0, 1, 2]]*n_test_location
-        else:
-            test_traj = np.concatenate([np.array(top_base_locations[:n_test_location]).reshape(-1,1), pad, np.array(top_base_locations[:n_test_location]).reshape(-1,1)], axis=1).tolist()
-            test_traj_time = [[0, 800, 1200, 1439]]*n_test_location
-
-    return test_traj, test_traj_time
-
 def train_epoch(data_loader, generator, optimizer):
     losses = []
     for i, batch in enumerate(data_loader):
@@ -398,25 +200,30 @@ def train_epoch(data_loader, generator, optimizer):
 
 def construct_generator(data_loader):
 
-    noisy_global_distributions = [noise_normalize(add_noise(global_count, args.global_clip+1, args.epsilon)) for global_count in dataset.global_counts]
-    for i in range(len(noisy_global_distributions)):
-        if noisy_global_distributions[i] == None:
-            noisy_global_distributions[i] = [1/dataset.n_locations] * dataset.n_locations
-    noisy_global_distributions = torch.tensor(noisy_global_distributions)
-    param["global_distributions"] = noisy_global_distributions.tolist()
-    distance_matrix = np.load(data_path.parent.parent / f"distance_matrix_bin{int(np.sqrt(n_locations)) -2}.npy")
+    # noisy_global_distributions = [noise_normalize(add_noise(global_count, args.global_clip+1, args.epsilon)) for global_count in dataset.global_counts]
+    # for i in range(len(noisy_global_distributions)):
+    #     if noisy_global_distributions[i] == None:
+    #         noisy_global_distributions[i] = [1/dataset.n_locations] * dataset.n_locations
+    # noisy_global_distributions = torch.tensor(noisy_global_distributions)
+    # param["global_distributions"] = noisy_global_distributions.tolist()
+    n_bins = int(np.sqrt(n_locations)) -2
+    distance_matrix = np.load(data_path.parent.parent / f"distance_matrix_bin{n_bins}.npy")
 
-    target_next_location_distributions = []
-    numpy_target_next_location_distributions = []
+    target_counts = []
+    # numpy_target_next_location_distributions = []
 
     # clustering
-    print("WARNING: clustering is done by real data")
     if args.clustering == "privtree":
+        print("WARNING: clustering is done by real data")
         logger.info(f"use privtree clustering by {args.privtree_theta}")
         location_to_class, privtree = privtree_clustering(dataset.global_counts[0], theta=args.privtree_theta)
+    elif args.clustering == "depth":
+        logger.info("use depth clustering")
+        location_to_class, privtree = depth_clustering(n_bins)
     else:
         logger.info("use distance clustering")
         location_to_class = clustering(dataset.global_counts[0], distance_matrix, args.n_classes)
+    # class needs to correspond to node ids
     args.n_classes = len(set(location_to_class.values()))
     
     for i in range(args.n_classes):
@@ -427,36 +234,41 @@ def construct_generator(data_loader):
             logger.info(f"use first transition matrix")
             next_location_counts = dataset.first_next_location_counts
         # find the locations belonging to the class i
-        next_location_distribution_i = torch.zeros(dataset.n_locations)
+        next_location_count_i = torch.zeros(dataset.n_locations)
         locations = [location for location, class_ in location_to_class.items() if class_ == i]
         logger.info(f"n locations in class {i}: {len(locations)}")
         for location in locations:
-            next_location_distribution_i += np.array(next_location_counts[location])
-        logger.info(f"sum of next location counts in class {i}: {sum(next_location_distribution_i)}")
-        real_target_distribution = noise_normalize(next_location_distribution_i)
-        if real_target_distribution is None:
-            real_target_distribution = torch.zeros(dataset.n_locations)
-            real_target_distribution += 1/dataset.n_locations
-            target_distribution = real_target_distribution
-        else:
-            target_distribution = noise_normalize(add_noise(next_location_distribution_i, args.global_clip+1, args.epsilon))
-            # compute js
-            js = jensenshannon(real_target_distribution, target_distribution)**2
-            logger.info(f"js divergence for class {i}: {js}")
+            if location in next_location_counts:
+                next_location_count_i += np.array(next_location_counts[location]) 
+        logger.info(f"sum of next location counts in class {i}: {sum(next_location_count_i)}")
+        # real_target_distribution = noise_normalize(next_location_count_i)
+        # if real_target_distribution is None:
+            # real_target_distribution = torch.zeros(dataset.n_locations)
+            # real_target_distribution += 1/dataset.n_locations
+            # target_distribution = real_target_distribution
+        # else:
+        # target_distribution = noise_normalize(add_noise(next_location_distribution_i, args.global_clip, args.epsilon))
+        target_count_i = add_noise(next_location_count_i, args.global_clip, args.epsilon)
+        # compute js
+        # js = jensenshannon(real_target_distribution, target_distribution)**2
+        # logger.info(f"js divergence for class {i}: {js}")
 
-        next_location_distribution_i = torch.tensor(target_distribution)
+        # next_location_distribution_i = torch.tensor(target_distribution)
+        target_count_i = torch.tensor(target_count_i)
         
-        target_next_location_distributions.append(next_location_distribution_i)
-        numpy_target_next_location_distributions.append(next_location_distribution_i)
+        target_counts.append(target_count_i)
+        # numpy_target_next_location_distributions.append(target_count_i)
 
-        plot_density(next_location_distribution_i, dataset.n_locations, save_path / "imgs" / f"class_next_location_distribution_{i}.png")
+        plot_density(target_count_i, dataset.n_locations, save_path / "imgs" / f"class_next_location_distribution_{i}.png")
 
     # for i in range(args.n_split):
     #     target_next_location_distributions.append(noisy_global_distributions[i])
-    target_next_location_distributions = torch.stack(target_next_location_distributions).cuda(args.cuda_number)
+    target_counts = torch.stack(target_counts).cuda(args.cuda_number)
 
     if args.network_type == "markov1":
-        generator = Markov1Generator(target_next_location_distributions.cpu(), location_to_class)
+        # normalize count by dim = 1
+        target_counts = target_counts / target_counts.sum(dim=1).reshape(-1,1)
+        generator = Markov1Generator(target_counts.cpu(), location_to_class)
         eval_generator = generator
         optimizer = None
         data_loader = None
@@ -470,13 +282,13 @@ def construct_generator(data_loader):
             meta_network = MetaNetwork(args.memory_hidden_dim, args.memory_dim, dataset.n_locations, args.n_classes, "relu").cuda(args.cuda_number)
             args.train_all_layers = False
         elif args.network_type == "fulllinear_quadtree":
-            meta_network = FullLinearQuadTreeNetwork(dataset.n_locations, args.memory_dim, args.memory_hidden_dim, args.location_embedding_dim, privtree, "relu").cuda(args.cuda_number)
+            meta_network = FullLinearQuadTreeNetwork(dataset.n_locations, args.memory_dim, args.memory_hidden_dim, args.location_embedding_dim, privtree, "relu", is_consistent=args.consistent).cuda(args.cuda_number)
     
         param["n_params_meta_network"] = compute_num_params(meta_network, logger)
         
         if args.meta_network_load_path == "None":
             early_stopping = EarlyStopping(patience=args.meta_patience, path=save_path / "meta_network.pt", delta=1e-6)
-            train_meta_network(meta_network, target_next_location_distributions, args.meta_n_iter, early_stopping, args.meta_dist)
+            train_meta_network(meta_network, target_counts, args.meta_n_iter, early_stopping, args.meta_dist)
             args.meta_network_load_path = str(save_path / "meta_network.pt")
         else:
             meta_network.load_state_dict(torch.load(args.meta_network_load_path))
@@ -485,7 +297,8 @@ def construct_generator(data_loader):
         if hasattr(meta_network, "remove_class_to_query"):
             meta_network.remove_class_to_query()
 
-        generator = MetaGRUNet(meta_network, n_locations, args.location_embedding_dim, args.n_split+3, len(dataset.label_to_reference), args.hidden_dim, dataset.reference_to_label).cuda(args.cuda_number)
+        # time_dim is n_time_split + 2 (because of the edges 0 and >max)
+        generator = MetaGRUNet(meta_network, n_locations, args.location_embedding_dim, args.n_split+2, len(dataset.label_to_reference), args.hidden_dim, dataset.reference_to_label).cuda(args.cuda_number)
         param["n_params_generator"] = compute_num_params(generator, logger)
 
         optimizer = optim.Adam(generator.parameters(), lr=args.learning_rate)
@@ -494,6 +307,7 @@ def construct_generator(data_loader):
             generator, optimizer, data_loader = privacy_engine.make_private(module=generator, optimizer=optimizer, data_loader=data_loader, noise_multiplier=args.noise_multiplier, max_grad_norm=args.clipping_bound)
             eval_generator = generator._module
         else:
+            privacy_engine = None
             eval_generator = generator
     
     return generator, eval_generator, compute_loss_meta_gru_net, optimizer, data_loader, privacy_engine
@@ -505,6 +319,7 @@ if __name__ == "__main__":
     parser.add_argument('--eval_interval', type=int)
     parser.add_argument('--dataset', type=str)
     parser.add_argument('--data_name', type=str)
+    parser.add_argument('--route_data_name', type=str)
     parser.add_argument('--training_data_name', type=str)
     parser.add_argument('--network_type', type=str)
     parser.add_argument('--seed', type=int)
@@ -530,17 +345,22 @@ if __name__ == "__main__":
     parser.add_argument('--train_all_layers', action='store_true')
     parser.add_argument('--post_process', action='store_true')
     parser.add_argument('--remove_first_value', action='store_true')
+    parser.add_argument('--remove_duplicate', action='store_true')
     parser.add_argument('--real_start', action='store_true')
+    parser.add_argument('--consistent', action='store_true')
     parser.add_argument('--eval_initial', action='store_true')
     parser.add_argument('--evaluate_first_next_location', action='store_true')
     parser.add_argument('--evaluate_second_next_location', action='store_true')
+    parser.add_argument('--evaluate_second_order_next_location', action='store_true')
     parser.add_argument('--evaluate_global', action='store_true')
     parser.add_argument('--evaluate_source', action='store_true')
     parser.add_argument('--evaluate_target', action='store_true')
     parser.add_argument('--evaluate_route', action='store_true')
+    parser.add_argument('--evaluate_passing', action='store_true')
     parser.add_argument('--evaluate_destination', action='store_true')
     parser.add_argument('--evaluate_distance', action='store_true')
     parser.add_argument('--evaluate_empirical_next_location', action='store_true')
+    parser.add_argument('--compensation', action='store_true')
     parser.add_argument('--max_size', type=int)
     parser.add_argument('--patience', type=int)
     parser.add_argument('--physical_batch_size', type=int)
@@ -568,14 +388,20 @@ if __name__ == "__main__":
     
     data_dir = get_datadir()
     data_path = data_dir / args.dataset / args.data_name / args.training_data_name
+    route_data_path = data_dir / args.dataset / args.data_name / args.route_data_name
     save_path = data_dir / "results" / args.dataset / args.data_name / args.training_data_name / args.save_name
     save_path.mkdir(exist_ok=True, parents=True)
     (save_path / "imgs").mkdir(exist_ok=True, parents=True)
+    args.save_path = str(save_path)
 
     # set logger
     logger = set_logger(__name__, save_path / "log.log")
     logger.info('log is saved to {}'.format(save_path / "log.log"))
     logger.info(f'used parameters {vars(args)}')
+
+    if args.consistent and not args.train_all_layers:
+        args.consistent = False
+        logger.info("!!!!!! consistent is set as False because train_all_layers is False")
 
     # load dataset config    
     with open(data_path / "params.json", "r") as f:
@@ -584,21 +410,29 @@ if __name__ == "__main__":
     max_time = param["max_time"]
 
     trajectories = load(data_path / "training_data.csv")
+    route_trajectories = load(route_data_path / "training_data.csv")
     time_trajectories = load(data_path / "training_data_time.csv")
     logger.info(f"load training data from {data_path / 'training_data.csv'}")
+    logger.info(f"load route data from {route_data_path / 'training_data.csv'}")
     logger.info(f"load time data from {data_path / 'training_data_time.csv'}")
 
-    dataset = TrajectoryDataset(trajectories, time_trajectories, n_locations, args.n_split)
+    dataset = TrajectoryDataset(trajectories, time_trajectories, n_locations, args.n_split, route_data=route_trajectories)
     dataset.compute_auxiliary_information(save_path, logger)
+    dataset.make_first_order_test_data_loader(args.n_test_locations)
+    dataset.make_second_order_test_data_loader(args.n_test_locations)
     param["format_to_label"] = dataset.format_to_label
     param["label_to_format"] = dataset.label_to_format
     if args.batch_size == 0:
         args.batch_size = int(np.sqrt(len(dataset)))
         logger.info("batch size is set as " + str(args.batch_size))
         
-    data_loader = torch.utils.data.DataLoader(dataset, num_workers=0, shuffle=True, pin_memory=True, batch_size=args.batch_size, collate_fn=dataset.make_padded_collate(args.remove_first_value))
+    data_loader = torch.utils.data.DataLoader(dataset, num_workers=0, shuffle=True, pin_memory=True, batch_size=args.batch_size, collate_fn=dataset.make_padded_collate(args.remove_first_value, args.remove_duplicate))
     logger.info(f"len of the dataset: {len(dataset)}")
 
+    # decide the budget for the pre-training
+    # this is for depth_clustering with depth = 2
+    args.epsilon = min([args.epsilon, set_budget(len(dataset), int(np.sqrt(n_locations)) -2)])
+    logger.info(f"epsilon is set as: {args.epsilon}")
 
     generator, eval_generator, loss_model, optimizer, data_loader, privacy_engine = construct_generator(data_loader)
 
@@ -611,8 +445,15 @@ if __name__ == "__main__":
     generator.train()
     for epoch in tqdm.tqdm(range(args.n_epochs+1)):
 
-        # evaluate the generator per eval_interval epochs 
-        evaluate(epoch)       
+        # # evaluate the generator per eval_interval epochs 
+        results = evaluation.run(eval_generator, dataset, args, epoch)       
+        logger.info(f"evaluation: {results}")
+        resultss.append(results)
+        args.results = resultss
+        param.update(vars(args))
+        logger.info(f"save param to {save_path / 'params.json'}")
+        with open(save_path / "params.json", "w") as f:
+            json.dump(param, f)
             
         # when n_epochs is 0, only evaluate
         if args.n_epochs == 0:

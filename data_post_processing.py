@@ -14,7 +14,7 @@ import networkx as nx
 import sys
 sys.path.append("../privtrace")
 
-from tools.data_reader import DataReader
+# from tools.data_reader import DataReader
 
 # construct a graph using the adjacency information (adjss) with the weights (road_lengths)
 # adjss: list of adjacency lists
