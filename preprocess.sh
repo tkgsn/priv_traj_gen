@@ -5,7 +5,6 @@ data_name=${max_size}
 
 python3 make_raw_data.py --original_data_name ${original_data_name} --max_size ${max_size} --seed ${seed_for_dataset} --save_name ${data_name}
 
-
 latlon_config=${original_data_name}.json
 seed=0
 n_bins=2

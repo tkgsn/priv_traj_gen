@@ -343,30 +343,13 @@ if __name__ == "__main__":
     parser.add_argument('--n_split', type=int)
     parser.add_argument('--is_dp', action='store_true')
     parser.add_argument('--train_all_layers', action='store_true')
-    parser.add_argument('--post_process', action='store_true')
     parser.add_argument('--remove_first_value', action='store_true')
     parser.add_argument('--remove_duplicate', action='store_true')
-    parser.add_argument('--real_start', action='store_true')
     parser.add_argument('--consistent', action='store_true')
-    parser.add_argument('--eval_initial', action='store_true')
-    parser.add_argument('--evaluate_first_next_location', action='store_true')
-    parser.add_argument('--evaluate_second_next_location', action='store_true')
-    parser.add_argument('--evaluate_second_order_next_location', action='store_true')
-    parser.add_argument('--evaluate_global', action='store_true')
-    parser.add_argument('--evaluate_source', action='store_true')
-    parser.add_argument('--evaluate_target', action='store_true')
-    parser.add_argument('--evaluate_route', action='store_true')
-    parser.add_argument('--evaluate_passing', action='store_true')
-    parser.add_argument('--evaluate_destination', action='store_true')
-    parser.add_argument('--evaluate_distance', action='store_true')
-    parser.add_argument('--evaluate_empirical_next_location', action='store_true')
-    parser.add_argument('--compensation', action='store_true')
-    parser.add_argument('--max_size', type=int)
     parser.add_argument('--patience', type=int)
     parser.add_argument('--physical_batch_size', type=int)
     parser.add_argument('--coef_location', type=float)
     parser.add_argument('--coef_time', type=float)
-    parser.add_argument('--n_pre_epochs', type=int)
     parser.add_argument('--n_classes', type=int)
     parser.add_argument('--global_clip', type=int)
     parser.add_argument('--location_embedding_dim', type=int)
@@ -407,7 +390,6 @@ if __name__ == "__main__":
     with open(data_path / "params.json", "r") as f:
         param = json.load(f)
     n_locations = param["n_locations"]
-    max_time = param["max_time"]
 
     trajectories = load(data_path / "training_data.csv")
     route_trajectories = load(route_data_path / "training_data.csv")
@@ -439,25 +421,15 @@ if __name__ == "__main__":
     early_stopping = EarlyStopping(patience=args.patience, verbose=True, path=save_path / "checkpoint.pt", trace_func=logger.info)
     logger.info(f"early stopping patience: {args.patience}, save path: {save_path / 'checkpoint.pt'}")
 
-    resultss = []
-    epsilon = 0
     # traning
-    generator.train()
-    for epoch in tqdm.tqdm(range(args.n_epochs+1)):
+    epsilon = 0
+    for epoch in tqdm.tqdm(range(args.n_epochs)):
 
-        # # evaluate the generator per eval_interval epochs 
-        results = evaluation.run(eval_generator, dataset, args, epoch)       
-        logger.info(f"evaluation: {results}")
-        resultss.append(results)
-        args.results = resultss
-        param.update(vars(args))
-        logger.info(f"save param to {save_path / 'params.json'}")
-        with open(save_path / "params.json", "w") as f:
-            json.dump(param, f)
-            
-        # when n_epochs is 0, only evaluate
-        if args.n_epochs == 0:
-            break
+        try:
+            logger.info(f"save model to {save_path / f'model_{epoch}.pt'}")
+            torch.save(eval_generator.state_dict(), save_path / f"model_{epoch}.pt")
+        except:
+            logger.info("failed to save model because it is Markov1?")
 
         # training
         if not args.is_dp:
@@ -473,11 +445,6 @@ if __name__ == "__main__":
         if early_stopping.early_stop:
             break
 
-    try:
-        logger.info(f"save model to {save_path / 'model.pt'}")
-        torch.save(generator.state_dict(), save_path / "model.pt")
-    except:
-        logger.info("failed to save model because it is Markov1?")
 
     # concat vars(args) and param
     param.update(vars(args))

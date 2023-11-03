@@ -2,7 +2,7 @@ from torch.utils.data import Dataset
 import torch
 import random
 import numpy as np
-from my_utils import plot_density
+from my_utils import plot_density, get_datadir
 from evaluation import compute_next_location_count, compute_global_counts_from_time_label, count_passing_locations, count_source_locations, count_target_locations, count_route_locations, count_distance
 from collections import Counter
 import json
@@ -288,7 +288,7 @@ class TrajectoryDataset(Dataset):
             self.real_counters["route"] = [count_route_locations(self.route_data, location) for location in self.top_base_locations]
             self.real_counters["destination"] = [count_route_locations(self.data, location) for location in self.top_base_locations]
             logger.info(f"load distance matrix from" + str(pathlib.Path("/data") / str(save_path).split("/")[3]  / f"distance_matrix_bin{int(np.sqrt(self.n_locations)) -2}.npy"))
-            self.distance_matrix = np.load(pathlib.Path("/data") / str(save_path).split("/")[3]  / f"distance_matrix_bin{int(np.sqrt(self.n_locations)) -2}.npy")
+            self.distance_matrix = np.load(get_datadir() / str(save_path).split("/")[3]  / f"distance_matrix_bin{int(np.sqrt(self.n_locations)) -2}.npy")
             self.real_counters["distance"] = count_distance(self.distance_matrix, self.data, self.n_bins_for_distance)
 
             # compute n_trajs

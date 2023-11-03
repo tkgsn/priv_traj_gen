@@ -205,7 +205,11 @@ def run(training_data_dir, lat_range, lon_range, n_bins, time_threshold, locatio
 
     gps = make_gps_data(training_data_dir, lat_range, lon_range, n_bins)
     make_distance_data(training_data_dir, n_bins, gps, logger)
-    make_db(training_data_dir, lat_range, lon_range, n_bins, logger)
+    # make_db(training_data_dir, lat_range, lon_range, n_bins, logger)
+
+    logger.info(f"saving setting to {training_data_dir}/params.json")
+    with open(training_data_dir / "params.json", "w") as f:
+        json.dump({"n_locations": (n_bins+2)**2}, f)
 
 if __name__ == "__main__":
     
