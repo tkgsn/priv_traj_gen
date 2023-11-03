@@ -8,20 +8,12 @@ class Grid():
 
     @staticmethod
     def make_ranges_from_latlon_range_and_nbins(lat_range, lon_range, n_bins):
-        x_axis = np.linspace(lon_range[0], lon_range[1], n_bins+1)
-        y_axis = np.linspace(lat_range[0], lat_range[1], n_bins+1)
+        x_axis = np.linspace(lon_range[0]-1e-5, lon_range[1]+1e-5, n_bins+3)
+        y_axis = np.linspace(lat_range[0]-1e-5, lat_range[1]+1e-5, n_bins+3)
 
         # compute the bin size
         x_bin_size = x_axis[1] - x_axis[0]
         y_bin_size = y_axis[1] - y_axis[0]
-
-        # insert the first element (-infty, x_axis[0]) and the last element (x_axis[-1], +infty)
-        x_axis = np.insert(x_axis, 0, x_axis[0]-x_bin_size)
-        x_axis = np.append(x_axis, x_axis[-1]+x_bin_size)
-
-        # insert the first element (-infty, y_axis[0]) and the last element (y_axis[-1], +infty)
-        y_axis = np.insert(y_axis, 0, y_axis[0]-y_bin_size)
-        y_axis = np.append(y_axis, y_axis[-1]+y_bin_size)
 
         ranges = []
         for i in range(len(x_axis)-1):
@@ -29,24 +21,61 @@ class Grid():
                 ranges.append([(x_axis[i], x_axis[i+1]), (y_axis[j], y_axis[j+1])])
         return ranges
 
-    @staticmethod
-    def make_ranges_from_privtrace_info(info_path):
-        with open(info_path, "rb") as f:
-            info = pickle.load(f)
-        x_ranges, y_ranges = info
-        ranges = []
-        for x_ranges_level2, y_ranges_level2 in zip(x_ranges, y_ranges):
-            if len(x_ranges_level2) == 2:
-                ranges.append([(x_ranges_level2[0], x_ranges_level2[1]), (y_ranges_level2[0], y_ranges_level2[1])])
-            else:
-                ranges += [[(x_ranges_level2[i], x_ranges_level2[i+1]), (y_ranges_level2[j], y_ranges_level2[j+1])] for i in range(len(x_ranges_level2)-1) for j in range(len(y_ranges_level2)-1)]
-        return ranges
+    # @staticmethod
+    # def make_ranges_from_latlon_range_and_nbins(lat_range, lon_range, n_bins):
+    #     x_axis = np.linspace(lon_range[0], lon_range[1], n_bins+1)
+    #     y_axis = np.linspace(lat_range[0], lat_range[1], n_bins+1)
+
+    #     # compute the bin size
+    #     x_bin_size = x_axis[1] - x_axis[0]
+    #     y_bin_size = y_axis[1] - y_axis[0]
+
+    #     # insert the first element (-infty, x_axis[0]) and the last element (x_axis[-1], +infty)
+    #     x_axis = np.insert(x_axis, 0, x_axis[0]-x_bin_size)
+    #     x_axis = np.append(x_axis, x_axis[-1]+x_bin_size)
+
+    #     # insert the first element (-infty, y_axis[0]) and the last element (y_axis[-1], +infty)
+    #     y_axis = np.insert(y_axis, 0, y_axis[0]-y_bin_size)
+    #     y_axis = np.append(y_axis, y_axis[-1]+y_bin_size)
+
+    #     ranges = []
+    #     for i in range(len(x_axis)-1):
+    #         for j in range(len(y_axis)-1):
+    #             ranges.append([(x_axis[i], x_axis[i+1]), (y_axis[j], y_axis[j+1])])
+    #     return ranges
+
+    # @staticmethod
+    # def make_ranges_from_privtrace_info(info_path):
+    #     with open(info_path, "rb") as f:
+    #         info = pickle.load(f)
+    #     x_ranges, y_ranges = info
+    #     ranges = []
+    #     for x_ranges_level2, y_ranges_level2 in zip(x_ranges, y_ranges):
+    #         if len(x_ranges_level2) == 2:
+    #             ranges.append([(x_ranges_level2[0], x_ranges_level2[1]), (y_ranges_level2[0], y_ranges_level2[1])])
+    #         else:
+    #             ranges += [[(x_ranges_level2[i], x_ranges_level2[i+1]), (y_ranges_level2[j], y_ranges_level2[j+1])] for i in range(len(x_ranges_level2)-1) for j in range(len(y_ranges_level2)-1)]
+    #     return ranges
 
     def __init__(self, ranges):
         self.grids = self.make_grid_from_ranges(ranges)
         assert not self.check_grid_overlap(), "Grids overlap"
         self.vocab_size = len(self.grids)
         self.max_distance = self.compute_max_distance()
+        # if the number of grid is a square number, register n_bins
+        if np.sqrt(self.vocab_size) % 1 == 0:
+            self.n_bins = int(np.sqrt(self.vocab_size))-2
+        self.lat_range, self.lon_range = self.compute_latlon_range()
+
+    def compute_latlon_range(self):
+        lat_range = [np.inf, -np.inf]
+        lon_range = [np.inf, -np.inf]
+        for (x_range, y_range) in self.grids.values():
+            lat_range[0] = min(lat_range[0], y_range[0])
+            lat_range[1] = max(lat_range[1], y_range[1])
+            lon_range[0] = min(lon_range[0], x_range[0])
+            lon_range[1] = max(lon_range[1], x_range[1])
+        return lat_range, lon_range
 
     def compute_max_distance(self):
         max_distance = 0
@@ -90,6 +119,9 @@ class Grid():
                     print(x_range, x_range2, y_range, y_range2)
                     return True
         return False
+
+    def is_in_range(self, lat, lon):
+        return self.lat_range[0]-1e-5 <= lat < self.lat_range[1]+1e-5 and self.lon_range[0]-1e-5 <= lon < self.lon_range[1]+1e-5
 
     # convert latlon to state by bisect search
     def latlon_to_state(self, lat, lon):
@@ -213,6 +245,7 @@ class QuadTree(Grid):
                 condition = condition and QuadTree.divide(leaf)
         self.register_id()
         self.node_id_to_hidden_id = self._make_hidden_ids()
+        self.hidden_id_to_node_id = {hidden_id:node_id for node_id, hidden_id in enumerate(self.node_id_to_hidden_id)}
         self.location_id_to_node_id = self._make_location_id_to_node_id()
         self.is_complete = True
 
@@ -242,7 +275,7 @@ class QuadTree(Grid):
         id_to_hidden_id = dict(sorted(id_to_hidden_id.items(), key=lambda x:x[0]))
         
         # the root node does not correspond to any location
-        return [100000000] + list(id_to_hidden_id.values())
+        return [0] + list(id_to_hidden_id.values())
 
     def set_coordinate(self):
         nodes = self.get_all_nodes()

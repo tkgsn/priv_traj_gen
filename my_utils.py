@@ -348,18 +348,36 @@ def global_clipping(trajectories, global_clip):
     return clipped_trajectories
 
 
-def plot_density(next_location_distribution, n_locations, save_path):
+def plot_density(counts, n_locations, save_path, anotation=None):
+
+    if type(counts) is Counter:
+        counts_ = [0 for i in range(n_locations)]
+        for key, value in counts.items():
+            counts_[key] = value
+        counts = counts_
+        
     if np.sqrt(n_locations).is_integer():
+            
         n_x = int(np.sqrt(n_locations))
         n_y = int(np.sqrt(n_locations))
-        values = np.array(next_location_distribution).reshape(n_x, n_y)
+        values = np.rot90(np.array(counts).reshape(n_x, n_y))
         plt.figure(figsize=(10, 10))
         ax = sns.heatmap(values, cmap="YlGnBu", vmin=0, vmax=values.max(), square=True, cbar_kws={"shrink": 0.8})
+        if anotation is not None:
+            x_anotation_ = anotation % n_x
+            y_anotation_ = int(anotation / n_y)
+            # rotate by 90
+            y_anotation = n_x -1 - x_anotation_
+            x_anotation = y_anotation_
+            ax.annotate('X', xy=(x_anotation + 0.5, y_anotation + 0.5), color='red', fontsize=20, ha='center', va='center')
         plt.savefig(save_path)
         plt.close()
     else:
-        # print("cannot plot density because n_locations is not a square number")
-        pass
+        # in this case, we plot bar graph
+        plt.figure(figsize=(10, 10))
+        plt.bar(range(n_locations), counts)
+        plt.savefig(save_path)
+        plt.close()
 
 def add_noise(values, sensitivity, epsilon):
     # add Laplace noise

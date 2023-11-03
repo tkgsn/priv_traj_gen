@@ -9,6 +9,7 @@ from grid import Grid
 import tqdm
 from bisect import bisect_left
 from geopy.distance import geodesic
+import make_pair_to_route
 
 def compute_distance_matrix(state_to_latlon, n_locations):
     # compute the distance matrix using geodestic distance
@@ -26,25 +27,25 @@ def compute_distance_matrix(state_to_latlon, n_locations):
 
 def make_stay_trajectory(trajectories, time_threshold, location_threshold, startend=False):
 
-    print(f"make stay trajectory with threshold {location_threshold}m and {time_threshold}min")
+    print(f"make stay-point trajectory with threshold {location_threshold}m and {time_threshold}min")
 
     stay_trajectories = []
     time_trajectories = []
     for trajectory in tqdm.tqdm(trajectories):
 
-        stay_trajectory = []
         if startend:
             trajectory = [trajectory[0], trajectory[-1]]
-        time_trajectory = []
+        stay_trajectory = [(trajectory[0][1], trajectory[0][2])]
+        time_trajectory = [(trajectory[0][0], trajectory[0][0])]
 
         start_index = 0
-        start_time = 0
         i = 0
 
         while True:
             # find the length of the stay
-            start_location = trajectory[start_index]
-            start_location = (start_location[1], start_location[2])
+            start_record = trajectory[start_index]
+            start_location = (start_record[1], start_record[2])
+            start_time = start_record[0]
 
             if i == len(trajectory)-1:
                 time_trajectory.append((start_time, time))
@@ -59,7 +60,6 @@ def make_stay_trajectory(trajectories, time_threshold, location_threshold, start
                 target_location = (target_location[1], target_location[2])
                 distance = geodesic(start_location, target_location).meters
                 if distance > location_threshold:
-                    # print(f"move {distance}m", start_time, time, trajectory[i])
                     if time - start_time >= time_threshold:
                         # print("stay", start_time, time, start_location)
                         stay_trajectory.append(start_location)
@@ -72,6 +72,8 @@ def make_stay_trajectory(trajectories, time_threshold, location_threshold, start
                     # print(time, i)
 
                     break
+        # print(stay_trajectory, time_trajectory)
+
         
         stay_trajectories.append(stay_trajectory)
         time_trajectories.append(time_trajectory)
@@ -92,7 +94,11 @@ def make_complessed_dataset(time_trajectories, trajectories, grid):
             state = grid.latlon_to_state(lat, lon)
             state_trajectory.append(state)
 
+
         if None in state_trajectory:
+            print("WARNING: FOUND OUT OF RANGE LOCATION, THE TRAJECTORY IS REMOVED")
+            print(ind, trajectory)
+            print(state_trajectory)
             continue
 
         # compless time trajectory according to state trajectory
@@ -109,10 +115,9 @@ def make_complessed_dataset(time_trajectories, trajectories, grid):
                 if (state_trajectory[j] != target_state):
                     break
             complessed_time_trajectory.append((time[0],time_trajectory[j-1][1]))
-
+        
         # remove consecutive same states
         state_trajectory = [state_trajectory[0]] + [state_trajectory[i] for i in range(1, len(state_trajectory)) if state_trajectory[i] != state_trajectory[i-1]]
-
         dataset.append(state_trajectory)
         times.append(complessed_time_trajectory)
 
@@ -120,49 +125,16 @@ def make_complessed_dataset(time_trajectories, trajectories, grid):
         # times.append([time for time, _, _ in trajectory])
     return dataset, times
 
-
-# def save_with_nan_padding(save_path, trajectories, formater, verbose=False):
-#     # compute the max length in trajectories
-#     max_len = max([len(trajectory) for trajectory in trajectories])
-
-#     if verbose:
-#         print(f"save to {save_path}")
-#     with open(save_path, "w") as f:
-#         for trajectory in trajectories:
-#             for record in trajectory:
-#                 f.write(formater(record))
-#             # padding with nan
-#             for _ in range(max_len - len(trajectory)):
-#                 f.write(",")
-#             f.write("\n")
-
-# def save_timelatlon_with_nan_padding(save_path, trajectories):
-#     def formater(record):
-#         return f"{record[0]} {record[1]} {record[2]},"
-    
-#     save_with_nan_padding(save_path, trajectories, formater)
-
-# def save_latlon_with_nan_padding(save_path, trajectories):
-#     def formater(record):
-#         return f"{record[1]} {record[2]},"
-    
-#     save_with_nan_padding(save_path, trajectories, formater)
-
-# def save_state_with_nan_padding(save_path, trajectories, verbose=False):
-#     def formater(record):
-#         return f"{record},"
-    
-#     save_with_nan_padding(save_path, trajectories, formater, verbose=verbose)
-
-
-# def save_time_with_nan_padding(save_path, trajectories, max_time):
-#     def formater(record):
-#         return f"{int(record[0])},"
-    
-#     for trajectory in trajectories:
-#         trajectory.append([max_time])
-    
-#     save_with_nan_padding(save_path, trajectories, formater)
+def check_in_range(trajs, grid):
+    new_trajs = []
+    for traj in tqdm.tqdm(trajs):
+        new_traj = []
+        for time, lat, lon in traj:
+            new_traj.append(grid.is_in_range(lat, lon))
+        if all(new_traj):
+            new_trajs.append(traj)
+    print(f"remove {len(trajs)-len(new_trajs)} trajectories")
+    return new_trajs
 
 
 if __name__ == "__main__":
@@ -216,6 +188,8 @@ if __name__ == "__main__":
         print(f"load raw data from {raw_data_path}")
         raw_trajs = load(raw_data_path)
             # raw_trajs += trajs
+
+        raw_trajs = check_in_range(raw_trajs, grid)
             
         print("make stay trajectory")
         time_trajs, trajs = make_stay_trajectory(raw_trajs, time_threshold, location_threshold, startend=args.startend)
@@ -250,6 +224,20 @@ if __name__ == "__main__":
         np.save(data_path.parent.parent/f"distance_matrix_bin{n_bins}.npy",distance_matrix)
     else:
         print("distance_matrix already exists")
+
+    db_save_dir = data_path.parent.parent / "pair_to_route" / f"{n_bins}"
+    db_save_dir.mkdir(exist_ok=True, parents=True)
+    db_save_dir.mkdir(exist_ok=True, parents=True)
+    if not (db_save_dir / "paths.db").exists():
+    # if True:
+        graph_data_dir = get_datadir() / args.dataset / args.data_name / "MTNet"
+        latlon_config_path = f"./dataset_configs/{args.latlon_config}"
+
+        print("make pair_to_route to",  db_save_dir)
+        make_pair_to_route.run(n_bins, graph_data_dir, latlon_config_path, db_save_dir)
+    else:
+        print("pair_to_route already exists in", db_save_dir / "paths.db")
+    
 
     configs["n_locations"] = max_locs
     configs["max_time"] = max_time
