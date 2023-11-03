@@ -7,7 +7,7 @@ from torch import nn, optim
 import json
 from scipy.spatial.distance import jensenshannon
 from collections import Counter
-import scipy
+import pathlib
 
 from my_utils import get_datadir, clustering, privtree_clustering, depth_clustering, noise_normalize, add_noise, plot_density, make_trajectories, set_logger, construct_default_quadtree, save, load, compute_num_params, set_budget
 from dataset import TrajectoryDataset
@@ -17,136 +17,8 @@ from opacus.utils.batch_memory_manager import BatchMemoryManager
 
 from opacus import PrivacyEngine
 from pytorchtools import EarlyStopping
+import evaluation
 
-from evaluation import count_source_locations, count_target_locations, compute_distribution_from_count, compute_route_count, compute_distance_count, compute_destination_count, compute_next_location_distribution, make_target_distributions_of_all_layers, evaluate_next_location_on_test_dataset, compute_distribution_js_for_each_depth, count_passing_locations, compute_global_counts_from_time_label
-from data_post_processing import post_process_chengdu
-
-
-
-def evaluate(generator, dataset, args, epoch):
-
-    if epoch % args.eval_interval != 0:
-        return
-    if epoch == 0 and not args.eval_initial:
-        return
-    # clipped_trajectories = global_clipping(trajectories, args.global_clip)
-    # clipped_trajectories = trajectories
-    next_location_counts = dataset.next_location_counts
-    first_next_location_counts = dataset.first_next_location_counts
-    second_next_location_counts = dataset.second_next_location_counts
-    second_order_next_location_counts = dataset.second_order_next_location_counts
-    global_counts = dataset.global_counts
-
-    next_location_distributions = {key: noise_normalize(next_location_count) for key, next_location_count in next_location_counts.items()}
-    first_next_location_distributions = {key: noise_normalize(first_next_location_count) for key, first_next_location_count in first_next_location_counts.items()}
-    second_next_location_distributions = {key: noise_normalize(second_next_location_count) for key, second_next_location_count in second_next_location_counts.items()}
-    second_order_next_location_distributions = {key: noise_normalize(second_order_next_location_count) for key, second_order_next_location_count in second_order_next_location_counts.items()}
-    global_distributions = [noise_normalize(global_count) for global_count in global_counts]
-    n_test_locations = min(args.n_test_locations, sum(np.array(global_counts[0])>0))
-    # logger.info(f"n_test_locations is set as min of args.n_test_locations and the number of locations appearing as the base location {args.n_test_locations}, {sum(np.array(global_counts[0])>0)}")
-    top_base_locations = np.argsort(global_counts[0])[::-1]
-    # param["test_locations"] = top_base_locations[:n_test_locations].tolist()
-    test_traj, test_traj_time = make_test_data(top_base_locations, n_test_locations, args.dataset)
-    test_dataset = TrajectoryDataset(test_traj, test_traj_time, dataset.n_locations, args.n_split)
-    test_data_loader = torch.utils.data.DataLoader(test_dataset, num_workers=0, shuffle=False, pin_memory=True, batch_size=args.batch_size, collate_fn=test_dataset.make_padded_collate())
-
-    # compute top second order base locations
-    top_second_order_base_locations = sorted(dataset.second_order_next_location_counts, key=lambda x: sum(dataset.second_order_next_location_counts[x]), reverse=True)[:10]
-    # logger.info(f"top 10 second order next locations: {top_second_order_base_locations}")
-    # logger.info(f"top 10 second order next locations counts: {[sum(second_order_next_location_counts[index]) for index in top_second_order_base_locations]}")
-    second_order_test_traj, second_order_test_traj_time = make_second_order_test_data(top_second_order_base_locations, args.dataset)
-    second_order_test_dataset = TrajectoryDataset(second_order_test_traj, second_order_test_traj_time, dataset.n_locations, args.n_split)
-    second_order_test_data_loader = torch.utils.data.DataLoader(second_order_test_dataset, num_workers=0, shuffle=False, pin_memory=True, batch_size=args.batch_size, collate_fn=second_order_test_dataset.make_padded_collate())
-
-
-    generator.eval()
-    with torch.no_grad():
-        results = {}
-
-        if args.evaluate_first_next_location:
-            jss = evaluate_next_location_on_test_dataset(first_next_location_distributions, test_data_loader, generator, 1)
-            results["first_next_location_js"] = jss
-
-        if args.evaluate_second_next_location and (dataset.seq_len > 2):
-            jss = evaluate_next_location_on_test_dataset(second_next_location_distributions, second_order_test_data_loader, generator, 2)
-            results["second_next_location_js"] = jss
-
-        if args.evaluate_second_order_next_location and (dataset.seq_len > 2):
-            jss = evaluate_next_location_on_test_dataset(second_order_next_location_distributions, second_order_test_data_loader, generator, 2, 2)
-            results["second_order_next_location_js"] = jss
-
-        if (args.evaluate_global or args.evaluate_passing or args.evaluate_source or args.evaluate_target or args.evaluate_route or args.evaluate_destination or args.evaluate_distance):
-
-            counters = {"global":[Counter() for _ in dataset.time_ranges], "passing": Counter(), "source": Counter(), "target": Counter(), "route": [Counter() for _ in range(n_test_locations)], "destination": [Counter() for _ in range(n_test_locations)], "distance": Counter()}
-            condition = True
-            counter = 0
-            while condition:
-                counter += 1
-                mini_batch_size =  min([100, len(dataset.references)])
-                # sample mini_batch_size references from dataset.references
-                references = random.sample(dataset.references, mini_batch_size)
-                generated = generator.make_sample(references, mini_batch_size)
-
-                if len(generated) == 2:
-                    # when n_data == 2 it causes bug
-                    generated_trajs, generated_time_trajs = generated
-                    # generated_time_trajs = dataset.convert_time_label_trajs_to_time_trajs(generated_time_trajs)
-                else:
-                    generated_trajs = generated
-                    generated_time_trajs = dataset.time_label_trajs
-
-                def compute_js(real_count, n_real_traj, inferred_count, n_gene_traj, n_vocabs):
-                    real_distribution = compute_distribution_from_count(real_count, n_vocabs, n_real_traj)
-                    real_distribution = np.stack([real_distribution, 1-real_distribution], axis=0)
-
-                    inferred_distribution = compute_distribution_from_count(inferred_count, n_vocabs, n_gene_traj) + 1e-10
-                    # plus epsilon value to avoid inf
-                    inferred_distribution = np.stack([inferred_distribution, 1-inferred_distribution], axis=0)
-                    return scipy.stats.entropy(real_distribution, inferred_distribution, axis=0).sum()
-
-                if args.evaluate_global:
-                    for time_label in range(1, dataset.n_time_split+1):
-                        counters["global"][time_label-1] += compute_global_counts_from_time_label(generated_trajs, generated_time_trajs, time_label)
-                
-                if args.evaluate_passing:
-                    counters["passing"] += count_passing_locations(generated_trajs)
-
-                if args.evaluate_source:
-                    counters["source"] += count_source_locations(generated_trajs)
-
-                if args.evaluate_target:
-                    counters["target"] += count_target_locations(generated_trajs)
-
-                if args.evaluate_route:
-                    for i, location in enumerate(top_base_locations[:n_test_locations]):
-                        counters["route"][i] += compute_route_count(generated_trajs, location)
-
-                if args.evaluate_destination:
-                    for location in top_base_locations[:n_test_locations]:
-                        counters["destination"][i] += compute_destination_count(generated_trajs, location)
-                
-                if args.evaluate_distance:
-                    n_bins = 100
-                    counters["distance"] += compute_distance_count(dataset.distance_matrix, generated_trajs, n_bins)
-            
-                condition = counter < 1000
-
-            n_gene_traj = mini_batch_size * counter
-            # compute js
-            real_counters = {"global":[Counter({key:count for key, count in enumerate(global_count)}) for global_count in global_counts], "passing": count_passing_locations(dataset.data), "source": count_source_locations(dataset.data), "target": count_target_locations(dataset.data), "route": [compute_route_count(dataset.data, location) for location in top_base_locations[:n_test_locations]], "destination": [compute_destination_count(dataset.data, location) for location in top_base_locations[:n_test_locations]], "distance": compute_distance_count(dataset.distance_matrix, dataset.data, n_bins)}
-            for key, counter in counters.items():
-                if key == "distance":
-                    n_vocabs = n_bins
-                else:
-                    n_vocabs = dataset.n_locations
-
-                if type(counter) == list:
-                    results[f"{key}_jss"] = [compute_js(real_counter, len(dataset.data), counter_, n_gene_traj, n_vocabs) for counter_, real_counter in zip(counter, real_counters[key])]
-                else:
-                    results[f"{key}_js"] = compute_js(real_counters[key], len(dataset.data), counter, n_gene_traj, n_vocabs)
-    generator.train()
-
-    return results
 
 
 def train_meta_network(meta_network, next_location_counts, n_iter, early_stopping, distribution="dirichlet"):
@@ -206,7 +78,7 @@ def train_meta_network(meta_network, next_location_counts, n_iter, early_stoppin
                         loss += F.kl_div(meta_network_output[:,ids,:], target[:,ids,:], reduction='batchmean') * 4**(tree.max_depth-depth-1)
                 else:
                     batch_size = meta_network_output[0].shape[0]
-                    test_target = make_target_distributions_of_all_layers(target, tree)
+                    test_target = evaluation.make_target_distributions_of_all_layers(target, tree)
                     train_all_layers = True
                     if train_all_layers:
                         # meta_network_output = meta_network.to_location_distribution(meta_network_output, target_depth=0)
@@ -309,70 +181,6 @@ def train_with_discrete_time(generator, optimizer, loss_model, input_locations, 
     losses.append(np.mean(norms))
 
     return losses
-
-
-
-def make_second_order_test_data(top_second_order_base_locations, dataset_name):
-    if dataset_name == "peopleflow" or dataset_name == "rotation":
-        n_test_location = len(top_second_order_base_locations)
-        first_locations = [v[0] for v in top_second_order_base_locations]
-        second_locations = [v[1] for v in top_second_order_base_locations]
-        third_location = max(second_locations) + 1
-        pad = third_location * np.ones((n_test_location, 1), dtype=int)
-        test_traj = np.concatenate([np.array(first_locations).reshape(-1,1), np.array(second_locations).reshape(-1,1), pad], axis=1).tolist()
-        test_traj_time = [[0, 800, 1200]]*n_test_location
-        if dataset_name == "rotation":
-            test_traj_time = [[0, 1, 2]]*n_test_location
-    else:
-        # throw not implemented error
-        raise NotImplementedError
-    return test_traj, test_traj_time
-
-def make_test_data(top_base_locations, n_test_location, dataset_name):
-    n_test_location = min(n_test_location, len(top_base_locations))
-    # test_data_dir = data_path
-    # if (test_data_dir / "test_data.csv").exists() and (test_data_dir / "test_data_time.csv").exists():
-    #     test_traj = load_dataset(test_data_dir / "test_data.csv", logger=logger)
-    #     test_traj_time = load_dataset(test_data_dir / "test_data_time.csv", logger=logger)
-    # else:
-    pad = np.ones((n_test_location, 1), dtype=int) * len(top_base_locations)
-    if dataset_name == "peopleflow":
-        test_traj = np.concatenate([np.array(top_base_locations[:n_test_location]).reshape(-1,1), pad, np.array(top_base_locations[:n_test_location]).reshape(-1,1)], axis=1).tolist()
-        test_traj_time = [[0, 800, 1200]]*n_test_location
-    elif dataset_name == "chengdu":
-        test_traj = np.concatenate([np.array(top_base_locations[:n_test_location]).reshape(-1,1), pad], axis=1).tolist()
-        test_traj_time = [[0, 800, 1439]]*n_test_location
-    elif dataset_name == "taxi" or dataset_name == "random":
-        test_traj = np.concatenate([np.array(top_base_locations[:n_test_location]).reshape(-1,1), pad], axis=1).tolist()
-        test_traj_time = [[0, 1]]*n_test_location
-    elif dataset_name == "rotation":
-        first_locations = np.array(top_base_locations[:n_test_location])
-        tree = construct_default_quadtree(int(np.sqrt(n_locations)) -2)
-        tree.make_self_complete()
-        first_locations_ = []
-        second_locations = []
-        for first_location in first_locations:
-            first_location_id_in_the_depth = tree.get_location_id_in_the_depth(first_location, 2)
-            second_location_id_in_the_depth = first_location_id_in_the_depth + 1
-            second_location_node_id = tree.node_id_to_hidden_id.index(second_location_id_in_the_depth)
-            second_location_node = tree.get_node_by_id(second_location_node_id)
-            second_location_candidates = second_location_node.state_list
-            # choose the second location that appears the most
-            second_location = max(second_location_candidates, key=lambda x: sum(dataset.second_next_location_counts[x]))
-            if sum(dataset.second_next_location_counts[second_location]) == 0:
-                print("this area does not appear as the second location")
-                continue
-            first_locations_.append(first_location)
-            second_locations.append(second_location)
-        first_locations = np.array(first_locations_)
-        second_locations = np.array(second_locations)
-        test_traj = np.concatenate([first_locations.reshape(-1,1), second_locations.reshape(-1,1), pad], axis=1).tolist()
-        test_traj_time = [[0, 1, 2]]*n_test_location
-    else:
-        test_traj = np.concatenate([np.array(top_base_locations[:n_test_location]).reshape(-1,1), pad, np.array(top_base_locations[:n_test_location]).reshape(-1,1)], axis=1).tolist()
-        test_traj_time = [[0, 800, 1200, 1439]]*n_test_location
-
-    return test_traj, test_traj_time
 
 
 def train_epoch(data_loader, generator, optimizer):
@@ -489,8 +297,8 @@ def construct_generator(data_loader):
         if hasattr(meta_network, "remove_class_to_query"):
             meta_network.remove_class_to_query()
 
-        # time_dim is n_time_split + 1 (because of 0)
-        generator = MetaGRUNet(meta_network, n_locations, args.location_embedding_dim, args.n_split+1, len(dataset.label_to_reference), args.hidden_dim, dataset.reference_to_label).cuda(args.cuda_number)
+        # time_dim is n_time_split + 2 (because of the edges 0 and >max)
+        generator = MetaGRUNet(meta_network, n_locations, args.location_embedding_dim, args.n_split+2, len(dataset.label_to_reference), args.hidden_dim, dataset.reference_to_label).cuda(args.cuda_number)
         param["n_params_generator"] = compute_num_params(generator, logger)
 
         optimizer = optim.Adam(generator.parameters(), lr=args.learning_rate)
@@ -499,6 +307,7 @@ def construct_generator(data_loader):
             generator, optimizer, data_loader = privacy_engine.make_private(module=generator, optimizer=optimizer, data_loader=data_loader, noise_multiplier=args.noise_multiplier, max_grad_norm=args.clipping_bound)
             eval_generator = generator._module
         else:
+            privacy_engine = None
             eval_generator = generator
     
     return generator, eval_generator, compute_loss_meta_gru_net, optimizer, data_loader, privacy_engine
@@ -510,6 +319,7 @@ if __name__ == "__main__":
     parser.add_argument('--eval_interval', type=int)
     parser.add_argument('--dataset', type=str)
     parser.add_argument('--data_name', type=str)
+    parser.add_argument('--route_data_name', type=str)
     parser.add_argument('--training_data_name', type=str)
     parser.add_argument('--network_type', type=str)
     parser.add_argument('--seed', type=int)
@@ -550,6 +360,7 @@ if __name__ == "__main__":
     parser.add_argument('--evaluate_destination', action='store_true')
     parser.add_argument('--evaluate_distance', action='store_true')
     parser.add_argument('--evaluate_empirical_next_location', action='store_true')
+    parser.add_argument('--compensation', action='store_true')
     parser.add_argument('--max_size', type=int)
     parser.add_argument('--patience', type=int)
     parser.add_argument('--physical_batch_size', type=int)
@@ -577,14 +388,20 @@ if __name__ == "__main__":
     
     data_dir = get_datadir()
     data_path = data_dir / args.dataset / args.data_name / args.training_data_name
+    route_data_path = data_dir / args.dataset / args.data_name / args.route_data_name
     save_path = data_dir / "results" / args.dataset / args.data_name / args.training_data_name / args.save_name
     save_path.mkdir(exist_ok=True, parents=True)
     (save_path / "imgs").mkdir(exist_ok=True, parents=True)
+    args.save_path = str(save_path)
 
     # set logger
     logger = set_logger(__name__, save_path / "log.log")
     logger.info('log is saved to {}'.format(save_path / "log.log"))
     logger.info(f'used parameters {vars(args)}')
+
+    if args.consistent and not args.train_all_layers:
+        args.consistent = False
+        logger.info("!!!!!! consistent is set as False because train_all_layers is False")
 
     # load dataset config    
     with open(data_path / "params.json", "r") as f:
@@ -593,12 +410,16 @@ if __name__ == "__main__":
     max_time = param["max_time"]
 
     trajectories = load(data_path / "training_data.csv")
+    route_trajectories = load(route_data_path / "training_data.csv")
     time_trajectories = load(data_path / "training_data_time.csv")
     logger.info(f"load training data from {data_path / 'training_data.csv'}")
+    logger.info(f"load route data from {route_data_path / 'training_data.csv'}")
     logger.info(f"load time data from {data_path / 'training_data_time.csv'}")
 
-    dataset = TrajectoryDataset(trajectories, time_trajectories, n_locations, args.n_split)
+    dataset = TrajectoryDataset(trajectories, time_trajectories, n_locations, args.n_split, route_data=route_trajectories)
     dataset.compute_auxiliary_information(save_path, logger)
+    dataset.make_first_order_test_data_loader(args.n_test_locations)
+    dataset.make_second_order_test_data_loader(args.n_test_locations)
     param["format_to_label"] = dataset.format_to_label
     param["label_to_format"] = dataset.label_to_format
     if args.batch_size == 0:
@@ -624,8 +445,8 @@ if __name__ == "__main__":
     generator.train()
     for epoch in tqdm.tqdm(range(args.n_epochs+1)):
 
-        # evaluate the generator per eval_interval epochs 
-        results = evaluate(eval_generator, dataset, args, epoch)       
+        # # evaluate the generator per eval_interval epochs 
+        results = evaluation.run(eval_generator, dataset, args, epoch)       
         logger.info(f"evaluation: {results}")
         resultss.append(results)
         args.results = resultss

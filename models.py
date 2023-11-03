@@ -301,15 +301,16 @@ def compute_loss_meta_gru_net(target_locations, target_times, output_locations, 
     if type(target_locations) != list:
         output_locations = [output_locations[-1]] if type(output_locations) == list else [output_locations]
         target_locations = [target_locations]
-
     n_locations = output_locations[-1].shape[-1]
     loss = []
     for i in range(len(target_locations)):
         location_dim = output_locations[i].shape[-1]
         output_locations[i] = output_locations[i].view(-1, location_dim)
         target_locations[i] = target_locations[i].view(-1)
-        loss.append(F.nll_loss(output_locations[i], target_locations[i], ignore_index=TrajectoryDataset.ignore_idx(n_locations)) * coef_location)
-    loss.append(F.nll_loss(output_times.view(-1, output_times.shape[-1]), (target_times-1).view(-1)) * coef_time)
+        # print(i, output_locations[i], target_locations[i])
+        coef = (i+1)/len(target_locations)
+        loss.append(coef*F.nll_loss(output_locations[i], target_locations[i], ignore_index=TrajectoryDataset.ignore_idx(n_locations)) * coef_location)
+    loss.append(F.nll_loss(output_times.view(-1, output_times.shape[-1]), (target_times).view(-1)) * coef_time)
     return loss
 
 def compute_loss_gru_meta_gru_net(target_paths, target_times, output_locations, output_times, coef_location, coef_time):
