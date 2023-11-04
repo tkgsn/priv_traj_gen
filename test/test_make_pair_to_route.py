@@ -139,37 +139,57 @@ class TestPreProcessChengdu(unittest.TestCase):
         m.save('./test/data/latlon_node.html')
 
     def test_run(self):
-        make_pair_to_route.run(30, "./test/data")
+        with open("./config.json", "r") as f:
+            latlon_configs = json.load(f)["latlon"]["geolife_test"]
+        lat_range = latlon_configs["lat_range"]
+        lon_range = latlon_configs["lon_range"]
 
-    def test_dataset(self):
-        n_bins = 30
-        db_path = "./test/data/paths.db"
-        # db_path = "/data/chengdu/pair_to_route/30/paths.db"
-        data_path = "./dataset_configs/chengdu.json"
-        with open(data_path, "r") as f:
-            configs = json.load(f)
-        
-        lat_range = configs["lat_range"]
-        lon_range = configs["lon_range"]
+        make_pair_to_route.run(2, "./test/data", lat_range, lon_range, "./test/data/db")
+
+    def test_db(self):
+        n_bins = 2
+        db_path = "./test/data/db/paths.db"
+
+        with open("./config.json", "r") as f:
+            latlon_configs = json.load(f)["latlon"]["geolife_test"]
+        lat_range = latlon_configs["lat_range"]
+        lon_range = latlon_configs["lon_range"]
 
         print("make grid")
         ranges = Grid.make_ranges_from_latlon_range_and_nbins(lat_range, lon_range, n_bins)
         grid = Grid(ranges)
         
-        nodes = []
+        
+        # count the number of records in state_edge_to_route
         with sqlite3.connect(db_path) as conn:
             c = conn.cursor()
-            for i in range((n_bins+2)**2):
-                c.execute(f"SELECT node FROM state_to_node WHERE state={i}")
-                nodes.append(eval(c.fetchone()[0]))
+            c.execute("SELECT COUNT(*) FROM state_edge_to_route")
+            print(c.fetchone()[0])
 
-        # plot state and nodes with anotation and different colors
-        m = folium.Map(location=[30.67, 104.06], zoom_start=12)
-        for i in range(32*32):
-            folium.Marker(nodes[i], popup=str(i)).add_to(m)
-            latlon = grid.state_to_center_latlon(i)
-            folium.Marker(latlon, popup=str(i), icon=folium.Icon(color='red')).add_to(m)
-        m.save('./test/data/state_node.html')
+        start_state = 8
+        end_state = 10
+        with sqlite3.connect(db_path) as conn:
+            c = conn.cursor()
+            c.execute(f"SELECT route FROM state_edge_to_route WHERE start_state={start_state} AND end_state={end_state}")
+            # c.execute(f"SELECT route FROM state_edge_to_route")
+            path = c.fetchone()
+
+        if path is not None:
+            print(path)
+            paths = eval(path[0])
+            # plot path
+            m = folium.Map(location=[30.67, 104.06], zoom_start=12)
+            for i, path in enumerate(paths):
+                for j, state in enumerate(path):
+                    latlon = grid.state_to_center_latlon(state)
+                    # gradiation color
+                    color = f"hsl({i*10}, 100%, 50%)"
+                    # with anotation
+                    folium.CircleMarker(latlon, radius=5, color=color, fill=True, fill_color=color, popup=str(j)).add_to(m)
+
+            m.save('./test/data/state_route.html')
+        else:
+            print("no path")
 
     def test_paths(self):
         n_bins = 30

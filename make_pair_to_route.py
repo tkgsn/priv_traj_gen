@@ -187,15 +187,17 @@ def make_paths(DG, db_path):
                 c.execute("INSERT INTO paths VALUES (?, ?, ?)", (str(start_node), str(end_node), str(path)))
 
 
+
 def check_node_in_state(cursor, state):
     c = cursor.execute("SELECT * FROM node_to_state WHERE state=?", (state,))
-    node = c.fetchone()
-    if node is None:
-        return False
-    return True
+    node = c.fetchall()
+    if len(node) == 0:
+        return None
+    else:
+        return [eval(n[0]) for n in node]
 
 
-def make_state_pair_to_state_route(n_states, db_path, latlon_to_state):
+def make_state_pair_to_state_route(n_states, db_path, latlon_to_state, DG):
 
     states = list(range(n_states))
     with sqlite3.connect(db_path) as conn:
@@ -205,25 +207,32 @@ def make_state_pair_to_state_route(n_states, db_path, latlon_to_state):
 
         for i in tqdm.tqdm(states):
             # print("make state pair to state route", i, "/", n_states)
-            if not check_node_in_state(c, i):
+            nodes = check_node_in_state(c, i)
+            if nodes is None:
                 print("WARNING", i, "has no node")
                 continue
 
+            # compute path from node
+            paths = []
+            for node in nodes:
+                paths.append(nx.single_source_dijkstra_path(DG, node))
+
             for j in states:
+                latlon_routes = []
 
                 if i == j:
                     continue
 
-                if not check_node_in_state(c, j):
+                end_nodes = check_node_in_state(c, j)
+                if end_nodes is None:
                     # print("WARNING", j, "has no node")
                     continue
 
-                latlon_routes = state_pair_to_latlon_routes((i,j), c)
-                
-                # routes is [] if there is no path
-                if len(latlon_routes) == 0:
-                    # print(i, j, "is not exists")
-                    continue
+                for path in paths:
+                    for end_node in end_nodes:
+                        if end_node in path:
+                            latlon_routes.append(path[end_node])
+
 
                 # print(latlon_routes)
                 state_routes = []
@@ -235,19 +244,8 @@ def make_state_pair_to_state_route(n_states, db_path, latlon_to_state):
 
                 # remove duplicate routes
                 state_routes = list(set([tuple(route) for route in state_routes]))
-                
-                # print(state_routes)
-                # # the trajectory must not start from a state where there is no node
-                # if state_route[0] != i:
-                #     # state_route.insert(0, state_pair[0])
-                #     print("WARNING DIFFERNET START POINT", state_route[0], i, "state_pair", (state_route[0], i), "is not inserted")
-                #     continue
-                # # the trajectory must not end at a state where there is no node
-                # if state_route[-1] != j:
-                #     # state_route.append(state_pair[1])
-                #     print("WARNING DIFFERNET END POINT", state_route[-1], j, "state_pair", (state_route[-1], j), "is not inserted")
-                #     continue
                 c.execute("INSERT INTO state_edge_to_route VALUES (?, ?, ?)", (i, j, str(state_routes)))
+
 
 
 def run(n_bins, data_dir, lat_range, lon_range, save_dir):
@@ -263,11 +261,8 @@ def run(n_bins, data_dir, lat_range, lon_range, save_dir):
     print("make graph")
     DG = make_graph(data_dir)
 
-    print("make paths, taking a long time, to", db_path)
-    make_paths(DG, db_path)
-
     print("make node_to_state")
     make_node_to_state(DG, n_states, grid.latlon_to_state, db_path)
 
     print("make state_pair_to_state_route to", db_path)
-    make_state_pair_to_state_route(n_states, db_path, grid.latlon_to_state)
+    make_state_pair_to_state_route(n_states, db_path, grid.latlon_to_state, DG)
