@@ -1,5 +1,4 @@
 import networkx as nx
-from geopy.distance import geodesic
 import sqlite3
 import pathlib
 import tqdm
@@ -17,7 +16,7 @@ def load_edges(data_dir):
     with open(property_path, "r") as f:
         for i, line in enumerate(f):
             distance = float(line.split(",")[1])
-            wkt = ",".join(line.split(",")[4:])
+            wkt = ",".join(line.split(",")[4:])[1:-1]
             # load wkt by sharpley
             wkt = shapely.wkt.loads(wkt)
             lonlats = wkt.coords.xy
@@ -188,7 +187,7 @@ def make_paths(DG, db_path):
                 c.execute("INSERT INTO paths VALUES (?, ?, ?)", (str(start_node), str(end_node), str(path)))
 
 
-def check_node_in_state(cursor, state, latlon_to_state):
+def check_node_in_state(cursor, state):
     c = cursor.execute("SELECT * FROM node_to_state WHERE state=?", (state,))
     node = c.fetchone()
     if node is None:
@@ -206,7 +205,7 @@ def make_state_pair_to_state_route(n_states, db_path, latlon_to_state):
 
         for i in tqdm.tqdm(states):
             # print("make state pair to state route", i, "/", n_states)
-            if not check_node_in_state(c, i, latlon_to_state):
+            if not check_node_in_state(c, i):
                 print("WARNING", i, "has no node")
                 continue
 
@@ -215,7 +214,7 @@ def make_state_pair_to_state_route(n_states, db_path, latlon_to_state):
                 if i == j:
                     continue
 
-                if not check_node_in_state(c, j, latlon_to_state):
+                if not check_node_in_state(c, j):
                     # print("WARNING", j, "has no node")
                     continue
 
@@ -251,14 +250,9 @@ def make_state_pair_to_state_route(n_states, db_path, latlon_to_state):
                 c.execute("INSERT INTO state_edge_to_route VALUES (?, ?, ?)", (i, j, str(state_routes)))
 
 
-def run(n_bins, data_dir, latlon_config_path, save_dir):
+def run(n_bins, data_dir, lat_range, lon_range, save_dir):
 
     db_path = pathlib.Path(save_dir) / "paths.db"
-    with open(latlon_config_path, "r") as f:
-        configs = json.load(f)
-    
-    lat_range = configs["lat_range"]
-    lon_range = configs["lon_range"]
 
     print("make grid")
     ranges = Grid.make_ranges_from_latlon_range_and_nbins(lat_range, lon_range, n_bins)

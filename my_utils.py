@@ -457,11 +457,7 @@ def clustering(global_distribution, distance_matrix, n_classes):
     return location_to_class
 
 def construct_default_quadtree(n_bins):
-    with open(pathlib.Path("./") / "dataset_configs" / "peopleflow.json", "r") as f:
-        configs = json.load(f)
-    lat_range = configs["lat_range"]
-    lon_range = configs["lon_range"]
-    ranges = Grid.make_ranges_from_latlon_range_and_nbins(lat_range, lon_range, n_bins)
+    ranges = Grid.make_ranges_from_latlon_range_and_nbins([0,1], [0,1], n_bins)
     quad_tree = QuadTree(ranges)
     return quad_tree
 
@@ -558,7 +554,7 @@ def compute_num_params(model, logger):
     num_params = 0
     for param in model.parameters():
         num_params += param.numel()
-    logger.info(f"number of parameters: {num_params}")
+    logger.info(f"number of parameters of {model}: {num_params}")
 
     return num_params
 

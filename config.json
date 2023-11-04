@@ -1,1 +1,8 @@
-{"data_dir": "/data"}
+{
+    "data_dir": "/data_test", 
+    "latlon": 
+        {
+        "chengdu": {"lat_range": [30.651076, 30.746897], "lon_range":[104.036759, 104.132023]},
+        "geolife": {"lat_range": [], "lon_range":[]}
+        }
+}

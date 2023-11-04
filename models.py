@@ -719,3 +719,8 @@ class GRUQuadTreeNetwork(nn.Module):
     def remove_embeddings_query(self):
         self.embeddings_query.requires_grad_(False)
         self.n_margin = - self.n_classes
+
+
+def guide_to_model(type):
+    if type == "fulllinear_quadtree":
+        return FullLinearQuadTreeNetwork, MetaGRUNet
