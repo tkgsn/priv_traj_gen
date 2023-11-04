@@ -214,7 +214,8 @@ def make_state_pair_to_state_route(n_states, db_path, latlon_to_state, DG):
 
             # compute path from node
             paths = []
-            for node in nodes:
+            for k, node in enumerate(nodes):
+                print(k, "/", len(nodes))
                 paths.append(nx.single_source_dijkstra_path(DG, node))
 
             for j in states:
@@ -238,8 +239,8 @@ def make_state_pair_to_state_route(n_states, db_path, latlon_to_state, DG):
                 state_routes = []
                 for latlon_route in latlon_routes:
                     state_route = latlon_route_to_state_route(latlon_route, latlon_to_state)
-                    assert state_route[0] == i, "different start point"
-                    assert state_route[-1] == j, "different end point"
+                    assert state_route[0] == i, f"different start point {i} {j} -> {state_route}"
+                    assert state_route[-1] == j, f"different end point {i} {j} -> {state_route}"
                     state_routes.append(state_route)
 
                 # remove duplicate routes

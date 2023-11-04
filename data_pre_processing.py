@@ -159,7 +159,8 @@ def make_distance_data(training_data_dir, n_bins, gps, logger):
 def make_db(training_data_dir, lat_range, lon_range, n_bins, logger):
     db_save_dir = training_data_dir.parent.parent / "pair_to_route" / f"{n_bins}"
     db_save_dir.mkdir(exist_ok=True, parents=True)
-    if not (db_save_dir / "paths.db").exists():
+    # if not (db_save_dir / "paths.db").exists():
+    if True:
         graph_data_dir = training_data_dir.parent.parent / "raw"
         logger.info(f"make pair_to_route to {db_save_dir}")
         make_pair_to_route.run(n_bins, graph_data_dir, lat_range, lon_range, db_save_dir)
@@ -205,7 +206,7 @@ def run(training_data_dir, lat_range, lon_range, n_bins, time_threshold, locatio
 
     gps = make_gps_data(training_data_dir, lat_range, lon_range, n_bins)
     make_distance_data(training_data_dir, n_bins, gps, logger)
-    # make_db(training_data_dir, lat_range, lon_range, n_bins, logger)
+    make_db(training_data_dir, lat_range, lon_range, n_bins, logger)
 
     logger.info(f"saving setting to {training_data_dir}/params.json")
     with open(training_data_dir / "params.json", "w") as f:
