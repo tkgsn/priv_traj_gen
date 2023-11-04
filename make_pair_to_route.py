@@ -5,6 +5,8 @@ import tqdm
 import json
 from grid import Grid
 import shapely.wkt
+import concurrent.futures
+import functools
 
 def load_edges(data_dir):
     """
@@ -197,9 +199,10 @@ def check_node_in_state(cursor, state):
         return [eval(n[0]) for n in node]
 
 
-def make_state_pair_to_state_route(n_states, db_path, latlon_to_state, DG):
-    
-    def process_state_i(i):
+def process_state_i(i, states, db_path, latlon_to_state, DG):
+    with sqlite3.connect(db_path) as conn:
+        c = conn.cursor()
+
         nodes = check_node_in_state(c, i)
         # compute path from node
         paths = []
@@ -235,6 +238,8 @@ def make_state_pair_to_state_route(n_states, db_path, latlon_to_state, DG):
             state_routes = list(set([tuple(route) for route in state_routes]))
             c.execute("INSERT INTO state_edge_to_route VALUES (?, ?, ?)", (i, j, str(state_routes)))
 
+
+def make_state_pair_to_state_route(n_states, db_path, latlon_to_state, DG):
     states = list(range(n_states))
     with sqlite3.connect(db_path) as conn:
         c = conn.cursor()
@@ -250,12 +255,12 @@ def make_state_pair_to_state_route(n_states, db_path, latlon_to_state, DG):
                 continue
             start_states.append(i)
 
-        # for i in tqdm.tqdm(start_states):
-            # process_state_i(i)
+    partial_process_state_i = functools.partial(process_state_i, states=states, db_path=db_path, latlon_to_state=latlon_to_state, DG=DG)
+    with concurrent.futures.ProcessPoolExecutor() as executor:
+        iterator = executor.map(partial_process_state_i, start_states)
+        for _ in iterator:
+            pass
 
-        import concurrent.futures
-        with concurrent.futures.ProcessPoolExecutor() as executor:
-            executor.map(process_state_i, start_states)
 
 
 def run(n_bins, data_dir, lat_range, lon_range, save_dir):
