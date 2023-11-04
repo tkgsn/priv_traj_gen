@@ -554,7 +554,7 @@ def compute_num_params(model, logger):
     num_params = 0
     for param in model.parameters():
         num_params += param.numel()
-    logger.info(f"number of parameters: {num_params}")
+    logger.info(f"number of parameters of {model}: {num_params}")
 
     return num_params
 

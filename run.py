@@ -11,7 +11,7 @@ import pathlib
 
 from my_utils import get_datadir, clustering, privtree_clustering, depth_clustering, noise_normalize, add_noise, plot_density, make_trajectories, set_logger, construct_default_quadtree, save, load, compute_num_params, set_budget
 from dataset import TrajectoryDataset
-from models import compute_loss_meta_gru_net, compute_loss_gru_meta_gru_net, Markov1Generator, MetaGRUNet, MetaNetwork, FullLinearQuadTreeNetwork
+from models import compute_loss_meta_gru_net, compute_loss_gru_meta_gru_net, Markov1Generator, MetaGRUNet, MetaNetwork, FullLinearQuadTreeNetwork, guide_to_model
 import torch.nn.functional as F
 from opacus.utils.batch_memory_manager import BatchMemoryManager
 
@@ -198,74 +198,29 @@ def train_epoch(data_loader, generator, optimizer):
 
     return np.mean(losses, axis=0)
 
-def construct_generator(data_loader):
-
-    # noisy_global_distributions = [noise_normalize(add_noise(global_count, args.global_clip+1, args.epsilon)) for global_count in dataset.global_counts]
-    # for i in range(len(noisy_global_distributions)):
-    #     if noisy_global_distributions[i] == None:
-    #         noisy_global_distributions[i] = [1/dataset.n_locations] * dataset.n_locations
-    # noisy_global_distributions = torch.tensor(noisy_global_distributions)
-    # param["global_distributions"] = noisy_global_distributions.tolist()
+def clustering(clustering_type, n_locations):
     n_bins = int(np.sqrt(n_locations)) -2
-    distance_matrix = np.load(data_path.parent.parent / f"distance_matrix_bin{n_bins}.npy")
-
-    target_counts = []
-    # numpy_target_next_location_distributions = []
-
-    # clustering
-    if args.clustering == "privtree":
-        print("WARNING: clustering is done by real data")
-        logger.info(f"use privtree clustering by {args.privtree_theta}")
-        location_to_class, privtree = privtree_clustering(dataset.global_counts[0], theta=args.privtree_theta)
-    elif args.clustering == "depth":
-        logger.info("use depth clustering")
+    if clustering_type == "distance":
+        distance_matrix = np.load(data_path.parent.parent / f"distance_matrix_bin{n_bins}.npy")
+        location_to_class = evaluation.clustering(dataset.global_counts[0], distance_matrix, args.n_classes)
+        privtree = None
+    elif clustering_type == "privtree":
+        location_to_class, privtree = evaluation.privtree_clustering(dataset.global_counts[0], theta=args.privtree_theta)
+    elif clustering_type == "depth":
         location_to_class, privtree = depth_clustering(n_bins)
     else:
-        logger.info("use distance clustering")
-        location_to_class = clustering(dataset.global_counts[0], distance_matrix, args.n_classes)
-    # class needs to correspond to node ids
-    args.n_classes = len(set(location_to_class.values()))
-    
-    for i in range(args.n_classes):
-        if args.transition_type == "marginal":
-            logger.info(f"use marginal transition matrix")
-            next_location_counts = dataset.next_location_counts
-        elif args.transition_type == "first":
-            logger.info(f"use first transition matrix")
-            next_location_counts = dataset.first_next_location_counts
-        # find the locations belonging to the class i
-        next_location_count_i = torch.zeros(dataset.n_locations)
-        locations = [location for location, class_ in location_to_class.items() if class_ == i]
-        logger.info(f"n locations in class {i}: {len(locations)}")
-        for location in locations:
-            if location in next_location_counts:
-                next_location_count_i += np.array(next_location_counts[location]) 
-        logger.info(f"sum of next location counts in class {i}: {sum(next_location_count_i)}")
-        # real_target_distribution = noise_normalize(next_location_count_i)
-        # if real_target_distribution is None:
-            # real_target_distribution = torch.zeros(dataset.n_locations)
-            # real_target_distribution += 1/dataset.n_locations
-            # target_distribution = real_target_distribution
-        # else:
-        # target_distribution = noise_normalize(add_noise(next_location_distribution_i, args.global_clip, args.epsilon))
-        target_count_i = add_noise(next_location_count_i, args.global_clip, args.epsilon)
-        # compute js
-        # js = jensenshannon(real_target_distribution, target_distribution)**2
-        # logger.info(f"js divergence for class {i}: {js}")
+        raise NotImplementedError
+    return location_to_class, privtree
 
-        # next_location_distribution_i = torch.tensor(target_distribution)
-        target_count_i = torch.tensor(target_count_i)
-        
-        target_counts.append(target_count_i)
-        # numpy_target_next_location_distributions.append(target_count_i)
+def construct_meta_network(clustering_type, network_type, n_locations, memory_dim, memory_hidden_dim, location_embedding_dim, consistent, logger):
 
-        plot_density(target_count_i, dataset.n_locations, save_path / "imgs" / f"class_next_location_distribution_{i}.png")
+    logger.info(f"clustering type: {clustering_type}")
+    location_to_class, privtree = clustering(clustering_type, n_locations)
+    # class needs to correspond to node 
+    n_classes = len(set(location_to_class.values()))
 
-    # for i in range(args.n_split):
-    #     target_next_location_distributions.append(noisy_global_distributions[i])
-    target_counts = torch.stack(target_counts).cuda(args.cuda_number)
-
-    if args.network_type == "markov1":
+    meta_network_class, _ = guide_to_model(network_type)
+    if network_type == "markov1":
         # normalize count by dim = 1
         target_counts = target_counts / target_counts.sum(dim=1).reshape(-1,1)
         generator = Markov1Generator(target_counts.cpu(), location_to_class)
@@ -275,42 +230,78 @@ def construct_generator(data_loader):
         privacy_engine = None
         args.n_epochs = 0
     else:
-        if args.meta_n_iter == 0:
-            args.epsilon = 0
 
-        if args.network_type == "meta_network":
-            meta_network = MetaNetwork(args.memory_hidden_dim, args.memory_dim, dataset.n_locations, args.n_classes, "relu").cuda(args.cuda_number)
+        if network_type == "meta_network":
+            meta_network = MetaNetwork(args.memory_hidden_dim, args.memory_dim, dataset.n_locations, n_classes, "relu").cuda(args.cuda_number)
             args.train_all_layers = False
-        elif args.network_type == "fulllinear_quadtree":
-            meta_network = FullLinearQuadTreeNetwork(dataset.n_locations, args.memory_dim, args.memory_hidden_dim, args.location_embedding_dim, privtree, "relu", is_consistent=args.consistent).cuda(args.cuda_number)
-    
-        param["n_params_meta_network"] = compute_num_params(meta_network, logger)
+        elif network_type == "fulllinear_quadtree":
+            meta_network = meta_network_class(n_locations, memory_dim, memory_hidden_dim, location_embedding_dim, privtree, "relu", is_consistent=consistent)
+        compute_num_params(meta_network, logger)
         
-        if args.meta_network_load_path == "None":
-            early_stopping = EarlyStopping(patience=args.meta_patience, path=save_path / "meta_network.pt", delta=1e-6)
-            train_meta_network(meta_network, target_counts, args.meta_n_iter, early_stopping, args.meta_dist)
-            args.meta_network_load_path = str(save_path / "meta_network.pt")
-        else:
-            meta_network.load_state_dict(torch.load(args.meta_network_load_path))
-            logger.info(f"load meta network from {args.meta_network_load_path}")
-        # if meta__network has remove_embeddings_query method, remove the embeddings
-        if hasattr(meta_network, "remove_class_to_query"):
-            meta_network.remove_class_to_query()
+    return meta_network, location_to_class
 
-        # time_dim is n_time_split + 2 (because of the edges 0 and >max)
-        generator = MetaGRUNet(meta_network, n_locations, args.location_embedding_dim, args.n_split+2, len(dataset.label_to_reference), args.hidden_dim, dataset.reference_to_label).cuda(args.cuda_number)
-        param["n_params_generator"] = compute_num_params(generator, logger)
+def pre_training_meta_network(dataset, location_to_class, transition_type):
+    n_classes = len(set(location_to_class.values()))
+    target_counts = []
+    for i in range(n_classes):
+        if transition_type == "marginal":
+            logger.info(f"use marginal transition matrix")
+            next_location_counts = dataset.next_location_counts
+        elif transition_type == "first":
+            logger.info(f"use first transition matrix")
+            next_location_counts = evaluation.make_next_location_count(dataset, 0)
 
-        optimizer = optim.Adam(generator.parameters(), lr=args.learning_rate)
-        if args.is_dp:
-            privacy_engine = PrivacyEngine(accountant=args.accountant_mode)
-            generator, optimizer, data_loader = privacy_engine.make_private(module=generator, optimizer=optimizer, data_loader=data_loader, noise_multiplier=args.noise_multiplier, max_grad_norm=args.clipping_bound)
-            eval_generator = generator._module
-        else:
-            privacy_engine = None
-            eval_generator = generator
+        # find the locations belonging to the class i
+        next_location_count_i = torch.zeros(dataset.n_locations)
+        locations = [location for location, class_ in location_to_class.items() if class_ == i]
+        logger.info(f"n locations in class {i}: {len(locations)}")
+        for location in locations:
+            if location in next_location_counts:
+                next_location_count_i += np.array(next_location_counts[location]) 
+        logger.info(f"sum of next location counts in class {i}: {sum(next_location_count_i)}")
+        target_count_i = add_noise(next_location_count_i, args.global_clip, args.epsilon)
+        target_count_i = torch.tensor(target_count_i)
+        
+        target_counts.append(target_count_i)
+
+        # plot_density(target_count_i, dataset.n_locations, save_path / "imgs" / f"class_next_location_distribution_{i}.png")
+
+    target_counts = torch.stack(target_counts).cuda(args.cuda_number)
+    if args.meta_network_load_path == "None":
+        early_stopping = EarlyStopping(patience=args.meta_patience, path=save_path / "meta_network.pt", delta=1e-6)
+        train_meta_network(meta_network, target_counts, args.meta_n_iter, early_stopping, args.meta_dist)
+        args.meta_network_load_path = str(save_path / "meta_network.pt")
+    else:
+        meta_network.load_state_dict(torch.load(args.meta_network_load_path))
+        logger.info(f"load meta network from {args.meta_network_load_path}")
+    if hasattr(meta_network, "remove_class_to_query"):
+        meta_network.remove_class_to_query()
     
-    return generator, eval_generator, compute_loss_meta_gru_net, optimizer, data_loader, privacy_engine
+    return meta_network
+
+def construct_generator(n_locations, meta_network, network_type, location_embedding_dim, n_split, trajectory_type_dim, hidden_dim, reference_to_label, logger):
+
+    _, generator_class = guide_to_model(network_type)
+
+    # time_dim is n_time_split + 2 (because of the edges 0 and >max)
+    generator = generator_class(meta_network, n_locations, location_embedding_dim, n_split+2, trajectory_type_dim, hidden_dim, reference_to_label)
+    compute_num_params(generator, logger)
+    
+    return generator, compute_loss_meta_gru_net
+
+def construct_dataset(training_data_dir, route_data_dir, n_time_split, dataset_name):
+
+    # load dataset config    
+    with open(training_data_dir / "params.json", "r") as f:
+        param = json.load(f)
+    n_locations = param["n_locations"]
+
+    trajectories = load(training_data_dir / "training_data.csv")
+    route_trajectories = load(route_data_dir / "training_data.csv")
+    time_trajectories = load(training_data_dir / "training_data_time.csv")
+
+    return TrajectoryDataset(trajectories, time_trajectories, n_locations, n_time_split, route_data=route_trajectories, dataset_name=dataset_name)
+
 
 if __name__ == "__main__":
     # set argument
@@ -386,24 +377,11 @@ if __name__ == "__main__":
         args.consistent = False
         logger.info("!!!!!! consistent is set as False because train_all_layers is False")
 
-    # load dataset config    
-    with open(data_path / "params.json", "r") as f:
-        param = json.load(f)
-    n_locations = param["n_locations"]
-
-    trajectories = load(data_path / "training_data.csv")
-    route_trajectories = load(route_data_path / "training_data.csv")
-    time_trajectories = load(data_path / "training_data_time.csv")
     logger.info(f"load training data from {data_path / 'training_data.csv'}")
     logger.info(f"load route data from {route_data_path / 'training_data.csv'}")
     logger.info(f"load time data from {data_path / 'training_data_time.csv'}")
+    dataset = construct_dataset(data_path, route_data_path, args.n_split, args.dataset)
 
-    dataset = TrajectoryDataset(trajectories, time_trajectories, n_locations, args.n_split, route_data=route_trajectories)
-    dataset.compute_auxiliary_information(save_path, logger)
-    dataset.make_first_order_test_data_loader(args.n_test_locations)
-    dataset.make_second_order_test_data_loader(args.n_test_locations)
-    param["format_to_label"] = dataset.format_to_label
-    param["label_to_format"] = dataset.label_to_format
     if args.batch_size == 0:
         args.batch_size = int(np.sqrt(len(dataset)))
         logger.info("batch size is set as " + str(args.batch_size))
@@ -411,15 +389,38 @@ if __name__ == "__main__":
     data_loader = torch.utils.data.DataLoader(dataset, num_workers=0, shuffle=True, pin_memory=True, batch_size=args.batch_size, collate_fn=dataset.make_padded_collate(args.remove_first_value, args.remove_duplicate))
     logger.info(f"len of the dataset: {len(dataset)}")
 
-    # decide the budget for the pre-training
-    # this is for depth_clustering with depth = 2
-    args.epsilon = min([args.epsilon, set_budget(len(dataset), int(np.sqrt(n_locations)) -2)])
-    logger.info(f"epsilon is set as: {args.epsilon}")
+    if args.meta_n_iter == 0:
+        args.epsilon = 0
+        logger.info("pre-training is not done")
+    else:
+        # decide the budget for the pre-training (this is for depth_clustering with depth = 2)
+        args.epsilon = min([args.epsilon, set_budget(len(dataset), int(np.sqrt(dataset.n_locations)) -2)])
+        logger.info(f"epsilon is set as: {args.epsilon}")
 
-    generator, eval_generator, loss_model, optimizer, data_loader, privacy_engine = construct_generator(data_loader)
+    meta_network, location_to_class = construct_meta_network(args.clustering, args.network_type, dataset.n_locations, args.memory_dim, args.memory_hidden_dim, args.location_embedding_dim, args.consistent, logger)
+    meta_network.cuda(args.cuda_number)
+    meta_network = pre_training_meta_network(dataset, location_to_class, args.transition_type)
+
+    generator, loss_model = construct_generator(dataset.n_locations, meta_network, args.network_type, args.location_embedding_dim, args.n_split, len(dataset.label_to_reference), args.hidden_dim, dataset.reference_to_label, logger)
+    generator.cuda(args.cuda_number)
+    optimizer = optim.Adam(generator.parameters(), lr=args.learning_rate)
+
+    if args.is_dp:
+        logger.info("privating the model")
+        privacy_engine = PrivacyEngine(accountant=args.accountant_mode)
+        generator, optimizer, data_loader = privacy_engine.make_private(module=generator, optimizer=optimizer, data_loader=data_loader, noise_multiplier=args.noise_multiplier, max_grad_norm=args.clipping_bound)
+        eval_generator = generator._module
+    else:
+        logger.info("not privating the model")
+        eval_generator = generator
 
     early_stopping = EarlyStopping(patience=args.patience, verbose=True, path=save_path / "checkpoint.pt", trace_func=logger.info)
     logger.info(f"early stopping patience: {args.patience}, save path: {save_path / 'checkpoint.pt'}")
+
+
+    logger.info(f"save param to {save_path / 'params.json'}")
+    with open(save_path / "params.json", "w") as f:
+        json.dump(vars(args), f)
 
     # traning
     epsilon = 0
@@ -444,11 +445,3 @@ if __name__ == "__main__":
         logger.info(f'epoch: {early_stopping.epoch} epsilon: {epsilon} | best loss: {early_stopping.best_score} | current loss: location {losses[:-2]}, time {losses[-2]}, norm {losses[-1]}')
         if early_stopping.early_stop:
             break
-
-
-    # concat vars(args) and param
-    param.update(vars(args))
-    logger.info(f"save param to {save_path / 'params.json'}")
-    # logger.info(f"args: {param}")
-    with open(save_path / "params.json", "w") as f:
-        json.dump(param, f)
