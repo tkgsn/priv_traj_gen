@@ -3,6 +3,7 @@
     "latlon": 
         {
         "chengdu": {"lat_range": [30.651076, 30.746897], "lon_range":[104.036759, 104.132023]},
-        "geolife": {"lat_range": [], "lon_range":[]}
+        "geolife": {"lat_range": [], "lon_range":[]},
+        "geolife_test": {"lat_range": [39.978667999999985, 39.98234835400002], "lon_range": [116.32661000000003, 116.35699329999997]}
         }
 }

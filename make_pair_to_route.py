@@ -198,6 +198,42 @@ def check_node_in_state(cursor, state):
 
 
 def make_state_pair_to_state_route(n_states, db_path, latlon_to_state, DG):
+    
+    def process_state_i(i):
+        nodes = check_node_in_state(c, i)
+        # compute path from node
+        paths = []
+        for node in nodes:
+            paths.append(nx.single_source_dijkstra_path(DG, node))
+
+        for j in states:
+            latlon_routes = []
+
+            if i == j:
+                continue
+
+            end_nodes = check_node_in_state(c, j)
+            if end_nodes is None:
+                # print("WARNING", j, "has no node")
+                continue
+
+            for path in paths:
+                for end_node in end_nodes:
+                    if end_node in path:
+                        latlon_routes.append(path[end_node])
+
+
+            # print(latlon_routes)
+            state_routes = []
+            for latlon_route in latlon_routes:
+                state_route = latlon_route_to_state_route(latlon_route, latlon_to_state)
+                assert state_route[0] == i, f"different start point {i} {j} -> {state_route}"
+                assert state_route[-1] == j, f"different end point {i} {j} -> {state_route}"
+                state_routes.append(state_route)
+
+            # remove duplicate routes
+            state_routes = list(set([tuple(route) for route in state_routes]))
+            c.execute("INSERT INTO state_edge_to_route VALUES (?, ?, ?)", (i, j, str(state_routes)))
 
     states = list(range(n_states))
     with sqlite3.connect(db_path) as conn:
@@ -205,48 +241,21 @@ def make_state_pair_to_state_route(n_states, db_path, latlon_to_state, DG):
         c.execute("DROP TABLE IF EXISTS state_edge_to_route")
         c.execute("CREATE TABLE IF NOT EXISTS state_edge_to_route (start_state integer, end_state integer, route text, PRIMARY KEY (start_state, end_state))")
 
-        for i in tqdm.tqdm(states):
-            # print("make state pair to state route", i, "/", n_states)
+        # find the possible states as start state
+        start_states = []
+        for i in states:
             nodes = check_node_in_state(c, i)
             if nodes is None:
                 print("WARNING", i, "has no node")
                 continue
+            start_states.append(i)
 
-            # compute path from node
-            paths = []
-            for k, node in enumerate(nodes):
-                print(k, "/", len(nodes))
-                paths.append(nx.single_source_dijkstra_path(DG, node))
+        # for i in tqdm.tqdm(start_states):
+            # process_state_i(i)
 
-            for j in states:
-                latlon_routes = []
-
-                if i == j:
-                    continue
-
-                end_nodes = check_node_in_state(c, j)
-                if end_nodes is None:
-                    # print("WARNING", j, "has no node")
-                    continue
-
-                for path in paths:
-                    for end_node in end_nodes:
-                        if end_node in path:
-                            latlon_routes.append(path[end_node])
-
-
-                # print(latlon_routes)
-                state_routes = []
-                for latlon_route in latlon_routes:
-                    state_route = latlon_route_to_state_route(latlon_route, latlon_to_state)
-                    assert state_route[0] == i, f"different start point {i} {j} -> {state_route}"
-                    assert state_route[-1] == j, f"different end point {i} {j} -> {state_route}"
-                    state_routes.append(state_route)
-
-                # remove duplicate routes
-                state_routes = list(set([tuple(route) for route in state_routes]))
-                c.execute("INSERT INTO state_edge_to_route VALUES (?, ?, ?)", (i, j, str(state_routes)))
-
+        import concurrent.futures
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            executor.map(process_state_i, start_states)
 
 
 def run(n_bins, data_dir, lat_range, lon_range, save_dir):
