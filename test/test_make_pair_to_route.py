@@ -149,6 +149,7 @@ class TestPreProcessChengdu(unittest.TestCase):
     def test_db(self):
         dataset = "chengdu"
         n_bins = 14
+        n_locations = (n_bins+2)**2
         db_path = f"/data/{dataset}/pair_to_route/{n_bins}/paths.db"
 
         with open("./config.json", "r") as f:
@@ -165,7 +166,10 @@ class TestPreProcessChengdu(unittest.TestCase):
         with sqlite3.connect(db_path) as conn:
             c = conn.cursor()
             c.execute("SELECT COUNT(*) FROM state_edge_to_route")
-            print(c.fetchone()[0], "/", (n_bins+2)**2-n_bins-2)
+            print(c.fetchone()[0], "/", (n_locations)**2-n_locations)
+            # c.execute("SELECT * FROM state_edge_to_route")
+            # print(c.fetchall())
+
 
         start_state = 8
         end_state = 10

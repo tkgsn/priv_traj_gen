@@ -7,6 +7,7 @@ from grid import Grid
 import shapely.wkt
 import concurrent.futures
 import functools
+import pickle
 
 def load_edges(data_dir):
     """
@@ -199,7 +200,8 @@ def check_node_in_state(cursor, state):
         return [eval(n[0]) for n in node]
 
 
-def process_state_i(i, states, db_path, latlon_to_state, DG):
+def process_state_i_(i, states, db_path, latlon_to_state, DG):
+    n_inserted = 0
     with sqlite3.connect(db_path) as conn:
         c = conn.cursor()
 
@@ -236,8 +238,52 @@ def process_state_i(i, states, db_path, latlon_to_state, DG):
 
             # remove duplicate routes
             state_routes = list(set([tuple(route) for route in state_routes]))
+            n_inserted += 1
             c.execute("INSERT INTO state_edge_to_route VALUES (?, ?, ?)", (i, j, str(state_routes)))
+    return n_inserted
 
+def process_state_i(i, states, db_path, latlon_to_state, DG):
+    state_routess = {}
+    with sqlite3.connect(db_path) as conn:
+        c = conn.cursor()
+
+        nodes = check_node_in_state(c, i)
+        # compute path from node
+        paths = []
+        for node in nodes:
+            paths.append(nx.single_source_dijkstra_path(DG, node))
+
+        for j in states:
+            latlon_routes = []
+
+            if i == j:
+                continue
+
+            end_nodes = check_node_in_state(c, j)
+            if end_nodes is None:
+                # print("WARNING", j, "has no node")
+                continue
+
+            for path in paths:
+                for end_node in end_nodes:
+                    if end_node in path:
+                        latlon_routes.append(path[end_node])
+
+
+            # print(latlon_routes)
+            state_routes = []
+            for latlon_route in latlon_routes:
+                state_route = latlon_route_to_state_route(latlon_route, latlon_to_state)
+                assert state_route[0] == i, f"different start point {i} {j} -> {state_route}"
+                assert state_route[-1] == j, f"different end point {i} {j} -> {state_route}"
+                state_routes.append(state_route)
+
+            # remove duplicate routes
+            state_routes = list(set([tuple(route) for route in state_routes]))
+            state_routess[j] = state_routes
+
+            # c.execute("INSERT INTO state_edge_to_route VALUES (?, ?, ?)", (i, j, str(state_routes)))
+    return state_routess
 
 def make_state_pair_to_state_route(n_states, db_path, latlon_to_state, DG):
     states = list(range(n_states))
@@ -256,11 +302,25 @@ def make_state_pair_to_state_route(n_states, db_path, latlon_to_state, DG):
             start_states.append(i)
 
     partial_process_state_i = functools.partial(process_state_i, states=states, db_path=db_path, latlon_to_state=latlon_to_state, DG=DG)
+    # for i in tqdm.tqdm(start_states):
+        # partial_process_state_i(i)
+    
+    pathlib.Path("temp").mkdir(parents=True, exist_ok=True)
     with concurrent.futures.ProcessPoolExecutor() as executor:
         # iterator = executor.map(partial_process_state_i, start_states)
         futures = [executor.submit(partial_process_state_i, i) for i in start_states]
         for future in tqdm.tqdm(concurrent.futures.as_completed(futures), total=len(futures)):
-            pass
+            state_routess = future.result()
+            # write by pickle
+            with open(f"temp/state_routess_{future._state.args[0]}.pkl", "wb") as f:
+                pickle.dump(state_routess, f)
+    
+    # write to db
+    for i in tqdm.tqdm(start_states):
+        with open(f"state_routess_{i}.pkl", "rb") as f:
+            state_routess = pickle.load(f)
+        for j, state_routes in state_routess.items():
+            c.execute("INSERT INTO state_edge_to_route VALUES (?, ?, ?)", (i, j, str(state_routes)))
 
 
 

@@ -10,7 +10,7 @@ import sqlite3
 import struct
 import json
 
-from mocks import GeneratorMock, NameSpace
+# from mocks import GeneratorMock, NameSpace
 sys.path.append('./')
 from evaluation import evaluate_next_location_on_test_dataset, count_passing_locations, compute_divergence
 from my_utils import set_logger, load, plot_density, noise_normalize
@@ -246,11 +246,11 @@ class EvaluationTestCase(unittest.TestCase):
 
     def test_compensate_trajs(self):
         dataset = "chengdu"
-        n_bins = 30
+        n_bins = 14
 
-        latlon_config_path = f"./dataset_configs/{dataset}.json"
+        latlon_config_path = f"./config.json"
         with open(latlon_config_path, "r") as f:
-            config = json.load(f)
+            config = json.load(f)["latlon"][dataset]
         lat_range = config["lat_range"]
         lon_range = config["lon_range"]
         ranges = Grid.make_ranges_from_latlon_range_and_nbins(lat_range, lon_range, n_bins)
@@ -261,12 +261,14 @@ class EvaluationTestCase(unittest.TestCase):
         with sqlite3.connect(route_db_path) as conn:
             # count the number of row in state_edge_to_route
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM state_edge_to_route WHERE start_state=801")
+            cursor.execute("SELECT * FROM state_edge_to_route WHERE start_state=203")
             n_rows = cursor.fetchall()
             # for line in n_rows:
                 # print(eval(line[2]))
-            
-        trajs = [[0,2]]
+
+
+        trajs = load(f"/data/{dataset}/100/200_10_bin14_seed0/training_data.csv")
+        print(trajs)
         compensated_trajs = evaluation.compensate_trajs(trajs, route_db_path)
         print(compensated_trajs)
         # self.assertEqual(len(compensated_trajs), len(trajs))

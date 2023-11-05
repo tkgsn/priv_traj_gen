@@ -593,7 +593,7 @@ def load_map_matched_data(data_dir):
     with open(data_path, "r") as f:
         for line in f:
             # print(line)
-            traj = [float(x) for x in line.split()]
+            traj = [float(x)/60 for x in line.split()]
             # if it's nan it will be converted to 0
             traj = [0 if math.isnan(x) else int(x) for x in traj]
             traj[0] = 0

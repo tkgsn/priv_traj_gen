@@ -158,8 +158,10 @@ def compensate_trajs(trajs, db_path):
             new_trajs.append(traj)
         else:
             new_traj = [traj[0]]
+            print(traj)
             for i in range(len(traj)-1):
                 edges = compensate_edge_by_map(traj[i], traj[i+1], db_path)
+                print(i, edges)
                 invalid_path = invalid_path or (len(edges) == 0)
                 new_traj.extend(edges[1:])
             if not invalid_path:
