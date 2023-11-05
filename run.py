@@ -426,6 +426,8 @@ if __name__ == "__main__":
     logger.info(f"save param to {save_path / 'params.json'}")
     with open(save_path / "params.json", "w") as f:
         json.dump(vars(args), f)
+    if args.server:
+        send(save_path / "params.json")
 
     # traning
     epsilon = 0
