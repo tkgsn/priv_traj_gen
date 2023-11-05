@@ -180,6 +180,9 @@ def compensate_edge_by_map(from_state, to_state, db_path):
             return []
         else:
             state_routes = eval(edges[0])
+            if len(state_routes) == 0:
+                print("WARNING: path not exist", from_state, to_state)
+                return []
             # choose the shortest one
             shortest_route = min(state_routes, key=lambda x: len(x))
             return shortest_route
@@ -512,12 +515,14 @@ def compute_auxiliary_information(dataset, save_dir, logger):
         dataset.n_trajs["distance"] = len(dataset.data)
 
         dataset.computed_auxiliary_information = True
+
     # return locations, next_location_counts, first_next_location_counts, real_global_counts, label_count, time_distribution, reference_distribution
 
 
 
 def make_second_order_test_data_loader(dataset, n_test_locations):
 
+    from dataset import TrajectoryDataset
     assert dataset.computed_auxiliary_information, "auxiliary information has not been computed"
 
     second_order_next_location_counts = dataset.second_order_next_location_counts
@@ -559,6 +564,8 @@ def make_second_order_test_data_loader(dataset, n_test_locations):
         return second_order_test_data_loader, counters
 
 def make_first_order_test_data_loader(dataset, n_test_locations):
+
+    from dataset import TrajectoryDataset
 
     assert dataset.computed_auxiliary_information, "auxiliary information has not been computed"
 
@@ -689,10 +696,10 @@ def set_args():
     args.evaluate_route = True
     args.evaluate_destination = True
     args.evaluate_distance = True
-    args.evaluate_first_next_location = False
+    args.evaluate_first_next_location = True
     args.evaluate_second_next_location = False
-    args.evaluate_second_order_next_location = False
-    args.compensation = False
+    args.evaluate_second_order_next_location = True
+    args.compensation = True
     args.eval_initial = True
     args.n_test_locations = 30
     args.dataset = "chengdu"
@@ -730,6 +737,10 @@ if __name__ == "__main__":
 
     args = set_args()
     args.save_dir = model_dir
+
+    make_first_order_test_data_loader(dataset, args.n_test_locations)
+    make_second_order_test_data_loader(dataset, args.n_test_locations)
+
     # find the models whose name stats with model_i.pt
     model_paths = model_dir.glob("model_*.pt")
     # sort according to i

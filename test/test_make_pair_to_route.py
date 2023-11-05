@@ -147,11 +147,12 @@ class TestPreProcessChengdu(unittest.TestCase):
         make_pair_to_route.run(2, "./test/data", lat_range, lon_range, "./test/data/db")
 
     def test_db(self):
-        n_bins = 2
-        db_path = "./test/data/db/paths.db"
+        dataset = "chengdu"
+        n_bins = 14
+        db_path = f"/data/{dataset}/pair_to_route/{n_bins}/paths.db"
 
         with open("./config.json", "r") as f:
-            latlon_configs = json.load(f)["latlon"]["geolife_test"]
+            latlon_configs = json.load(f)["latlon"][dataset]
         lat_range = latlon_configs["lat_range"]
         lon_range = latlon_configs["lon_range"]
 
@@ -164,7 +165,7 @@ class TestPreProcessChengdu(unittest.TestCase):
         with sqlite3.connect(db_path) as conn:
             c = conn.cursor()
             c.execute("SELECT COUNT(*) FROM state_edge_to_route")
-            print(c.fetchone()[0])
+            print(c.fetchone()[0], "/", (n_bins+2)**2-n_bins-2)
 
         start_state = 8
         end_state = 10

@@ -159,8 +159,8 @@ def make_distance_data(training_data_dir, n_bins, gps, logger):
 def make_db(training_data_dir, lat_range, lon_range, n_bins, logger):
     db_save_dir = training_data_dir.parent.parent / "pair_to_route" / f"{n_bins}"
     db_save_dir.mkdir(exist_ok=True, parents=True)
-    # if not (db_save_dir / "paths.db").exists():
-    if True:
+    if not (db_save_dir / "paths.db").exists():
+    # if True:
         graph_data_dir = training_data_dir.parent.parent / "raw"
         logger.info(f"make pair_to_route to {db_save_dir}")
         make_pair_to_route.run(n_bins, graph_data_dir, lat_range, lon_range, db_save_dir)
@@ -237,39 +237,3 @@ if __name__ == "__main__":
 
     run(training_data_dir, lat_range, lon_range, args.n_bins, args.time_threshold, args.location_threshold, logger)
     exit()
-    
-    # make gps data
-    if not (data_path/"gps.csv").exists():        
-        print("make gps data")
-        gps = make_gps(lat_range, lon_range, n_bins)
-        gps.to_csv(data_path / f"gps.csv", header=None, index=None)
-    print("load gps data")
-    gps = pd.read_csv(data_path / f"gps.csv", header=None).values
-
-    # make distance matrix
-    if not (data_path.parent.parent/f"distance_matrix_bin{n_bins}.npy").exists():
-        print("make distance matrix")
-        def state_to_latlon(state):
-            return gps[state]
-        distance_matrix = compute_distance_matrix(state_to_latlon, max_locs)
-        print("save distance matrix to", data_path.parent.parent/f"distance_matrix_bin{n_bins}.npy")
-        np.save(data_path.parent.parent/f"distance_matrix_bin{n_bins}.npy",distance_matrix)
-    else:
-        print("distance_matrix already exists")
-
-    db_save_dir = data_path.parent.parent / "pair_to_route" / f"{n_bins}"
-    db_save_dir.mkdir(exist_ok=True, parents=True)
-    db_save_dir.mkdir(exist_ok=True, parents=True)
-    if not (db_save_dir / "paths.db").exists():
-    # if True:
-        graph_data_dir = get_datadir() / args.dataset / args.data_name / "MTNet"
-        latlon_config_path = f"./dataset_configs/{args.latlon_config}"
-
-        print("make pair_to_route to",  db_save_dir)
-        make_pair_to_route.run(n_bins, graph_data_dir, latlon_config_path, db_save_dir)
-    else:
-        print("pair_to_route already exists in", db_save_dir / "paths.db")
-
-    print("saving setting to", data_path / "params.json")
-    with open(data_path / "params.json", "w") as f:
-        json.dump(configs, f)
