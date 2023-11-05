@@ -9,7 +9,7 @@ from scipy.spatial.distance import jensenshannon
 from collections import Counter
 import pathlib
 
-from my_utils import get_datadir, clustering, privtree_clustering, depth_clustering, noise_normalize, add_noise, plot_density, make_trajectories, set_logger, construct_default_quadtree, save, load, compute_num_params, set_budget
+from my_utils import get_datadir, clustering, privtree_clustering, depth_clustering, noise_normalize, add_noise, plot_density, make_trajectories, set_logger, construct_default_quadtree, save, load, compute_num_params, set_budget, send
 from dataset import TrajectoryDataset
 from models import compute_loss_meta_gru_net, compute_loss_gru_meta_gru_net, Markov1Generator, MetaGRUNet, MetaNetwork, FullLinearQuadTreeNetwork, guide_to_model
 import torch.nn.functional as F
@@ -185,12 +185,13 @@ def train_with_discrete_time(generator, optimizer, loss_model, input_locations, 
 
 def train_epoch(data_loader, generator, optimizer):
     losses = []
+    device = next(generator.parameters()).device
     for i, batch in enumerate(data_loader):
-        input_locations = batch["input"].cuda(args.cuda_number, non_blocking=True)
-        target_locations = batch["target"].cuda(args.cuda_number, non_blocking=True)
+        input_locations = batch["input"].to(device, non_blocking=True)
+        target_locations = batch["target"].to(device, non_blocking=True)
         references = [tuple(v) for v in batch["reference"]]
-        input_times = batch["time"].cuda(args.cuda_number, non_blocking=True)
-        target_times = batch["time_target"].cuda(args.cuda_number, non_blocking=True)
+        input_times = batch["time"].to(device, non_blocking=True)
+        target_times = batch["time_target"].to(device, non_blocking=True)
 
         loss = train_with_discrete_time(generator, optimizer, loss_model, input_locations, target_locations, input_times, target_times, references, args.coef_location, args.coef_time, train_all_layers=args.train_all_layers)
         # print(norm)
@@ -240,7 +241,7 @@ def construct_meta_network(clustering_type, network_type, n_locations, memory_di
         
     return meta_network, location_to_class
 
-def pre_training_meta_network(dataset, location_to_class, transition_type):
+def pre_training_meta_network(meta_network, dataset, location_to_class, transition_type):
     n_classes = len(set(location_to_class.values()))
     target_counts = []
     for i in range(n_classes):
@@ -266,7 +267,8 @@ def pre_training_meta_network(dataset, location_to_class, transition_type):
 
         # plot_density(target_count_i, dataset.n_locations, save_path / "imgs" / f"class_next_location_distribution_{i}.png")
 
-    target_counts = torch.stack(target_counts).cuda(args.cuda_number)
+    device = next(meta_network.parameters()).device
+    target_counts = torch.stack(target_counts).to(device)
     if args.meta_network_load_path == "None":
         early_stopping = EarlyStopping(patience=args.meta_patience, path=save_path / "meta_network.pt", delta=1e-6)
         train_meta_network(meta_network, target_counts, args.meta_n_iter, early_stopping, args.meta_dist)
@@ -337,6 +339,7 @@ if __name__ == "__main__":
     parser.add_argument('--remove_first_value', action='store_true')
     parser.add_argument('--remove_duplicate', action='store_true')
     parser.add_argument('--consistent', action='store_true')
+    parser.add_argument('--server', action='store_true')
     parser.add_argument('--patience', type=int)
     parser.add_argument('--physical_batch_size', type=int)
     parser.add_argument('--coef_location', type=float)
@@ -382,6 +385,8 @@ if __name__ == "__main__":
     logger.info(f"load time data from {data_path / 'training_data_time.csv'}")
     dataset = construct_dataset(data_path, route_data_path, args.n_split, args.dataset)
 
+    device = torch.device(f"cuda:{args.cuda_number}" if torch.cuda.is_available() else "cpu")
+
     if args.batch_size == 0:
         args.batch_size = int(np.sqrt(len(dataset)))
         logger.info("batch size is set as " + str(args.batch_size))
@@ -398,11 +403,11 @@ if __name__ == "__main__":
         logger.info(f"epsilon is set as: {args.epsilon}")
 
     meta_network, location_to_class = construct_meta_network(args.clustering, args.network_type, dataset.n_locations, args.memory_dim, args.memory_hidden_dim, args.location_embedding_dim, args.consistent, logger)
-    meta_network.cuda(args.cuda_number)
-    meta_network = pre_training_meta_network(dataset, location_to_class, args.transition_type)
+    meta_network.to(device)
+    meta_network = pre_training_meta_network(meta_network, dataset, location_to_class, args.transition_type)
 
     generator, loss_model = construct_generator(dataset.n_locations, meta_network, args.network_type, args.location_embedding_dim, args.n_split, len(dataset.label_to_reference), args.hidden_dim, dataset.reference_to_label, logger)
-    generator.cuda(args.cuda_number)
+    generator.to(device)
     optimizer = optim.Adam(generator.parameters(), lr=args.learning_rate)
 
     if args.is_dp:
@@ -426,11 +431,13 @@ if __name__ == "__main__":
     epsilon = 0
     for epoch in tqdm.tqdm(range(args.n_epochs)):
 
-        try:
-            logger.info(f"save model to {save_path / f'model_{epoch}.pt'}")
-            torch.save(eval_generator.state_dict(), save_path / f"model_{epoch}.pt")
-        except:
-            logger.info("failed to save model because it is Markov1?")
+        # try:
+        logger.info(f"save model to {save_path / f'model_{epoch}.pt'}")
+        torch.save(eval_generator.state_dict(), save_path / f"model_{epoch}.pt")
+        if args.server:
+            send(save_path / f"model_{epoch}.pt")
+        # except:
+        # logger.info("failed to save model because it is Markov1?")
 
         # training
         if not args.is_dp:

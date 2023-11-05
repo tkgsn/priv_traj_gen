@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import tqdm
 from grid import Grid, QuadTree, priv_tree
-
+import subprocess
 
 
 
@@ -578,3 +578,13 @@ def load(save_path, size=0):
                     trajectory.append(int(float(record)))
             trajectories.append(trajectory)
     return trajectories
+
+def send(path):
+
+    source_file_path = path
+    destination_file_path = f'evaluation-server:{path.parent}'
+
+    print('ssh', 'evaluation-server', f"'mkdir -p {path.parent}'")
+    print('scp', source_file_path, destination_file_path)
+    result = subprocess.run(['ssh', 'evaluation-server', f"mkdir -p {path.parent}"])
+    result = subprocess.run(['scp', source_file_path, destination_file_path])

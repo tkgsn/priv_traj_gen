@@ -1,7 +1,7 @@
 dataset=chengdu
 data_name=100
-training_data_name=200_10_bin2_seed0
-route_data_name=0_0_bin2_seed0
+training_data_name=200_10_bin14_seed0
+route_data_name=200_10_bin14_seed0
 
 cuda_number=3
 seed=0
@@ -49,6 +49,7 @@ remove_first_value=True
 remove_duplicate=False
 train_all_layers=True
 consistent=True
+server=True
 
 declare -A arguments=(
     ["dataset"]=$dataset
@@ -94,6 +95,7 @@ declare -A options=(
     ["remove_duplicate"]=$remove_duplicate
     ["train_all_layers"]=$train_all_layers
     ["consistent"]=$consistent
+    ["server"]=$server
 )
 
 # make the option parameter
