@@ -714,6 +714,7 @@ if __name__ == "__main__":
     model_dir = pathlib.Path(args.model_dir)
     with open(model_dir / "params.json", "r") as f:
         training_setting = json.load(f)
+    (model_dir / "imgs").mkdir(exist_ok=True)
 
     data_path = get_datadir() / training_setting["dataset"] / training_setting["data_name"] / training_setting["training_data_name"]
     route_data_path = get_datadir() / training_setting["dataset"] / training_setting["data_name"] / training_setting["route_data_name"]
@@ -730,9 +731,13 @@ if __name__ == "__main__":
     args = set_args()
     args.save_dir = model_dir
     # find the models whose name stats with model_i.pt
-    model_paths = sorted(model_dir.glob("model_*.pt"))
+    model_paths = model_dir.glob("model_*.pt")
+    # sort according to i
+    model_paths = sorted(model_paths, key=lambda x: int(x.stem.split("_")[-1]))
     for model_path in model_paths:
         logger.info(f"evaluate {model_path}")
         generator.load_state_dict(torch.load(model_path))
         results = run(generator, dataset, args)
+        with open(model_dir / f"evaluated_{model_path.stem}.json", "w") as f:
+            json.dump(results, f)
         print(results)
