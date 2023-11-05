@@ -7,7 +7,7 @@ python3 make_raw_data.py --original_data_name ${original_data_name} --max_size $
 
 latlon_config=${original_data_name}.json
 seed=0
-n_bins=2
+n_bins=14
 time_threshold=10
 location_threshold=200
 

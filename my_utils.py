@@ -3,7 +3,6 @@ import json
 import numpy as np
 import bisect
 import random
-from sklearn.preprocessing import normalize
 import pathlib
 import torch
 from collections import Counter
@@ -187,13 +186,6 @@ def make_gps(lat_range, lon_range, n_bins):
         return y_axis[y_state], x_axis[x_state]
     
     return pd.DataFrame([state_to_latlon(i) for i in range((n_bins+2)**2)])
-
-
-def load_M1(dataset):
-    return normalize(np.load(get_datadir() / f'{dataset}/M1.npy'))
-
-def load_M2(dataset):
-    return normalize(np.load(get_datadir() / f'{dataset}/M2.npy'))
 
 def construct_M1(training_data, max_locs):
     reg1 = np.zeros([max_locs,max_locs])

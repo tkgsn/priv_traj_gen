@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/bin/bash
 
 git clone https://github.com/wangyong01/MTNet_Code
 
@@ -8,7 +8,7 @@ unzip MTNet.zip
 cd ..
 
 apt-get update
-apt-get install jq
+apt-get install -y jq unzip
 
 # get the data directory from "data_dir" key of config.json
 data_dir=$(jq -r '.data_dir' config.json)
