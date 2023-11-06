@@ -20,5 +20,10 @@ COPY id_rsa.pub /root/.ssh/id_rsa.pub
 COPY config /root/.ssh/config
 RUN chmod 600 /root/.ssh/id_rsa
 
+ENV MODEL_DIR /data/results/chengdu/10000/200_10_bin30_seed0/fulllinear_quadtree_dpTrue_meta10000_dim100_64_64_256_btch0_cldepth_1000_trTrue_coTrue/
+ENV LOCATION_THRESHOLD 200
+ENV TIME_THRESHOLD 10
+ENV N_BINS 30
+ENV SEED 0
+
 ENTRYPOINT ["/bin/bash", "evaluate.sh"]
-CMD ["model_dir"]
