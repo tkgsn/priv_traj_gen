@@ -243,7 +243,6 @@ def process_state_i_(i, states, db_path, latlon_to_state, DG):
     return n_inserted
 
 def process_state_i(i, states, db_path, latlon_to_state, DG):
-    state_routess = {}
     with sqlite3.connect(db_path) as conn:
         c = conn.cursor()
 
@@ -280,17 +279,18 @@ def process_state_i(i, states, db_path, latlon_to_state, DG):
 
             # remove duplicate routes
             state_routes = list(set([tuple(route) for route in state_routes]))
-            state_routess[j] = state_routes
+            # state_routess[j] = state_routes
+
+            # save with pickle
+            with open(f"temp/state_routes_from_{i}_to_{j}.pkl", "wb") as f:
+                pickle.dump(state_routes, f)
 
             # c.execute("INSERT INTO state_edge_to_route VALUES (?, ?, ?)", (i, j, str(state_routes)))
-    return state_routess
 
 def make_state_pair_to_state_route(n_states, db_path, latlon_to_state, DG):
     states = list(range(n_states))
     with sqlite3.connect(db_path) as conn:
         c = conn.cursor()
-        c.execute("DROP TABLE IF EXISTS state_edge_to_route")
-        c.execute("CREATE TABLE IF NOT EXISTS state_edge_to_route (start_state integer, end_state integer, route text, PRIMARY KEY (start_state, end_state))")
 
         # find the possible states as start state
         start_states = []
@@ -310,17 +310,19 @@ def make_state_pair_to_state_route(n_states, db_path, latlon_to_state, DG):
         # iterator = executor.map(partial_process_state_i, start_states)
         futures = [executor.submit(partial_process_state_i, i) for i in start_states]
         for future in tqdm.tqdm(concurrent.futures.as_completed(futures), total=len(futures)):
-            state_routess = future.result()
-            # write by pickle
-            with open(f"temp/state_routess_{future._state.args[0]}.pkl", "wb") as f:
-                pickle.dump(state_routess, f)
+            future.result()
     
-    # write to db
-    for i in tqdm.tqdm(start_states):
-        with open(f"state_routess_{i}.pkl", "rb") as f:
-            state_routess = pickle.load(f)
-        for j, state_routes in state_routess.items():
-            c.execute("INSERT INTO state_edge_to_route VALUES (?, ?, ?)", (i, j, str(state_routes)))
+    with sqlite3.connect(db_path) as conn:
+        c = conn.cursor()
+        c.execute("DROP TABLE IF EXISTS state_edge_to_route")
+        c.execute("CREATE TABLE IF NOT EXISTS state_edge_to_route (start_state integer, end_state integer, route text, PRIMARY KEY (start_state, end_state))")
+        # write to db
+        for i in tqdm.tqdm(start_states):
+            for j in states:
+                if pathlib.Path(f"temp/state_routes_from_{i}_to_{j}.pkl").exists():
+                    with open(f"temp/state_routes_from_{i}_to_{j}.pkl", "rb") as f:
+                        state_routes = pickle.load(f)
+                    c.execute("INSERT INTO state_edge_to_route VALUES (?, ?, ?)", (i, j, str(state_routes)))
 
 
 

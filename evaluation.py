@@ -50,9 +50,10 @@ def run(generator, dataset, args):
             counter = 0
             gene_trajs = []
             print("generating...")
+            n_invalid = 0
             while condition:
                 counter += 1
-                mini_batch_size =  min([100, len(dataset.references)])
+                mini_batch_size =  min([1000, len(dataset.references)])
                 # sample mini_batch_size references from dataset.references
                 references = random.sample(dataset.references, mini_batch_size)
                 generated = generator.make_sample(references, mini_batch_size)
@@ -68,6 +69,7 @@ def run(generator, dataset, args):
                 if args.evaluate_passing or args.evaluate_route:
                     if args.compensation:
                         compensated_trajs = compensate_trajs(generated_trajs, route_db_path)
+                        n_invalid += len(generated_trajs) - len(compensated_trajs)
                     else:
                         compensated_trajs = generated_trajs
 
@@ -98,15 +100,15 @@ def run(generator, dataset, args):
                     counters["distance"] += count_distance(dataset.distance_matrix, generated_trajs, dataset.n_bins_for_distance)
         
                 # evaluate the same number of generated data as the ten times of that of original data
-                condition = counter < len(dataset.references)*10 / mini_batch_size
+                condition = counter < len(dataset.references) / mini_batch_size
 
                 gene_trajs.extend(generated_trajs)
 
             # save
 
             # save(pathlib.Path(args.save_path) / f"evaluated_{epoch}.csv", gene_trajs)
-            # print(f"saved evaluated file ({len(gene_trajs)}) to", pathlib.Path(args.save_path) / f"evaluated_{epoch}.csv")
-
+            # print(f"saved evaluated file ({len(gene_trajs)}) to", pathlib.Path(args.save_path) / f"evaluated_{epoch}.csv")]
+            print(n_invalid, "invalid trajectories")
             n_gene_traj = mini_batch_size * counter
             # compute js
             real_counters = dataset.real_counters
@@ -158,17 +160,15 @@ def compensate_trajs(trajs, db_path):
             new_trajs.append(traj)
         else:
             new_traj = [traj[0]]
-            print(traj)
             for i in range(len(traj)-1):
                 edges = compensate_edge_by_map(traj[i], traj[i+1], db_path)
-                print(i, edges)
                 invalid_path = invalid_path or (len(edges) == 0)
                 new_traj.extend(edges[1:])
             if not invalid_path:
                 new_trajs.append(new_traj)
             else:
                 counter += 1
-    print("WARNING: n invalid trajs", counter,  "/", len(trajs))
+    # print("WARNING: n invalid trajs", counter,  "/", len(trajs))
     return new_trajs
 
 def compensate_edge_by_map(from_state, to_state, db_path):
@@ -183,7 +183,7 @@ def compensate_edge_by_map(from_state, to_state, db_path):
         else:
             state_routes = eval(edges[0])
             if len(state_routes) == 0:
-                print("WARNING: path not exist", from_state, to_state)
+                # print("WARNING: path not exist", from_state, to_state)
                 return []
             # choose the shortest one
             shortest_route = min(state_routes, key=lambda x: len(x))
