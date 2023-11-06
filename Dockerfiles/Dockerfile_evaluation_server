@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y git openssh-client
 
 RUN git clone https://github.com/tkgsn/priv_traj_gen.git
 
-WORKDIR /root/priv_traj_gen
+WORKDIR /priv_traj_gen
 
 RUN pip install -r requirements.txt
 
@@ -26,4 +26,4 @@ ENV TIME_THRESHOLD 10
 ENV N_BINS 30
 ENV SEED 0
 
-ENTRYPOINT ["/bin/bash", "evaluate.sh"]
+CMD ["/bin/bash", "evaluate.sh"]
