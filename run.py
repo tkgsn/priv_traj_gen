@@ -299,7 +299,10 @@ def construct_dataset(training_data_dir, route_data_dir, n_time_split, dataset_n
     n_locations = param["n_locations"]
 
     trajectories = load(training_data_dir / "training_data.csv")
-    route_trajectories = load(route_data_dir / "training_data.csv")
+    if route_data_dir is not None:
+        route_trajectories = load(route_data_dir / "training_data.csv")
+    else:
+        route_trajectories = None
     time_trajectories = load(training_data_dir / "training_data_time.csv")
 
     return TrajectoryDataset(trajectories, time_trajectories, n_locations, n_time_split, route_data=route_trajectories, dataset_name=dataset_name)
@@ -365,7 +368,7 @@ if __name__ == "__main__":
     
     data_dir = get_datadir()
     data_path = data_dir / args.dataset / args.data_name / args.training_data_name
-    route_data_path = data_dir / args.dataset / args.data_name / args.route_data_name
+    route_data_path = None
     save_path = data_dir / "results" / args.dataset / args.data_name / args.training_data_name / args.save_name
     save_path.mkdir(exist_ok=True, parents=True)
     (save_path / "imgs").mkdir(exist_ok=True, parents=True)
@@ -381,7 +384,6 @@ if __name__ == "__main__":
         logger.info("!!!!!! consistent is set as False because train_all_layers is False")
 
     logger.info(f"load training data from {data_path / 'training_data.csv'}")
-    logger.info(f"load route data from {route_data_path / 'training_data.csv'}")
     logger.info(f"load time data from {data_path / 'training_data_time.csv'}")
     dataset = construct_dataset(data_path, route_data_path, args.n_split, args.dataset)
 

@@ -1,10 +1,33 @@
-dataset=chengdu
-data_name=100
-training_data_name=200_10_bin14_seed0
-route_data_name=200_10_bin14_seed0
+#!/bin/bash
+
+# source ./enviornment
+
+dataset=$DATASET
+# {chengdu, geolife}
+max_size=$MAXSIZE
+seed=$SEED
+meta_n_iter=$META_N_ITER
+n_epoch=$EPOCH
+n_bins=$N_BINS
+location_threshold=$L_THRESH
+time_threshold=$T_THRESH
+physical_batch_size=$P_BATCH
+n_test_locations=$N_TEST
+is_dp=$DP
+# False or True
+train_all_layers=$MULTI_TASK
+# False or True
+
+
+data_name=$max_size
+training_data_name=${location_threshold}_${time_threshold}_bin${n_bins}_seed${seed}
+
+# get data_directory from config.json
+data_dir=$(jq -r '.data_dir' config.json)
+scp -r -o StrictHostKeyChecking=no evaluation-server:${data_dir}/${dataset}/${data_name}/${training_data_name} ${data_dir}/${dataset}/${data_name}
+
 
 cuda_number=3
-seed=0
 patience=10
 batch_size=0
 noise_multiplier=1
@@ -20,14 +43,10 @@ learning_rate=1e-3
 accountant_mode=rdp
 dp_delta=1e-5
 meta_network_load_path=None
-physical_batch_size=20
-n_epoch=1000
-meta_n_iter=10
 coef_location=1
 coef_time=1
 n_classes=10
 global_clip=1
-n_test_locations=30
 meta_patience=1000
 meta_dist=dirichlet
 clustering=depth
@@ -44,10 +63,8 @@ transition_type=first
 # transition_type=marginal
 
 # set the options
-is_dp=False
 remove_first_value=True
 remove_duplicate=False
-train_all_layers=True
 consistent=True
 server=True
 
@@ -86,7 +103,6 @@ declare -A arguments=(
     ["clustering"]=$clustering
     ["dp_delta"]=$dp_delta
     ["transition_type"]=$transition_type
-    ["route_data_name"]=$route_data_name
 )
 
 declare -A options=(
@@ -110,6 +126,6 @@ for key in "${!options[@]}"; do
 done
 
 
-# save_name=${network_type}_dp${is_dp}_meta${meta_n_iter}_dim${memory_dim}_${memory_hidden_dim}_${location_embedding_dim}_${hidden_dim}_btch${batch_size}_cl${clustering}_${epsilon}_tr${train_all_layers}_co${consistent}
-save_name=test
+save_name=${network_type}_dp${is_dp}_meta${meta_n_iter}_dim${memory_dim}_${memory_hidden_dim}_${location_embedding_dim}_${hidden_dim}_btch${batch_size}_cl${clustering}_${epsilon}_tr${train_all_layers}_co${consistent}
+# save_name=test
 python3 run.py --save_name $save_name $option

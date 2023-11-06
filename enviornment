@@ -1,0 +1,14 @@
+# register enviornment variables
+
+DATASET=chengdu
+MAXSIZE=10000
+SEED=0
+META_N_ITER=100
+EPOCH=1000
+N_BINS=30
+L_THRESH=200
+T_THRESH=10
+P_BATCH=100
+N_TEST=30
+DP=True
+MULTI_TASK=True
