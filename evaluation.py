@@ -907,7 +907,7 @@ if __name__ == "__main__":
             
         if training_setting["network_type"] == "MTNet":
             if run_args.server:
-                get(get_datadir() / dataset_name / data_name / "raw")
+                get(get_datadir() / dataset_name / data_name / "raw", parent=True)
             generator = MTNetGeneratorMock(model_path / "samples.txt", model_path / "samples_time.txt", training_setting["dataset"], n_bins)
             args.route_generator = True
         else:
