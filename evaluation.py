@@ -31,7 +31,7 @@ def run(generator, dataset, args):
     with torch.no_grad():
         results = {}
 
-        if args.evaluate_first_next_location:
+        if args.evaluate_first_next_location and not args.route_generator:
             jss = evaluate_next_location_on_test_dataset(dataset.first_next_location_counts, dataset.first_order_test_data_loader, dataset.first_counters, generator, 1)
             results["first_next_location_js"] = jss
 
@@ -39,7 +39,7 @@ def run(generator, dataset, args):
         #     jss = evaluate_next_location_on_test_dataset(dataset.second_next_location_counts, dataset.second_order_test_data_loader, dataset.second_counters, generator, 2)
         #     results["second_next_location_js"] = jss
 
-        if args.evaluate_second_order_next_location and (dataset.seq_len > 2):
+        if args.evaluate_second_order_next_location and (dataset.seq_len > 2) and not args.route_generator:
             jss = evaluate_next_location_on_test_dataset(dataset.second_order_next_location_counts, dataset.second_order_test_data_loader, dataset.second_counters, generator, 2)
             results["second_order_next_location_js"] = jss
 
@@ -48,7 +48,7 @@ def run(generator, dataset, args):
             counters = {"global":[Counter() for _ in dataset.time_ranges], "passing": Counter(), "source": Counter(), "target": [Counter() for _ in range(n_test_locations)], "route": [Counter() for _ in range(n_test_locations)], "destination": [Counter() for _ in range(n_test_locations)], "distance": Counter(), "first_location": Counter()}
             condition = True
             counter = 0
-            gene_trajs = []
+            # gene_trajs = []
             print("generating...")
             n_invalid = 0
             while condition:
@@ -66,43 +66,45 @@ def run(generator, dataset, args):
                     generated_trajs = generated
                     generated_time_trajs = dataset.time_label_trajs
 
-                if args.evaluate_passing or args.evaluate_route:
-                    if args.compensation:
-                        compensated_trajs = compensate_trajs(generated_trajs, route_db_path)
-                        n_invalid += len(generated_trajs) - len(compensated_trajs)
-                    else:
-                        compensated_trajs = generated_trajs
+                # handling time is not implemented yet
+                if args.route_generator:
+                    generated_route_trajs = generated_trajs
+                    generated_stay_trajs = get_stay_point(generated_trajs, generated_time_trajs, args.time_threshold)
+                else:
+                    generated_stay_trajs = generated_trajs
+                    generated_route_trajs = compensate_trajs(generated_trajs, route_db_path)
+                    n_invalid += len(generated_trajs) - len(generated_route_trajs)
 
-                first_locations = [traj[0] for traj in generated_trajs if len(traj) > 1]
+                first_locations = [traj[0] for traj in generated_stay_trajs if len(traj) > 1]
                 counters["first_location"] += Counter(first_locations)
 
                 if args.evaluate_global:
                     for time_label in range(1, dataset.n_time_split+1):
-                        counters["global"][time_label-1] += compute_global_counts_from_time_label(generated_trajs, generated_time_trajs, time_label)
+                        counters["global"][time_label-1] += compute_global_counts_from_time_label(generated_stay_trajs, generated_time_trajs, time_label)
                 
                 if args.evaluate_passing:
-                    counters["passing"] += count_passing_locations(compensated_trajs)
+                    counters["passing"] += count_passing_locations(generated_route_trajs)
 
                 if args.evaluate_source:
-                    counters["source"] += count_source_locations(generated_trajs)
+                    counters["source"] += count_source_locations(generated_stay_trajs)
 
                 for i, location in enumerate(dataset.top_base_locations[:n_test_locations]):
                     if args.evaluate_target:
-                        counters["target"][i] += count_target_locations(generated_trajs, location)
+                        counters["target"][i] += count_target_locations(generated_stay_trajs, location)
 
                     if args.evaluate_destination:
-                        counters["destination"][i] += count_route_locations(generated_trajs, location)
+                        counters["destination"][i] += count_route_locations(generated_stay_trajs, location)
 
                     if args.evaluate_route:
-                        counters["route"][i] += count_route_locations(compensated_trajs, location)
+                        counters["route"][i] += count_route_locations(generated_route_trajs, location)
 
                 if args.evaluate_distance:
-                    counters["distance"] += count_distance(dataset.distance_matrix, generated_trajs, dataset.n_bins_for_distance)
+                    counters["distance"] += count_distance(dataset.distance_matrix, generated_stay_trajs, dataset.n_bins_for_distance)
         
                 # evaluate the same number of generated data as the ten times of that of original data
                 condition = counter < len(dataset.references) / mini_batch_size
 
-                gene_trajs.extend(generated_trajs)
+                # gene_trajs.extend(generated_stay_trajs)
 
             # save
 
@@ -150,6 +152,20 @@ def run(generator, dataset, args):
 
     return results
 
+
+
+def get_stay_point(generated_route_trajs, generated_time_trajs, time_threshold):
+    stay_trajs = []
+    for route_traj, time_traj in zip(generated_route_trajs, generated_time_trajs):
+        stay_traj = []
+        stay_traj.append(route_traj[0])
+        for i in range(1,len(route_traj)-1):
+            if (time_traj[i] >= time_threshold) and (stay_traj[-1] != route_traj[i]):
+                stay_traj.append(route_traj[i])
+        stay_traj.append(route_traj[-1])
+        stay_trajs.append(stay_traj)
+            
+    return stay_trajs
 
 def compensate_trajs(trajs, db_path):
     new_trajs = []
@@ -452,71 +468,70 @@ def compute_global_counts_from_time_label(trajs, time_label_trajs, time_label):
 def compute_auxiliary_information(dataset, save_dir, logger):
     save_dir = pathlib.Path(save_dir)
     (save_dir.parent / "imgs").mkdir(exist_ok=True)
-    if not dataset.computed_auxiliary_information:
 
-        # compute top_base_locations
-        dataset.first_locations = [trajectory[0] for trajectory in dataset.data if len(trajectory) > 1]
-        dataset.first_location_counts = Counter(dataset.first_locations)
-        dataset.route_first_locations = [trajectory[0] for trajectory in dataset.route_data if len(trajectory) > 1]
-        dataset.route_first_location_counts = Counter(dataset.route_first_locations)
-        dataset.top_base_locations = sorted(dataset.first_location_counts, key=lambda x: dataset.first_location_counts[x], reverse=True)
-        dataset.top_route_base_locations = sorted(dataset.route_first_location_counts, key=lambda x: dataset.route_first_location_counts[x], reverse=True)
-        # compute the next location counts
-        dataset.next_location_counts = make_next_location_count(dataset, 0)
-        dataset.first_next_location_counts = make_next_location_count(dataset, 1)
-        dataset.second_next_location_counts = make_next_location_count(dataset, 2)
-        dataset.second_order_next_location_counts = make_next_location_count(dataset, 0, order=2)
 
-        # compute the global counts
-        real_global_counts = []
-        for time in range(1,dataset.n_time_split+1):
-            real_global_count = Counter({location:0 for location in range(dataset.n_locations)})
-            real_global_count.update(compute_global_counts_from_time_label(dataset.data, dataset.time_label_trajs, time))
-            real_global_count = list(real_global_count.values())
-            real_global_counts.append(real_global_count)
-            if sum(real_global_count) == 0:
-                logger.info(f"no location at time {time}")
-                continue
-            plot_density(real_global_count, dataset.n_locations, save_dir.parent / "imgs" / f"real_global_distribution_{int(time)}.png")
-        global_counts_path = save_dir.parent / f"global_count.json"
-        # save the global counts
-        with open(global_counts_path, "w") as f:
-            json.dump(real_global_counts, f)
-        dataset.global_counts = real_global_counts
+    # compute top_base_locations
+    dataset.first_locations = [trajectory[0] for trajectory in dataset.data if len(trajectory) > 1]
+    dataset.first_location_counts = Counter(dataset.first_locations)
+    dataset.route_first_locations = [trajectory[0] for trajectory in dataset.route_data if len(trajectory) > 1]
+    dataset.route_first_location_counts = Counter(dataset.route_first_locations)
+    dataset.top_base_locations = sorted(dataset.first_location_counts, key=lambda x: dataset.first_location_counts[x], reverse=True)
+    dataset.top_route_base_locations = sorted(dataset.route_first_location_counts, key=lambda x: dataset.route_first_location_counts[x], reverse=True)
+    # compute the next location counts
+    dataset.next_location_counts = make_next_location_count(dataset, 0)
+    dataset.first_next_location_counts = make_next_location_count(dataset, 1)
+    dataset.second_next_location_counts = make_next_location_count(dataset, 2)
+    dataset.second_order_next_location_counts = make_next_location_count(dataset, 0, order=2)
 
-        # # make a list of labels
-        # label_list = [dataset.format_to_label[traj_to_format(trajectory)] for trajectory in dataset.data]
-        # label_count = Counter({label:0 for label in dataset.label_to_format.keys()})
-        # label_count.update(label_list)
-        # reference_distribution = {dataset.label_to_reference[label]: count for label, count in label_count.items()}
-        
-        # # compute time distribution
-        # time_label_count = Counter(dataset.time_label_trajs)
-        # time_distribution = {label: time_label_count[label] / len(dataset.time_label_trajs) for label in time_label_count.keys()}
+    # compute the global counts
+    real_global_counts = []
+    for time in range(1,dataset.n_time_split+1):
+        real_global_count = Counter({location:0 for location in range(dataset.n_locations)})
+        real_global_count.update(compute_global_counts_from_time_label(dataset.data, dataset.time_label_trajs, time))
+        real_global_count = list(real_global_count.values())
+        real_global_counts.append(real_global_count)
+        if sum(real_global_count) == 0:
+            logger.info(f"no location at time {time}")
+            continue
+        plot_density(real_global_count, dataset.n_locations, save_dir.parent / "imgs" / f"real_global_distribution_{int(time)}.png")
+    global_counts_path = save_dir.parent / f"global_count.json"
+    # save the global counts
+    with open(global_counts_path, "w") as f:
+        json.dump(real_global_counts, f)
+    dataset.global_counts = real_global_counts
 
-        # compute counters
-        dataset.real_counters = {}
-        dataset.real_counters["global"] = [Counter({key:count for key, count in enumerate(global_count)}) for global_count in real_global_counts]
-        dataset.real_counters["passing"] = count_passing_locations(dataset.route_data)
-        dataset.real_counters["source"] = count_source_locations(dataset.data)
-        dataset.real_counters["target"] = [count_target_locations(dataset.data, location) for location in dataset.top_base_locations]
-        dataset.real_counters["route"] = [count_route_locations(dataset.route_data, location) for location in dataset.top_base_locations]
-        dataset.real_counters["destination"] = [count_route_locations(dataset.data, location) for location in dataset.top_base_locations]
-        logger.info("load distance matrix from {}".format(get_datadir() / str(dataset)  / f"distance_matrix_bin{int(np.sqrt(dataset.n_locations)) -2}.npy"))
-        dataset.distance_matrix = np.load(get_datadir() / str(dataset)  / f"distance_matrix_bin{int(np.sqrt(dataset.n_locations)) -2}.npy")
-        dataset.real_counters["distance"] = count_distance(dataset.distance_matrix, dataset.data, dataset.n_bins_for_distance)
+    # # make a list of labels
+    # label_list = [dataset.format_to_label[traj_to_format(trajectory)] for trajectory in dataset.data]
+    # label_count = Counter({label:0 for label in dataset.label_to_format.keys()})
+    # label_count.update(label_list)
+    # reference_distribution = {dataset.label_to_reference[label]: count for label, count in label_count.items()}
+    
+    # # compute time distribution
+    # time_label_count = Counter(dataset.time_label_trajs)
+    # time_distribution = {label: time_label_count[label] / len(dataset.time_label_trajs) for label in time_label_count.keys()}
 
-        # compute n_trajs
-        dataset.n_trajs = {}
-        dataset.n_trajs["global"] = [len(dataset.data) for global_count in real_global_counts]
-        dataset.n_trajs["passing"] = len(dataset.data)
-        dataset.n_trajs["source"] = len(dataset.data)
-        dataset.n_trajs["target"] = [dataset.first_location_counts[location] for location in dataset.top_base_locations]
-        dataset.n_trajs["route"] = [dataset.route_first_location_counts[location] for location in dataset.top_base_locations]
-        dataset.n_trajs["destination"] = [dataset.first_location_counts[location] for location in dataset.top_base_locations]
-        dataset.n_trajs["distance"] = len(dataset.data)
+    # compute counters
+    dataset.real_counters = {}
+    dataset.real_counters["global"] = [Counter({key:count for key, count in enumerate(global_count)}) for global_count in real_global_counts]
+    dataset.real_counters["passing"] = count_passing_locations(dataset.route_data)
+    dataset.real_counters["source"] = count_source_locations(dataset.data)
+    dataset.real_counters["target"] = [count_target_locations(dataset.data, location) for location in dataset.top_base_locations]
+    dataset.real_counters["route"] = [count_route_locations(dataset.route_data, location) for location in dataset.top_base_locations]
+    dataset.real_counters["destination"] = [count_route_locations(dataset.data, location) for location in dataset.top_base_locations]
+    logger.info("load distance matrix from {}".format(get_datadir() / str(dataset)  / f"distance_matrix_bin{int(np.sqrt(dataset.n_locations)) -2}.npy"))
+    dataset.distance_matrix = np.load(get_datadir() / str(dataset)  / f"distance_matrix_bin{int(np.sqrt(dataset.n_locations)) -2}.npy")
+    dataset.real_counters["distance"] = count_distance(dataset.distance_matrix, dataset.data, dataset.n_bins_for_distance)
 
-        dataset.computed_auxiliary_information = True
+    # compute n_trajs
+    dataset.n_trajs = {}
+    dataset.n_trajs["global"] = [len(dataset.data) for global_count in real_global_counts]
+    dataset.n_trajs["passing"] = len(dataset.data)
+    dataset.n_trajs["source"] = len(dataset.data)
+    dataset.n_trajs["target"] = [dataset.first_location_counts[location] for location in dataset.top_base_locations]
+    dataset.n_trajs["route"] = [dataset.route_first_location_counts[location] for location in dataset.top_base_locations]
+    dataset.n_trajs["destination"] = [dataset.first_location_counts[location] for location in dataset.top_base_locations]
+    dataset.n_trajs["distance"] = len(dataset.data)
+
 
     # return locations, next_location_counts, first_next_location_counts, real_global_counts, label_count, time_distribution, reference_distribution
 
@@ -525,7 +540,6 @@ def compute_auxiliary_information(dataset, save_dir, logger):
 def make_second_order_test_data_loader(dataset, n_test_locations):
 
     from dataset import TrajectoryDataset
-    assert dataset.computed_auxiliary_information, "auxiliary information has not been computed"
 
     second_order_next_location_counts = dataset.second_order_next_location_counts
     n_test_locations = min(n_test_locations, len(second_order_next_location_counts))
@@ -568,8 +582,6 @@ def make_second_order_test_data_loader(dataset, n_test_locations):
 def make_first_order_test_data_loader(dataset, n_test_locations):
 
     from dataset import TrajectoryDataset
-
-    assert dataset.computed_auxiliary_information, "auxiliary information has not been computed"
 
     top_base_locations = dataset.top_base_locations[:n_test_locations]
     n_test_locations = min(n_test_locations, len(top_base_locations))
@@ -685,6 +697,123 @@ def make_next_location_count(dataset, target_index, order=1):
 #     global_distribution = compute_distribution_from_count(global_counts, n_locations)
 #     return global_distribution
 
+class MTNetGeneratorMock():
+    '''
+    This generator returns the trajectory in the given path
+    '''
+    def __init__(self, traj_path, time_traj_path, dataset, n_bins, random=False):
+
+        with open("config.json", "r") as f:
+            config = json.load(f)["latlon"][dataset]
+        lat_range = config["lat_range"]
+        lon_range = config["lon_range"]
+        edge_to_state_pair, _ = self.make_edge_to_state_pair(get_datadir() / dataset / "raw", lat_range, lon_range, n_bins)
+        self.trajs, self.time_trajs = self.convert_to_state(traj_path, time_traj_path, edge_to_state_pair)
+        self.cursor = 0
+        self.random = random
+
+
+    def make_edge_to_state_pair(self, data_path, lat_range, lon_range, n_bins):
+        from grid import Grid
+        import os
+        import shapely.wkt
+
+
+        print("use grid of ", lat_range, lon_range, n_bins)
+        ranges = Grid.make_ranges_from_latlon_range_and_nbins(lat_range, lon_range, n_bins)
+        grid = Grid(ranges)
+        # edge is a tuple of states (first state, last state)
+        # 1,0,0,0,LINESTRING"(39.72916666666667 116.14250000000001,39.72916666666667 116.14250000000001)"
+        # first latlon (39.72916666666667 116.14250000000001) -> first state
+        # last latlon (39.72916666666667 116.14250000000001) -> last state
+        edge_id_to_state_pair = {}
+        print("convert to original by", os.path.join(data_path, "edge_property.txt"))
+        with open(os.path.join(data_path, "edge_property.txt"), "r") as f:
+            for i, line in enumerate(f):
+                # load wkt by shapely
+                wkt = ",".join(line.split(",")[4:])[1:-1]
+                wkt = shapely.wkt.loads(wkt)
+                # get the first lon,lat
+                from_lonlat = wkt.coords[0]
+                # get the last lon,lat
+                to_lonlat = wkt.coords[-1]
+                from_state = grid.latlon_to_state(*from_lonlat[::-1])
+                if from_state == None:
+                    print(*from_lonlat[::-1], line)
+                    raise
+                to_state = grid.latlon_to_state(*to_lonlat[::-1])
+                if to_state == None:
+                    print("w", line)
+                    raise
+                edge = (from_state, to_state)
+                edge_id_to_state_pair[i+1] = edge
+        
+        return edge_id_to_state_pair, grid
+
+    def convert_to_state(self, traj_path, time_path, edge_id_to_state_pair):
+
+        from data_pre_processing import compless
+
+        # load data
+        trajs = []
+        with open(pathlib.Path(traj_path), "r") as f:
+            for line in f:
+                traj = [int(vocab) for vocab in line.split(",")]
+                # traj = [int(vocab) for vocab in line.strip().split(" ")]
+                # remove 0s at the end
+                traj = [vocab for vocab in traj if vocab != 0]
+                trajs.append(traj)
+
+        time_trajs = []
+        with open(pathlib.Path(time_path), "r") as f:
+            for line in f:
+                time_traj = [int(vocab) for vocab in line.split(",")]
+                time_trajs.append(time_traj)
+
+        new_trajs = []
+        for traj in trajs:
+            new_traj = []
+            for i in range(len(traj)):
+                if i == 0:
+                    new_traj.append(edge_id_to_state_pair[traj[i]][0])
+                    new_traj.append(edge_id_to_state_pair[traj[i]][1])
+                else:
+                    new_traj.append(edge_id_to_state_pair[traj[i]][1])
+            new_trajs.append(new_traj)
+
+        complessed_trajs = []
+        complessed_time_trajs = []
+        for traj, time_traj in zip(new_trajs, time_trajs):
+            complessed_traj, complessed_time_traj = compless(traj, time_traj, cost=True)
+            complessed_trajs.append(complessed_traj)
+            complessed_time_trajs.append(complessed_time_traj)
+
+
+        return complessed_trajs, complessed_time_trajs
+
+
+    def eval(self):
+        pass
+
+    def train(self):
+        pass
+
+    def make_sample(self, references, mini_batch_size):
+        '''
+        return the mini_batch_size trajectories in the given path
+        '''
+        if self.random:
+            if len(self.trajs)-mini_batch_size == 0:
+                self.cursor = 0
+            else:
+                self.cursor = np.random.randint(0, len(self.trajs)-mini_batch_size)
+        else:
+            self.cursor += mini_batch_size
+            if self.cursor >= len(self.trajs)+mini_batch_size:
+                self.cursor = mini_batch_size
+        return self.trajs[self.cursor-mini_batch_size:self.cursor], self.time_trajs[self.cursor-mini_batch_size:self.cursor]
+
+
 class Namespace():
     pass
 
@@ -708,6 +837,8 @@ def set_args():
     args.n_split = 5
     # this is not used
     args.batch_size = 100
+    args.route_generator = False
+    args.time_threshold = 10
 
     return args
 
@@ -716,59 +847,80 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_dir', type=str)
+
+    # for ground truth
+    parser.add_argument('--location_threshold', type=int)
+    parser.add_argument('--time_threshold', type=int)
+    parser.add_argument('--n_bins', type=int)
+    parser.add_argument('--seed', type=int)
+
     parser.add_argument('--server', action="store_true")
-    args = parser.parse_args()
+    run_args = parser.parse_args()
 
     logger = set_logger(__name__, "./log.log")
 
-    if args.server:
-        get(args.model_dir, parent=True)
+    if run_args.server:
+        get(run_args.model_dir, parent=True)
 
-    model_dir = pathlib.Path(args.model_dir)
+    model_dir = pathlib.Path(run_args.model_dir)
     with open(model_dir / "params.json", "r") as f:
         training_setting = json.load(f)
     (model_dir / "imgs").mkdir(exist_ok=True)
+    data_name = training_setting["data_name"]
+    dataset_name = training_setting["dataset"]
 
-
-    data_path = get_datadir() / training_setting["dataset"] / training_setting["data_name"] / training_setting["training_data_name"]
-    if args.server:
+    if "training_data_name" in training_setting:
+        data_path = get_datadir() / training_setting["dataset"] / training_setting["data_name"] / training_setting["training_data_name"]
+    else:
+        data_path = get_datadir() / training_setting["dataset"] / training_setting["data_name"] / f"{run_args.location_threshold}_{run_args.time_threshold}_bin{run_args.n_bins}_seed{run_args.seed}"
+    if run_args.server:
         get(data_path, parent=True)
 
     with open(data_path / "params.json", "r") as f:
         data_setting = json.load(f)
     n_bins = int(np.sqrt(data_setting["n_locations"]) -2)
+    assert n_bins == run_args.n_bins, "n_bins should be equal to the n_bins in the data"
 
-    route_data_name = f"0_0_bin{n_bins}_seed{training_setting['seed']}"
+    route_data_name = f"0_0_bin{n_bins}_seed{data_setting['seed']}"
     route_data_path = get_datadir() / training_setting["dataset"] / training_setting["data_name"] / route_data_name
 
-    if args.server:
+    if run_args.server:
         get(route_data_path, parent=True)
         get(get_datadir() / training_setting["dataset"] / "pair_to_route" / str(n_bins) / "paths.db")
         get(get_datadir() / training_setting["dataset"] / f"distance_matrix_bin{n_bins}.npy")
 
-    dataset = construct_dataset(data_path, route_data_path, training_setting["n_split"], training_setting["dataset"])
-
+    dataset = construct_dataset(data_path, route_data_path, 5, training_setting["dataset"])
     compute_auxiliary_information(dataset, model_dir, logger)
-
-    meta_network, _ = construct_meta_network(training_setting["clustering"], training_setting["network_type"], dataset.n_locations, training_setting["memory_dim"], training_setting["memory_hidden_dim"], training_setting["location_embedding_dim"], training_setting["consistent"], logger)
-    if hasattr(meta_network, "remove_class_to_query"):
-        meta_network.remove_class_to_query()
-    generator, _ = construct_generator(dataset.n_locations, meta_network, training_setting["network_type"], training_setting["location_embedding_dim"], training_setting["n_split"], len(dataset.label_to_reference), training_setting["hidden_dim"], dataset.reference_to_label, logger)
 
     args = set_args()
     args.save_dir = model_dir
-
     make_first_order_test_data_loader(dataset, args.n_test_locations)
     make_second_order_test_data_loader(dataset, args.n_test_locations)
 
-    # find the models whose name stats with model_i.pt
-    model_paths = model_dir.glob("model_*.pt")
+
+    # find the models whose name stats with model_i
+    model_paths = model_dir.glob("model_*")
     # sort according to i
     model_paths = sorted(model_paths, key=lambda x: int(x.stem.split("_")[-1]))
+    print(model_paths)
     for model_path in model_paths:
-        logger.info(f"evaluate {model_path}")
-        generator.load_state_dict(torch.load(model_path))
+            
+        if training_setting["network_type"] == "MTNet":
+            if run_args.server:
+                get(get_datadir() / dataset_name / data_name / "raw")
+            generator = MTNetGeneratorMock(model_path / "samples.txt", model_path / "samples_time.txt", training_setting["dataset"], n_bins)
+            args.route_generator = True
+        else:
+            meta_network, _ = construct_meta_network(training_setting["clustering"], training_setting["network_type"], dataset.n_locations, training_setting["memory_dim"], training_setting["memory_hidden_dim"], training_setting["location_embedding_dim"], training_setting["consistent"], logger)
+            if hasattr(meta_network, "remove_class_to_query"):
+                meta_network.remove_class_to_query()
+            generator, _ = construct_generator(dataset.n_locations, meta_network, training_setting["network_type"], training_setting["location_embedding_dim"], training_setting["n_split"], len(dataset.label_to_reference), training_setting["hidden_dim"], dataset.reference_to_label, logger)
+            logger.info(f"evaluate {model_path}")
+            generator.load_state_dict(torch.load(model_path))
+
         results = run(generator, dataset, args)
         with open(model_dir / f"evaluated_{model_path.stem}.json", "w") as f:
             json.dump(results, f)
-        send(model_dir / f"evaluated_{model_path.stem}.json")
+        if run_args.server:
+            send(model_dir / f"evaluated_{model_path.stem}.json")
+        print(results)

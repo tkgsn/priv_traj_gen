@@ -17,7 +17,7 @@ from my_utils import set_logger, load, plot_density, noise_normalize
 from dataset import TrajectoryDataset
 import evaluation
 from grid import Grid
-
+from run import construct_dataset
 
 
 def make_data():
@@ -62,25 +62,39 @@ def make_args():
 
 class EvaluationMTNetTestCase(unittest.TestCase):
     def setUp(self):
-        generated_data_path = "/data/results/geolife/0/narrow_0_0_bin30_seed0/DP_MTNet/generated_15.csv"
-        original_data_path = "/data/geolife/0/narrow_0_0_bin30_seed0/training_data.csv"
+        pass
 
-        self.original_data = load(original_data_path)
-        self.generated_data = load(generated_data_path)
-        self.n_locations = 32*32
+    def test_mock(self):
+        # orig_counts = count_passing_locations(self.original_data)
+        # gene_counts = count_passing_locations(self.generated_data)
+        # plot_density(orig_counts, self.n_locations, "./test/orig.png")
+        # plot_density(gene_counts, self.n_locations, "./test/gene.png")
 
-    def test_test(self):
-        orig_counts = count_passing_locations(self.original_data)
-        gene_counts = count_passing_locations(self.generated_data)
-        plot_density(orig_counts, self.n_locations, "./test/orig.png")
-        plot_density(gene_counts, self.n_locations, "./test/gene.png")
+        # divergence = compute_divergence(orig_counts, len(self.original_data), gene_counts, len(self.generated_data), 32*32, positive=True)
+        # print("positive", divergence)
+        # divergence = compute_divergence(orig_counts, len(self.original_data), gene_counts, len(self.generated_data), 32*32, positive=False)
+        # print("kl", divergence)
+        # divergence = compute_divergence(orig_counts, sum(orig_counts.values()), gene_counts, sum(gene_counts.values()), 32*32, axis=1)
+        # print("js", divergence)
+        dataset = "chengdu"
+        traj_path = f"/data/results/chengdu/10000/MTNet/samples_1.txt"
+        time_traj_path = f"/data/results/chengdu/10000/MTNet/samples_t_1.txt"
+        n_bins = 30
 
-        divergence = compute_divergence(orig_counts, len(self.original_data), gene_counts, len(self.generated_data), 32*32, positive=True)
-        print("positive", divergence)
-        divergence = compute_divergence(orig_counts, len(self.original_data), gene_counts, len(self.generated_data), 32*32, positive=False)
-        print("kl", divergence)
-        divergence = compute_divergence(orig_counts, sum(orig_counts.values()), gene_counts, sum(gene_counts.values()), 32*32, axis=1)
-        print("js", divergence)
+        data_path = pathlib.Path("/data/chengdu/10000/200_10_bin30_seed0/training_data.csv").parent
+        route_data_path = pathlib.Path("/data/chengdu/10000/0_0_bin30_seed0/training_data.csv").parent
+
+        logger = set_logger(__name__, "./test/test.log")
+
+        generator = evaluation.MTNetGeneratorMock(traj_path, time_traj_path, dataset, n_bins)
+        dataset = construct_dataset(data_path, route_data_path, 5, "chengdu")
+        evaluation.compute_auxiliary_information(dataset, "./test/data/a", logger)
+        args = evaluation.set_args()
+        args.route_generator = True
+        args.save_dir = "./test/data"
+        results = evaluation.run(generator, dataset, args)
+        print(results)
+
 
 
 class EvaluationPrivTraceTestCase(unittest.TestCase):

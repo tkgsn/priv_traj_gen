@@ -83,6 +83,31 @@ def make_stay_trajectory(trajectories, time_threshold, location_threshold, start
     return time_trajectories, stay_trajectories
 
 
+def compless(state_trajectory, time_trajectory, cost=False):
+    # compless time trajectory according to state trajectory
+    complessed_time_trajectory = []
+    j = 0
+    for i, time in enumerate(time_trajectory[:len(state_trajectory)]):
+        if i != j:
+            continue   
+        target_state = state_trajectory[i]
+        # find the max length of the same states
+        for j in range(i+1, len(state_trajectory)+1):
+            if j == len(state_trajectory):
+                break
+            if (state_trajectory[j] != target_state):
+                break
+        if cost:
+            complessed_time_trajectory.append(sum(time_trajectory[i:j]))
+        else:
+            complessed_time_trajectory.append((time[0],time_trajectory[j-1][1]))
+    # print("before", state_trajectory)
+    # remove consecutive same states
+    state_trajectory = [state_trajectory[0]] + [state_trajectory[i] for i in range(1, len(state_trajectory)) if state_trajectory[i] != state_trajectory[i-1]]
+    # print("after", state_trajectory)
+    return state_trajectory, complessed_time_trajectory
+
+
 def make_complessed_dataset(time_trajectories, trajectories, grid):
     dataset = []
     times = []
@@ -101,23 +126,8 @@ def make_complessed_dataset(time_trajectories, trajectories, grid):
             print(state_trajectory)
             continue
 
-        # compless time trajectory according to state trajectory
-        complessed_time_trajectory = []
-        j = 0
-        for i, time in enumerate(time_trajectory):
-            if i != j:
-                continue   
-            target_state = state_trajectory[i]
-            # find the max length of the same states
-            for j in range(i+1, len(state_trajectory)+1):
-                if j == len(state_trajectory):
-                    break
-                if (state_trajectory[j] != target_state):
-                    break
-            complessed_time_trajectory.append((time[0],time_trajectory[j-1][1]))
-        
-        # remove consecutive same states
-        state_trajectory = [state_trajectory[0]] + [state_trajectory[i] for i in range(1, len(state_trajectory)) if state_trajectory[i] != state_trajectory[i-1]]
+        state_trajectory, complessed_time_trajectory = compless(state_trajectory, time_trajectory)
+
         dataset.append(state_trajectory)
         times.append(complessed_time_trajectory)
 
@@ -178,7 +188,7 @@ def run(training_data_dir, lat_range, lon_range, n_bins, time_threshold, locatio
 
     logger.info(f"saving setting to {training_data_dir}/params.json")
     with open(training_data_dir / "params.json", "w") as f:
-        json.dump({"n_locations": (n_bins+2)**2, "n_bins": n_bins}, f)
+        json.dump({"n_locations": (n_bins+2)**2, "n_bins": n_bins, "seed": args.seed}, f)
         
     training_data_path = training_data_dir / "training_data.csv"
     if not training_data_path.exists():
