@@ -588,3 +588,13 @@ def send(path):
     print('scp', source_file_path, destination_file_path)
     result = subprocess.run(['ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"mkdir -p {path.parent}"])
     result = subprocess.run(['scp', '-o', 'StrictHostKeyChecking=no', source_file_path, destination_file_path])
+
+def get(path):
+
+    source_file_path = f'evaluation-server:{path}'
+    destination_file_path = path.parent
+
+    print('ssh', 'evaluation-server', f"'mkdir -p {path.parent}'")
+    print('scp', source_file_path, destination_file_path)
+    result = subprocess.run(['ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"mkdir -p {path.parent}"])
+    result = subprocess.run(['scp', '-o', 'StrictHostKeyChecking=no', source_file_path, destination_file_path])

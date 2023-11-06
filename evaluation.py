@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import argparse
 
-from my_utils import construct_default_quadtree, noise_normalize, save, plot_density, get_datadir, set_logger
+from my_utils import construct_default_quadtree, noise_normalize, save, plot_density, get_datadir, set_logger, get, send
 from collections import Counter
 import numpy as np
 import scipy
@@ -716,9 +716,13 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_dir', type=str)
+    parser.add_argument('--server', action="store_true")
     args = parser.parse_args()
 
     logger = set_logger(__name__, "./log.log")
+
+    if args.server:
+        get(args.model_dir)
 
     model_dir = pathlib.Path(args.model_dir)
     with open(model_dir / "params.json", "r") as f:
@@ -726,7 +730,14 @@ if __name__ == "__main__":
     (model_dir / "imgs").mkdir(exist_ok=True)
 
     data_path = get_datadir() / training_setting["dataset"] / training_setting["data_name"] / training_setting["training_data_name"]
-    route_data_path = get_datadir() / training_setting["dataset"] / training_setting["data_name"] / training_setting["route_data_name"]
+
+    route_data_name = f"0_0_bin{training_setting['n_bins']}_seed{training_setting['seed']}"
+    route_data_path = get_datadir() / training_setting["dataset"] / training_setting["data_name"] / route_data_name
+
+    if args.server:
+        get(data_path)
+        get(route_data_path)
+        get(get_datadir() / training_setting["dataset"] / "pair_to_route" / f"{training_setting['n_bins']}" / "paths.db")
 
     dataset = construct_dataset(data_path, route_data_path, training_setting["n_split"], training_setting["dataset"])
 
@@ -753,4 +764,4 @@ if __name__ == "__main__":
         results = run(generator, dataset, args)
         with open(model_dir / f"evaluated_{model_path.stem}.json", "w") as f:
             json.dump(results, f)
-        print(results)
+        send(model_dir / f"evaluated_{model_path.stem}.json")
