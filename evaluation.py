@@ -744,6 +744,7 @@ if __name__ == "__main__":
     if args.server:
         get(route_data_path, parent=True)
         get(get_datadir() / training_setting["dataset"] / "pair_to_route" / str(n_bins) / "paths.db")
+        get(get_datadir() / training_setting["dataset"] / f"distance_matrix_bin{n_bins}.npy")
 
     dataset = construct_dataset(data_path, route_data_path, training_setting["n_split"], training_setting["dataset"])
 
