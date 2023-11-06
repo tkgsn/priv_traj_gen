@@ -2,6 +2,7 @@ FROM python:3.8-bullseye
   
 RUN apt-get update && apt-get install -y --no-install-recommends \
     openssh-client \
+    jq \
  && rm -rf /var/lib/apt/lists/*
 
 RUN git clone https://github.com/tkgsn/priv_traj_gen.git
@@ -30,3 +31,5 @@ ENV DP True
 ENV MULTI_TASK True
 
 RUN chmod 600 /root/.ssh/id_rsa
+
+CMD ["/bin/bash", "train.sh"]
