@@ -24,6 +24,8 @@ training_data_name=${location_threshold}_${time_threshold}_bin${n_bins}_seed${se
 
 # get data_directory from config.json
 data_dir=$(jq -r '.data_dir' config.json)
+
+mkdir -p ${data_dir}/${dataset}/${data_name}
 scp -r -o StrictHostKeyChecking=no evaluation-server:${data_dir}/${dataset}/${data_name}/${training_data_name} ${data_dir}/${dataset}/${data_name}
 
 
