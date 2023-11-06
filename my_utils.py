@@ -593,10 +593,9 @@ def get(path, parent=False):
 
     source_file_path = f'evaluation-server:{path}'
     destination_file_path = pathlib.Path(path).parent
+    destination_file_path.mkdir(parents=True, exist_ok=True)
 
-    print('ssh', 'evaluation-server', f"'mkdir -p {destination_file_path}'")
     print('scp', source_file_path, destination_file_path)
-    result = subprocess.run(['ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"mkdir -p {destination_file_path}"])
     if parent:
         print('scp', "-r", source_file_path, destination_file_path)
         result = subprocess.run(['scp', '-r', '-o', 'StrictHostKeyChecking=no', source_file_path, destination_file_path])
