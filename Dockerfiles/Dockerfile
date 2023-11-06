@@ -7,8 +7,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN git clone https://github.com/tkgsn/priv_traj_gen.git
 
 WORKDIR /priv_traj_gen
-
-COPY requirements.txt /priv_traj_gen
 RUN pip3 install --no-cache-dir -r requirements.txt
 
 # 
