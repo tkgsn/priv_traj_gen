@@ -1,0 +1,24 @@
+# This is the dockerfile to build a preparation and evaluation server
+# The training data is made by this preparation server
+# A GPU server with publick key in id_rsa.pub downloads the training data and trains the model and sends the models to this server
+# This server evaluates the models and sends the results to the GPU server
+
+# Base image
+FROM python:3.8-slim-bullseye
+
+# install requrired packages
+RUN apt-get update && apt-get install -y git openssh-client
+
+RUN git clone https://github.com/tkgsn/priv_traj_gen.git
+
+WORKDIR /root/priv_traj_gen
+
+RUN pip install -r requirements.txt
+
+COPY id_rsa /root/.ssh/id_rsa
+COPY id_rsa.pub /root/.ssh/id_rsa.pub
+COPY config /root/.ssh/config
+RUN chmod 600 /root/.ssh/id_rsa
+
+ENTRYPOINT ["/bin/bash", "evaluate.sh"]
+CMD ["model_dir"]
