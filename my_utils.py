@@ -589,7 +589,7 @@ def send(path):
     result = subprocess.run(['ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"mkdir -p {path.parent}"])
     result = subprocess.run(['scp', '-o', 'StrictHostKeyChecking=no', source_file_path, destination_file_path])
 
-def get(path):
+def get(path, parent=False):
 
     source_file_path = f'evaluation-server:{path}'
     destination_file_path = pathlib.Path(path).parent

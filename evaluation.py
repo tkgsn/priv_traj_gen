@@ -722,7 +722,7 @@ if __name__ == "__main__":
     logger = set_logger(__name__, "./log.log")
 
     if args.server:
-        get(args.model_dir)
+        get(args.model_dir, parent=True)
 
     model_dir = pathlib.Path(args.model_dir)
     with open(model_dir / "params.json", "r") as f:
