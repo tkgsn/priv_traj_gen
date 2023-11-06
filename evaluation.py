@@ -729,18 +729,20 @@ if __name__ == "__main__":
         training_setting = json.load(f)
     (model_dir / "imgs").mkdir(exist_ok=True)
 
-    # get the number after bin
-    n_bins = int(training_setting["training_data_name"].split("_")[2].split("n")[-1])
-    print(n_bins)
 
     data_path = get_datadir() / training_setting["dataset"] / training_setting["data_name"] / training_setting["training_data_name"]
+    if args.server:
+        get(data_path, parent=True)
+
+    with open(data_path / "params.json", "r") as f:
+        data_setting = json.load(f)
+    n_bins = data_setting["n_bins"]
 
     route_data_name = f"0_0_bin{n_bins}_seed{training_setting['seed']}"
     route_data_path = get_datadir() / training_setting["dataset"] / training_setting["data_name"] / route_data_name
 
     if args.server:
-        get(data_path)
-        get(route_data_path)
+        get(route_data_path, parent=True)
         get(get_datadir() / training_setting["dataset"] / "pair_to_route" / str(n_bins) / "paths.db")
 
     dataset = construct_dataset(data_path, route_data_path, training_setting["n_split"], training_setting["dataset"])
