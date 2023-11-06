@@ -178,7 +178,7 @@ def run(training_data_dir, lat_range, lon_range, n_bins, time_threshold, locatio
 
     logger.info(f"saving setting to {training_data_dir}/params.json")
     with open(training_data_dir / "params.json", "w") as f:
-        json.dump({"n_locations": (n_bins+2)**2}, f)
+        json.dump({"n_locations": (n_bins+2)**2, "n_bins": n_bins}, f)
         
     training_data_path = training_data_dir / "training_data.csv"
     if not training_data_path.exists():

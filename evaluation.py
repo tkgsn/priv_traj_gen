@@ -736,7 +736,7 @@ if __name__ == "__main__":
 
     with open(data_path / "params.json", "r") as f:
         data_setting = json.load(f)
-    n_bins = data_setting["n_bins"]
+    n_bins = int(np.sqrt(data_setting["n_locations"]) -2)
 
     route_data_name = f"0_0_bin{n_bins}_seed{training_setting['seed']}"
     route_data_path = get_datadir() / training_setting["dataset"] / training_setting["data_name"] / route_data_name
