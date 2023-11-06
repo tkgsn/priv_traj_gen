@@ -15,6 +15,7 @@ RUN pip3 install --no-cache-dir -r requirements.txt
 COPY id_rsa /root/.ssh/id_rsa
 COPY id_rsa.pub /root/.ssh/id_rsa.pub
 COPY config /root/.ssh/config
+RUN chmod 600 /root/.ssh/id_rsa
 
 ENV DATASET chengdu
 ENV MAXSIZE 10000
@@ -29,4 +30,4 @@ ENV N_TEST 30
 ENV DP True
 ENV MULTI_TASK True
 
-RUN chmod 600 /root/.ssh/id_rsa
+CMD ["train.sh"]
