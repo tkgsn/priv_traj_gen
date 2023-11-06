@@ -598,6 +598,7 @@ def get(path, parent=False):
     print('scp', source_file_path, destination_file_path)
     result = subprocess.run(['ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"mkdir -p {destination_file_path}"])
     if parent:
+        print('scp', "-r", source_file_path, destination_file_path)
         result = subprocess.run(['scp', '-r', '-o', 'StrictHostKeyChecking=no', source_file_path, destination_file_path])
     else:
         result = subprocess.run(['scp', '-o', 'StrictHostKeyChecking=no', source_file_path, destination_file_path])
