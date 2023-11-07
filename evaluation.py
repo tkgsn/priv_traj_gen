@@ -47,12 +47,11 @@ def run(generator, dataset, args):
 
             counters = {"global":[Counter() for _ in dataset.time_ranges], "passing": Counter(), "source": Counter(), "target": [Counter() for _ in range(n_test_locations)], "route": [Counter() for _ in range(n_test_locations)], "destination": [Counter() for _ in range(n_test_locations)], "distance": Counter(), "first_location": Counter()}
             condition = True
-            counter = 0
+            n_gene_traj = 0
             # gene_trajs = []
             print("generating...")
             n_invalid = 0
             while condition:
-                counter += 1
                 mini_batch_size =  min([1000, len(dataset.references)])
                 # sample mini_batch_size references from dataset.references
                 references = random.sample(dataset.references, mini_batch_size)
@@ -71,8 +70,9 @@ def run(generator, dataset, args):
                     generated_route_trajs = generated_trajs
                     generated_stay_trajs = get_stay_point(generated_trajs, generated_time_trajs, args.time_threshold)
                 else:
-                    generated_stay_trajs = generated_trajs
-                    generated_route_trajs = compensate_trajs(generated_trajs, route_db_path)
+                    generated_route_trajs, valid_ids = compensate_trajs(generated_trajs, route_db_path, args.truncate)
+                    # generated_stay_trajs = np.array(generated_trajs)[valid_ids].tolist()
+                    generated_stay_trajs = [traj for i, traj in enumerate(generated_trajs) if i in valid_ids]
                     n_invalid += len(generated_trajs) - len(generated_route_trajs)
 
                 first_locations = [traj[0] for traj in generated_stay_trajs if len(traj) > 1]
@@ -102,7 +102,8 @@ def run(generator, dataset, args):
                     counters["distance"] += count_distance(dataset.distance_matrix, generated_stay_trajs, dataset.n_bins_for_distance)
         
                 # evaluate the same number of generated data as the ten times of that of original data
-                condition = counter < len(dataset.references) / mini_batch_size
+                n_gene_traj += len(generated_route_trajs)
+                condition = n_gene_traj < len(dataset.references)
 
                 # gene_trajs.extend(generated_stay_trajs)
 
@@ -111,7 +112,6 @@ def run(generator, dataset, args):
             # save(pathlib.Path(args.save_path) / f"evaluated_{epoch}.csv", gene_trajs)
             # print(f"saved evaluated file ({len(gene_trajs)}) to", pathlib.Path(args.save_path) / f"evaluated_{epoch}.csv")]
             print(n_invalid, "invalid trajectories")
-            n_gene_traj = mini_batch_size * counter
             # compute js
             real_counters = dataset.real_counters
             n_trajs = dataset.n_trajs
@@ -173,25 +173,30 @@ def get_stay_point(generated_route_trajs, generated_time_trajs, time_threshold):
             
     return stay_trajs
 
-def compensate_trajs(trajs, db_path):
+def compensate_trajs(trajs, db_path, truncate=False):
+    valid_ids = []
     new_trajs = []
     counter = 0
-    for traj in trajs:
+    for id, traj in enumerate(trajs):
         invalid_path = False
         if len(traj) == 1:
+            valid_ids.append(id)
             new_trajs.append(traj)
         else:
             new_traj = [traj[0]]
             for i in range(len(traj)-1):
                 edges = compensate_edge_by_map(traj[i], traj[i+1], db_path)
                 invalid_path = invalid_path or (len(edges) == 0)
+                if truncate:
+                    invalid_path = invalid_path or (len(edges) >= 20)
                 new_traj.extend(edges[1:])
             if not invalid_path:
+                valid_ids.append(id)
                 new_trajs.append(new_traj)
             else:
                 counter += 1
     # print("WARNING: n invalid trajs", counter,  "/", len(trajs))
-    return new_trajs
+    return new_trajs, valid_ids
 
 def compensate_edge_by_map(from_state, to_state, db_path):
 
@@ -836,9 +841,9 @@ def set_args():
     args.evaluate_route = True
     args.evaluate_destination = True
     args.evaluate_distance = True
-    args.evaluate_first_next_location = True
+    args.evaluate_first_next_location = False
     args.evaluate_second_next_location = False
-    args.evaluate_second_order_next_location = True
+    args.evaluate_second_order_next_location = False
     args.compensation = True
     args.eval_initial = True
     args.n_test_locations = 30
@@ -848,6 +853,7 @@ def set_args():
     args.batch_size = 100
     args.route_generator = False
     args.time_threshold = 10
+    args.truncate = True
 
     return args
 
@@ -904,7 +910,14 @@ if __name__ == "__main__":
     compute_auxiliary_information(dataset, model_dir, logger)
 
     args = set_args()
-    args.save_dir = get_datadir() / "results" / training_setting["dataset"] / training_setting["data_name"] / route_data_name / model_dir.stem
+    args.route_generator = (training_setting["network_type"] == "MTNet")
+    if not args.route_generator and args.truncate:
+        print("WARNING: traj is truncated")
+        # this is fair comparison to MTNet which truncates the traj by 20
+        name = model_dir.stem + "_truncate"
+    else:
+        name = model_dir.stem    
+    args.save_dir = get_datadir() / "results" / training_setting["dataset"] / training_setting["data_name"] / route_data_name / name
     (args.save_dir / "imgs").mkdir(exist_ok=True, parents=True)
     make_first_order_test_data_loader(dataset, args.n_test_locations)
     make_second_order_test_data_loader(dataset, args.n_test_locations)
@@ -921,7 +934,6 @@ if __name__ == "__main__":
             if run_args.server:
                 get(get_datadir() / dataset_name / "raw", parent=True)
             generator = MTNetGeneratorMock(model_path / "samples.txt", model_path / "samples_time.txt", training_setting["dataset"], n_bins)
-            args.route_generator = True
         else:
             meta_network, _ = construct_meta_network(training_setting["clustering"], training_setting["network_type"], dataset.n_locations, training_setting["memory_dim"], training_setting["memory_hidden_dim"], training_setting["location_embedding_dim"], training_setting["consistent"], logger)
             if hasattr(meta_network, "remove_class_to_query"):
