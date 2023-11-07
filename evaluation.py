@@ -893,7 +893,7 @@ if __name__ == "__main__":
     compute_auxiliary_information(dataset, model_dir, logger)
 
     args = set_args()
-    args.save_dir = model_dir
+    args.save_dir = get_datadir() / training_setting["dataset"] / training_setting["data_name"] / route_data_name / model_dir.stem
     make_first_order_test_data_loader(dataset, args.n_test_locations)
     make_second_order_test_data_loader(dataset, args.n_test_locations)
 
