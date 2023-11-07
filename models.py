@@ -724,3 +724,5 @@ class GRUQuadTreeNetwork(nn.Module):
 def guide_to_model(type):
     if type == "fulllinear_quadtree":
         return FullLinearQuadTreeNetwork, MetaGRUNet
+    elif type == "meta_network":
+        return MetaNetwork, MetaGRUNet

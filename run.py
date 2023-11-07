@@ -233,8 +233,7 @@ def construct_meta_network(clustering_type, network_type, n_locations, memory_di
     else:
 
         if network_type == "meta_network":
-            meta_network = MetaNetwork(args.memory_hidden_dim, args.memory_dim, dataset.n_locations, n_classes, "relu").cuda(args.cuda_number)
-            args.train_all_layers = False
+            meta_network = meta_network_class(memory_hidden_dim, memory_dim, n_locations, n_classes, "relu")
         elif network_type == "fulllinear_quadtree":
             meta_network = meta_network_class(n_locations, memory_dim, memory_hidden_dim, location_embedding_dim, privtree, "relu", is_consistent=consistent)
         compute_num_params(meta_network, logger)
@@ -382,6 +381,8 @@ if __name__ == "__main__":
     if args.consistent and not args.train_all_layers:
         args.consistent = False
         logger.info("!!!!!! consistent is set as False because train_all_layers is False")
+    if args.network_type != "fulllinear_quadtree":
+        args.train_all_layers = False
 
     logger.info(f"load training data from {data_path / 'training_data.csv'}")
     logger.info(f"load time data from {data_path / 'training_data_time.csv'}")
