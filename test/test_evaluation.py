@@ -375,13 +375,16 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertNotEqual(divergence, float("inf"))
         print("js", divergence)
 
-    # def test_compute_divergence(self):
-    #     count1 = Counter([2,3,4,3,4,4])
-    #     count2 = Counter([0,1,2,3,4,3,4,4])
-    #     divergence = compute_divergence(count1, 3, count2, 3, 5, positive=True)
-    #     self.assertAlmostEqual(divergence, 0.0) # due to the positive flag
-    #     divergence = compute_divergence(count1, 3, count2, 3, 5, positive=False)
-    #     self.assertNotEqual(divergence, 0.0) # due to the positive flag
+    def test_compute_divergence(self):
+        count1 = Counter([2,3,4,3,4,4])
+        count2 = Counter([0,1,2,3,4,3,4,4])
+        divergence = compute_divergence(count1, 3, count2, 3, 5, positive=True)
+        self.assertAlmostEqual(divergence, 0.0) # due to the positive flag
+        divergence = compute_divergence(count1, 3, count2, 3, 5, positive=False)
+        print(divergence, "kl")
+        self.assertNotEqual(divergence, 0.0) # due to the positive flag
+        divergence = compute_divergence(count1, 3, count2, 3, 5, positive=False, kl=False)
+        print(divergence, "a")
 
     # def test_evaluate_next_location_on_test_dataset(self):
 

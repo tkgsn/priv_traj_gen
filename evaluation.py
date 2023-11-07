@@ -128,13 +128,19 @@ def run(generator, dataset, args):
                 # compute kl divergence for a dimension
                 if key in ["target", "destination", "route"]:
                     results[f"{key}_kls_eachdim"] = [compute_divergence(real_counter, n_traj, counter_, counters["first_location"][location], n_vocabs) for counter_, real_counter, n_traj, location in zip(counter, real_counters[key], n_trajs[key], dataset.top_base_locations)]
+                    results[f"{key}_jss_eachdim"] = [compute_divergence(real_counter, n_traj, counter_, counters["first_location"][location], n_vocabs, kl=False) for counter_, real_counter, n_traj, location in zip(counter, real_counters[key], n_trajs[key], dataset.top_base_locations)]
                     results[f"{key}_kls_positivedim"] = [compute_divergence(real_counter, n_traj, counter_, counters["first_location"][location], n_vocabs, positive=True) for counter_, real_counter, n_traj, location in zip(counter, real_counters[key], n_trajs[key], dataset.top_base_locations)]
+                    results[f"{key}_jss_positivedim"] = [compute_divergence(real_counter, n_traj, counter_, counters["first_location"][location], n_vocabs, positive=True, kl=False) for counter_, real_counter, n_traj, location in zip(counter, real_counters[key], n_trajs[key], dataset.top_base_locations)]
                 elif key == "global":
                     results[f"{key}_kls_eachdim"] = [compute_divergence(real_counter, n_traj, counter_, n_gene_traj, n_vocabs) for counter_, real_counter, n_traj in zip(counter, real_counters[key], n_trajs[key])]
                     results[f"{key}_kls_positivedim"] = [compute_divergence(real_counter, n_traj, counter_, n_gene_traj, n_vocabs, positive=True) for counter_, real_counter, n_traj in zip(counter, real_counters[key], n_trajs[key])]
+                    results[f"{key}_jss_eachdim"] = [compute_divergence(real_counter, n_traj, counter_, n_gene_traj, n_vocabs, kl=False) for counter_, real_counter, n_traj in zip(counter, real_counters[key], n_trajs[key])]
+                    results[f"{key}_jss_positivedim"] = [compute_divergence(real_counter, n_traj, counter_, n_gene_traj, n_vocabs, positive=True, kl=False) for counter_, real_counter, n_traj in zip(counter, real_counters[key], n_trajs[key])]
                 else:
                     results[f"{key}_kl_eachdim"] = compute_divergence(real_counters[key], n_trajs[key], counter, n_gene_traj, n_vocabs)
                     results[f"{key}_kl_positivedim"] = compute_divergence(real_counters[key], n_trajs[key], counter, n_gene_traj, n_vocabs, positive=True)
+                    results[f"{key}_js_eachdim"] = compute_divergence(real_counters[key], n_trajs[key], counter, n_gene_traj, n_vocabs, kl=False)
+                    results[f"{key}_js_positivedim"] = compute_divergence(real_counters[key], n_trajs[key], counter, n_gene_traj, n_vocabs, positive=True, kl=False)
 
                 # compute js divergence
                 if key in ["target", "destination", "route"]:
@@ -207,7 +213,7 @@ def compensate_edge_by_map(from_state, to_state, db_path):
 
 
 
-def compute_divergence(real_count, n_real_traj, inferred_count, n_gene_traj, n_vocabs, axis=0, positive=False):
+def compute_divergence(real_count, n_real_traj, inferred_count, n_gene_traj, n_vocabs, axis=0, positive=False, kl=True):
     if n_real_traj == 0:
         print("WARNING: n_real_traj is zero")
         raise ValueError("no trajectory is evaluated")
@@ -255,8 +261,11 @@ def compute_divergence(real_count, n_real_traj, inferred_count, n_gene_traj, n_v
                     print(n_real_traj, real_count)
                     print(n_gene_traj, inferred_count)
                     raise ValueError("inf")
-        
-        return scipy.stats.entropy(real_distribution, inferred_distribution, axis=0).sum()
+
+        if kl:
+            return scipy.stats.entropy(real_distribution, inferred_distribution, axis=0).sum()
+        else:
+            return jensenshannon(real_distribution, inferred_distribution, axis=0).sum()
     else:
         # real_count and inferred_count will be the probability distributions
         assert n_real_traj == sum(real_count.values()), "n_real_traj must be equal to sum(real_count.values())"
@@ -894,6 +903,7 @@ if __name__ == "__main__":
 
     args = set_args()
     args.save_dir = get_datadir() / training_setting["dataset"] / training_setting["data_name"] / route_data_name / model_dir.stem
+    (args.save_dir / "imgs").mkdir(exist_ok=True, parents=True)
     make_first_order_test_data_loader(dataset, args.n_test_locations)
     make_second_order_test_data_loader(dataset, args.n_test_locations)
 
