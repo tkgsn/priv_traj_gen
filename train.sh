@@ -1,5 +1,7 @@
 #!/bin/bash
 
+
+apt install jq
 # source ./enviornment
 
 dataset=$DATASET
