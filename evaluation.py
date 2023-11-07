@@ -929,8 +929,8 @@ if __name__ == "__main__":
             generator.load_state_dict(torch.load(model_path))
 
         results = run(generator, dataset, args)
-        with open(model_dir / f"evaluated_{model_path.stem}.json", "w") as f:
+        with open(args.save_dir / f"evaluated_{model_path.stem}.json", "w") as f:
             json.dump(results, f)
         if run_args.server:
-            send(model_dir / f"evaluated_{model_path.stem}.json")
+            send(args.save_dir / f"evaluated_{model_path.stem}.json")
         print(results)
