@@ -871,6 +871,8 @@ if __name__ == "__main__":
     if run_args.server:
         get(run_args.model_dir, parent=True)
 
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
     model_dir = pathlib.Path(run_args.model_dir)
     with open(model_dir / "params.json", "r") as f:
         training_setting = json.load(f)
@@ -926,7 +928,7 @@ if __name__ == "__main__":
                 meta_network.remove_class_to_query()
             generator, _ = construct_generator(dataset.n_locations, meta_network, training_setting["network_type"], training_setting["location_embedding_dim"], training_setting["n_split"], len(dataset.label_to_reference), training_setting["hidden_dim"], dataset.reference_to_label, logger)
             logger.info(f"evaluate {model_path}")
-            generator.load_state_dict(torch.load(model_path))
+            generator.load_state_dict(torch.load(model_path, map_location=device))
 
         results = run(generator, dataset, args)
         with open(args.save_dir / f"evaluated_{model_path.stem}.json", "w") as f:
