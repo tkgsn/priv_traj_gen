@@ -4,7 +4,7 @@ import sys
 import geopandas as gpd
 
 # sys.path.append("../../priv_traj_gen")
-from my_utils import load, load_latlon_range, get
+from my_utils import load, load_latlon_range, get, send
 from grid import Grid
 from data_pre_processing import check_in_range
 
@@ -131,6 +131,7 @@ def run(dataset, data_path, save_dir):
 
     # make directory
     make_mtnet_training_data(save_dir, save_dir)
+    send(save_dir, parent=True)
 
 
 if __name__ == "__main__":

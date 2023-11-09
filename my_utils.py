@@ -583,15 +583,20 @@ def load(save_path, size=0, seed=0):
             trajectories.append(trajectory)
     return trajectories
     
-def send(path):
+def send(path, parent=False):
 
     source_file_path = path
     destination_file_path = f'evaluation-server:{path.parent}'
 
     print('ssh', 'evaluation-server', f"'mkdir -p {path.parent}'")
-    print('scp', source_file_path, destination_file_path)
-    result = subprocess.run(['ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"mkdir -p {path.parent}"])
-    result = subprocess.run(['scp', '-o', 'StrictHostKeyChecking=no', source_file_path, destination_file_path])
+    if parent:
+        print('scp', "-r", source_file_path, destination_file_path)
+        result = subprocess.run(['ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"mkdir -p {path.parent}"])
+        result = subprocess.run(['scp', '-r', '-o', 'StrictHostKeyChecking=no', source_file_path, destination_file_path])
+    else:
+        print('scp', source_file_path, destination_file_path)
+        result = subprocess.run(['ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"mkdir -p {path.parent}"])
+        result = subprocess.run(['scp', '-o', 'StrictHostKeyChecking=no', source_file_path, destination_file_path])
 
 def get(path, parent=False):
 
@@ -599,11 +604,11 @@ def get(path, parent=False):
     destination_file_path = pathlib.Path(path).parent
     destination_file_path.mkdir(parents=True, exist_ok=True)
 
-    print('scp', source_file_path, destination_file_path)
     if parent:
         print('scp', "-r", source_file_path, destination_file_path)
         result = subprocess.run(['scp', '-r', '-o', 'StrictHostKeyChecking=no', source_file_path, destination_file_path])
     else:
+        print('scp', source_file_path, destination_file_path)
         result = subprocess.run(['scp', '-o', 'StrictHostKeyChecking=no', source_file_path, destination_file_path])
 
 

@@ -1,26 +1,6 @@
 #!/bin/bash
 
-# apt-get update
-# apt-get install -y jq unzip
-# # apt install -y python2
-# # curl https://bootstrap.pypa.io/pip/2.7/get-pip.py -o get-pip.py
-# # python2 get-pip.py
-
-# apt-get install -y software-properties-common
-# add-apt-repository -y ppa:ubuntugis/ppa
-# apt-get -q update
-# apt-get -y install libboost-dev libboost-serialization-dev gdal-bin libgdal-dev make cmake libbz2-dev libexpat1-dev swig python-dev build-essential
-
-# git clone https://github.com/cyang-kth/fmm.git
-# cd fmm
-
-# mkdir build
-# cd build
-# cmake ..
-# make -j4
-# make install
-
-# # get the data directory from "data_dir" key of config.json
+# get the data directory from "data_dir" key of config.json
 data_dir=$(jq -r '.data_dir' config.json)
 
 dataset=geolife_test_mm
