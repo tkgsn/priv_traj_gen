@@ -352,8 +352,12 @@ def make_raw_data_geolife(test=False):
     # the format of a record: lat, lon, unused, altitude, days since dec. 30 1899, date, time
     # https://heremaps.github.io/pptk/tutorials/viewer/geolife.html
 
+    if test:
+        data_name = "geolife_test"
+    else:
+        data_name = "geolife"
     # define the directory path
-    dir_path = '/data/geolife/Data/{:03}/Trajectory/'
+    dir_path = f'/data/{data_name}/Data/{:03}/Trajectory/'
     plt_files = []
 
     # loop through all the directories and files
