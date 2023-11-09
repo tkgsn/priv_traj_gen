@@ -1,11 +1,11 @@
 #!/bin/bash
 
+# source ./enviornment
 
-apt install -y jq
-source ./enviornment
-
+"""
+VARIABLES
+"""
 dataset=$DATASET
-# {chengdu, geolife}
 max_size=$MAXSIZE
 seed=$SEED
 meta_n_iter=$META_N_ITER
@@ -16,9 +16,10 @@ time_threshold=$T_THRESH
 physical_batch_size=$P_BATCH
 n_test_locations=$N_TEST
 is_dp=$DP
-# False or True
 train_all_layers=$MULTI_TASK
-# False or True
+"""
+VARIABLES END
+"""
 
 
 data_name=$max_size

@@ -1,6 +1,14 @@
 #!/bin/bash
 
-dataset=geolife_test
+# source ./enviornment
+
+"""
+VARIABLES
+"""
+dataset=$DATASET
+"""
+VARIABLES END
+"""
 
 
 # get the data directory from "data_dir" key of config.json

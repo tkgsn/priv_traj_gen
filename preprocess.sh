@@ -1,14 +1,28 @@
 #!/bin/bash
 
+# source ./enviornment
+
+"""
+VARIABLES
+"""
+# seed=0
+# max_size=0
+# n_bins=30
+# time_threshold=10
+# location_threshold=200
+seed=$SEED
+max_size=$MAX_SIZE
+n_bins=$N_BINS
+time_threshold=$TIME_THRESHOLD
+location_threshold=$LOCATION_THRESHOLD
+"""
+VARIABLES END
+"""
+
 # get the data directory from "data_dir" key of config.json
 data_dir=$(jq -r '.data_dir' config.json)
 
 dataset=geolife_test_mm
-seed=0
-max_size=0
-n_bins=30
-time_threshold=10
-location_threshold=200
 data_name=${max_size}
 
 stay_data_name=${location_threshold}_${time_threshold}_bin${n_bins}_seed${seed}
