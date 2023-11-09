@@ -357,7 +357,7 @@ def make_raw_data_geolife(test=False):
     else:
         data_name = "geolife"
     # define the directory path
-    dir_path = f'/data/{data_name}/Data/{:03}/Trajectory/'
+    dir_path = os.path.join(f"/data/{data_name}/Data/", "{:03}/Trajectory/")
     plt_files = []
 
     # loop through all the directories and files
