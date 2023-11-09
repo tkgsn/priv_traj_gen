@@ -540,6 +540,7 @@ def save(save_path, trajectories, option="w"):
             # remove last ","
             f.seek(f.tell()-1)
             f.write("\n")
+    send(save_path)
 
 
 def compute_num_params(model, logger):
@@ -550,8 +551,11 @@ def compute_num_params(model, logger):
 
     return num_params
 
-def load(save_path, size=0):
+def load(save_path, size=0, seed=0):
+    get(save_path)
     if size != 0:
+        # set seed
+        np.random.seed(seed)
         # count the number of lines in the text
         with open(save_path, "r") as f:
             for i, _ in enumerate(f):
@@ -601,3 +605,16 @@ def get(path, parent=False):
         result = subprocess.run(['scp', '-r', '-o', 'StrictHostKeyChecking=no', source_file_path, destination_file_path])
     else:
         result = subprocess.run(['scp', '-o', 'StrictHostKeyChecking=no', source_file_path, destination_file_path])
+
+
+def load_latlon_range(dataset):
+    if dataset.split("_")[-1] == "mm":
+        dataset = "_".join(dataset.split("_")[:-1])
+    # download graph
+    print("load dataset config from ./configs.json", )
+    with open("./config.json", "r") as f:
+        config = json.load(f)["latlon"][dataset]
+
+    lat_range = config["lat_range"]
+    lon_range = config["lon_range"]
+    return lat_range, lon_range

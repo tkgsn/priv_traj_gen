@@ -4,79 +4,95 @@ import pathlib
 import argparse
 import pandas as pd
 import numpy as np
-from my_utils import get_datadir, load, save, set_logger
+from my_utils import get_datadir, load, save, set_logger, load_latlon_range, send
 from grid import Grid
 import tqdm
 from bisect import bisect_left
 from geopy.distance import geodesic
 import make_pair_to_route
+import concurrent.futures
+import functools
+
 
 def compute_distance_matrix(state_to_latlon, n_locations):
-    # compute the distance matrix using geodestic distance
-    distance_matrix = np.zeros((n_locations, n_locations))
-    for i in tqdm.tqdm(range(n_locations)):
-        for j in range(i, n_locations):
-            distance_matrix[i, j] = geodesic(state_to_latlon(i), state_to_latlon(j)).meters
-            distance_matrix[j, i] = distance_matrix[i, j]
 
-    # for i in tqdm.tqdm(range(n_locations)):
-    #     for j in range(n_locations):
-    #         distance_matrix[i, j] = geodesic(state_to_latlon(i), state_to_latlon(j)).meters
+    partial_compute_distance = functools.partial(compute_distance_from_i, state_to_latlon=state_to_latlon, n_locations=n_locations)
+
+    distance_matrix = np.zeros((n_locations, n_locations))
+    with concurrent.futures.ProcessPoolExecutor() as executor:
+        futures = [executor.submit(partial_compute_distance, i) for i in range(n_locations)]
+        for future in tqdm.tqdm(concurrent.futures.as_completed(futures), total=len(futures)):
+            try:
+                state, distance_array = future.result()
+                distance_matrix[state, :] = distance_array
+            except Exception as exc:
+                print(f'Generated an exception: {exc}')
+
     return distance_matrix
+
+def compute_distance_from_i(state, state_to_latlon, n_locations):
+    distance_array = np.zeros(n_locations)
+    for i in range(n_locations):
+        distance_array[i] = geodesic(state_to_latlon[state], state_to_latlon[i]).meters
+    return state, distance_array
+
+def process_trajectory(trajectory, location_threshold, time_threshold, startend):
+    if startend:
+        trajectory = [trajectory[0], trajectory[-1]]
+    stay_trajectory = [(trajectory[0][1], trajectory[0][2])]
+    time_trajectory = [(trajectory[0][0], trajectory[0][0])]
+
+    start_index = 0
+    i = 0
+
+    while True:
+        # find the length of the stay
+        start_record = trajectory[start_index]
+        start_location = (start_record[1], start_record[2])
+        start_time = start_record[0]
+
+        if i == len(trajectory)-1:
+            time_trajectory.append((start_time, time))
+            stay_trajectory.append(target_location)
+            # print("finish", start_time, time, start_location)
+            break
+
+        for i in range(start_index+1, len(trajectory)):
+
+            target_location = trajectory[i]
+            time = float(target_location[0])
+            target_location = (target_location[1], target_location[2])
+            distance = geodesic(start_location, target_location).meters
+            if distance > location_threshold:
+                if time - start_time >= time_threshold:
+                    # print("stay", start_time, time, start_location)
+                    stay_trajectory.append(start_location)
+                    time_trajectory.append((start_time, time))
+
+                start_time = time
+                # print(trajectory[i])
+                start_index = i
+                # print("start", start_time, start_index, len(trajectory))
+                # print(time, i)
+
+                break
+    return stay_trajectory, time_trajectory
 
 
 def make_stay_trajectory(trajectories, time_threshold, location_threshold, startend=False):
 
     print(f"make stay-point trajectory with threshold {location_threshold}m and {time_threshold}min")
 
+    partial_process_trajectory = functools.partial(process_trajectory, location_threshold=location_threshold, time_threshold=time_threshold, startend=startend)
+
     stay_trajectories = []
     time_trajectories = []
-    for trajectory in tqdm.tqdm(trajectories):
 
-        if startend:
-            trajectory = [trajectory[0], trajectory[-1]]
-        stay_trajectory = [(trajectory[0][1], trajectory[0][2])]
-        time_trajectory = [(trajectory[0][0], trajectory[0][0])]
-
-        start_index = 0
-        i = 0
-
-        while True:
-            # find the length of the stay
-            start_record = trajectory[start_index]
-            start_location = (start_record[1], start_record[2])
-            start_time = start_record[0]
-
-            if i == len(trajectory)-1:
-                time_trajectory.append((start_time, time))
-                stay_trajectory.append(target_location)
-                # print("finish", start_time, time, start_location)
-                break
-
-            for i in range(start_index+1, len(trajectory)):
-
-                target_location = trajectory[i]
-                time = float(target_location[0])
-                target_location = (target_location[1], target_location[2])
-                distance = geodesic(start_location, target_location).meters
-                if distance > location_threshold:
-                    if time - start_time >= time_threshold:
-                        # print("stay", start_time, time, start_location)
-                        stay_trajectory.append(start_location)
-                        time_trajectory.append((start_time, time))
-
-                    start_time = time
-                    # print(trajectory[i])
-                    start_index = i
-                    # print("start", start_time, start_index, len(trajectory))
-                    # print(time, i)
-
-                    break
-        # print(stay_trajectory, time_trajectory)
-
+    with concurrent.futures.ProcessPoolExecutor() as executor:
+        results = list(tqdm.tqdm(executor.map(partial_process_trajectory, trajectories), total=len(trajectories)))
         
-        stay_trajectories.append(stay_trajectory)
-        time_trajectories.append(time_trajectory)
+    stay_trajectories, time_trajectories = zip(*results)
+
     
     if startend:
         time_trajectories = [[(i, i+1) for i in range(len(v))] for v in stay_trajectories]
@@ -151,34 +167,43 @@ def make_gps_data(training_data_dir, lat_range, lon_range, n_bins):
         gps = make_gps(lat_range, lon_range, n_bins)
         gps.to_csv(training_data_dir / f"gps.csv", header=None, index=None)
     gps = pd.read_csv(training_data_dir / f"gps.csv", header=None).values
+    send(training_data_dir / f"gps.csv")
     return gps
 
 def make_distance_data(training_data_dir, n_bins, gps, logger):
     # make distance matrix
     if not (training_data_dir.parent.parent / f"distance_matrix_bin{n_bins}.npy").exists():
         logger.info("make distance matrix")
-        def state_to_latlon(state):
-            return gps[state]
+        state_to_latlon = gps
         distance_matrix = compute_distance_matrix(state_to_latlon, (n_bins+2)**2)
         name = f'distance_matrix_bin{n_bins}.npy'
         logger.info(f"save distance matrix to {training_data_dir.parent.parent / name}")
         np.save(training_data_dir.parent.parent/f"distance_matrix_bin{n_bins}.npy",distance_matrix)
     else:
         logger.info("distance_matrix already exists")
+    send(training_data_dir.parent.parent / f"distance_matrix_bin{n_bins}.npy")
 
-def make_db(training_data_dir, lat_range, lon_range, n_bins, logger):
-    db_save_dir = training_data_dir.parent.parent / "pair_to_route" / f"{n_bins}"
+def make_db(dataset, lat_range, lon_range, n_bins, logger):
+
+    if dataset.split("_")[-1] == "mm":
+        original_dataset = "_".join(dataset.split("_")[:-1])
+    else:
+        original_dataset = dataset
+
+    db_save_dir = get_datadir() / dataset / "pair_to_route" / f"{n_bins}"
     db_save_dir.mkdir(exist_ok=True, parents=True)
     if not (db_save_dir / "paths.db").exists():
     # if True:
-        graph_data_dir = training_data_dir.parent.parent / "raw"
+        graph_data_dir = get_datadir() / original_dataset / "raw"
         logger.info(f"make pair_to_route to {db_save_dir}")
         make_pair_to_route.run(n_bins, graph_data_dir, lat_range, lon_range, db_save_dir)
     else:
         logger.info(f"pair_to_route already exists in {db_save_dir / 'paths.db'}")
+    
+    send(db_save_dir / "paths.db")
 
 
-def run(training_data_dir, lat_range, lon_range, n_bins, time_threshold, location_threshold, logger):
+def run(dataset_name, training_data_dir, lat_range, lon_range, n_bins, time_threshold, location_threshold, size, seed, logger):
     """
     training_data is POI_id (aka state) trajectory
     state is made by grid of n_bins, which means there are (n_bins+2)*(n_bins+2) states in lat_range and lon_range
@@ -193,9 +218,9 @@ def run(training_data_dir, lat_range, lon_range, n_bins, time_threshold, locatio
     training_data_path = training_data_dir / "training_data.csv"
     if not training_data_path.exists():
 
-        raw_data_path = training_data_dir.parent / f"raw_data_seed{args.seed}.csv"
+        raw_data_path = training_data_dir.parent.parent / f"raw_data.csv"
         logger.info(f"load raw data from {raw_data_path}")
-        raw_trajs = load(raw_data_path)
+        raw_trajs = load(raw_data_path, size=size, seed=seed)
 
         logger.info(f"make grid lat {lat_range} lon {lon_range} n_bins {n_bins}")
         ranges = Grid.make_ranges_from_latlon_range_and_nbins(lat_range, lon_range, n_bins)
@@ -220,7 +245,7 @@ def run(training_data_dir, lat_range, lon_range, n_bins, time_threshold, locatio
 
     gps = make_gps_data(training_data_dir, lat_range, lon_range, n_bins)
     make_distance_data(training_data_dir, n_bins, gps, logger)
-    make_db(training_data_dir, lat_range, lon_range, n_bins, logger)
+    make_db(dataset_name, lat_range, lon_range, n_bins, logger)
 
 if __name__ == "__main__":
     
@@ -228,22 +253,23 @@ if __name__ == "__main__":
     parser.add_argument('--dataset', type=str)
     parser.add_argument('--data_name', type=str)
     parser.add_argument('--seed', type=int)
+    parser.add_argument('--max_size', type=int)
     parser.add_argument('--n_bins', type=int)
     parser.add_argument('--time_threshold', type=int)
     parser.add_argument('--location_threshold', type=int)
     parser.add_argument('--save_name', type=str)
     args = parser.parse_args()
     
-    with open(pathlib.Path("./") / "config.json", "r") as f:
-        latlon_configs = json.load(f)["latlon"][args.dataset]
+    # with open(pathlib.Path("./") / "config.json", "r") as f:
+    #     latlon_configs = json.load(f)["latlon"][args.dataset]
     
-    lat_range = latlon_configs["lat_range"]
-    lon_range = latlon_configs["lon_range"]
+    # lat_range = latlon_configs["lat_range"]
+    # lon_range = latlon_configs["lon_range"]
+    lat_range, lon_range = load_latlon_range(args.dataset)
     n_bins = args.n_bins
     training_data_dir = get_datadir() / args.dataset / args.data_name / args.save_name
     training_data_dir.mkdir(exist_ok=True, parents=True)
 
     logger = set_logger(__name__, "./log.log")
 
-    run(training_data_dir, lat_range, lon_range, args.n_bins, args.time_threshold, args.location_threshold, logger)
-    exit()
+    run(args.dataset, training_data_dir, lat_range, lon_range, args.n_bins, args.time_threshold, args.location_threshold, args.seed, args.max_size, logger)

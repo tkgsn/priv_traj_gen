@@ -2,7 +2,7 @@
 
 
 apt install -y jq
-# source ./enviornment
+source ./enviornment
 
 dataset=$DATASET
 # {chengdu, geolife}
