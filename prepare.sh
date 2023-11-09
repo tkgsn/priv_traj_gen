@@ -1,14 +1,12 @@
 #!/bin/bash
 
-dataset=geolife_test
+dataset=geolife
 
-apt-get update
-apt-get install -y jq unzip
 
 # get the data directory from "data_dir" key of config.json
 data_dir=$(jq -r '.data_dir' config.json)
 
-# Chengdu dataset
+# # Chengdu dataset
 if [ $dataset = "chengdu" ]; then
     git clone https://github.com/wangyong01/MTNet_Code
 
@@ -46,7 +44,6 @@ fi
 python3 make_raw_data.py --dataset ${dataset}
 
 
-dataset=geolife_test
 seed_for_dataset=0
 data_dir=$(jq -r '.data_dir' config.json)
 if [ $dataset = "geolife_test" ]; then
