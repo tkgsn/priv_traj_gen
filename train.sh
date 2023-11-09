@@ -2,9 +2,9 @@
 
 # source ./enviornment
 
-"""
-VARIABLES
-"""
+#
+# VARIABLES
+# 
 dataset=$DATASET
 max_size=$MAX_SIZE
 seed=$SEED
@@ -17,9 +17,9 @@ physical_batch_size=$P_BATCH
 n_test_locations=$N_TEST
 is_dp=$DP
 train_all_layers=$MULTI_TASK
-"""
-VARIABLES END
-"""
+# 
+# VARIABLES END
+#
 
 
 data_name=$max_size

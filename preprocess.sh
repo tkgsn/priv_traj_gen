@@ -2,9 +2,9 @@
 
 # source ./enviornment
 
-"""
-VARIABLES
-"""
+#
+# VARIABLES
+#
 # seed=0
 # max_size=0
 # n_bins=30
@@ -16,9 +16,9 @@ max_size=$MAX_SIZE
 n_bins=$N_BINS
 time_threshold=$T_THRESH
 location_threshold=$L_THRESH
-"""
-VARIABLES END
-"""
+#
+# VARIABLES END
+#
 
 # get the data directory from "data_dir" key of config.json
 data_dir=$(jq -r '.data_dir' config.json)
