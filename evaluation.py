@@ -847,7 +847,6 @@ def set_args():
     args.compensation = True
     args.eval_initial = True
     args.n_test_locations = 30
-    args.dataset = "chengdu"
     args.n_split = 5
     # this is not used
     args.batch_size = 100
@@ -910,6 +909,7 @@ if __name__ == "__main__":
     compute_auxiliary_information(dataset, model_dir, logger)
 
     args = set_args()
+    args.dataset = dataset_name
     args.route_generator = (training_setting["network_type"] == "MTNet")
     if not args.route_generator and args.truncate:
         print("WARNING: traj is truncated")
