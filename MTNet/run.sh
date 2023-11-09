@@ -27,20 +27,17 @@
 
 pip3 install PyYaml
 
-"""
-VARIABLES
-"""
-# use environment variable
+#
+# VARIABLES
+#
 dataset=$DATASET
-# dataset = {chengdu, geolife}
 max_size=$MAX_SIZE
 seed=$SEED
 dp=$DP
-# False or True
 epoch=$EPOCH
-"""
-VARIABLES END
-"""
+#
+# VARIABLES END
+#
 name=MTNET_DP${dp}
 
 # n_bins=30

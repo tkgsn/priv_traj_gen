@@ -6,6 +6,9 @@ import numpy as np
 import geopandas as gpd
 import os
 
+sys.path.append("../")
+from my_utils import get
+
 # sys.path.append('../../priv_traj_gen')
 # from my_utils import load
 # from grid import Grid
@@ -412,6 +415,8 @@ if __name__ == "__main__":
     save_path = pathlib.Path(sys.argv[2])
     save_path.mkdir(parents=True, exist_ok=True)
 
+    get(data_path, parent=True)
+
     dataset = sys.argv[3]
     
     if dataset == "chengdu":
@@ -419,9 +424,6 @@ if __name__ == "__main__":
         print(data_path, save_path, dataset)
         num_data = int(sys.argv[4])
         seed = int(sys.argv[5])
-        # setting_path = pathlib.Path(sys.argv[6])
-
-        # run_chengdu(data_path, save_path, num_data, seed, setting_path)
         run_chengdu(data_path, save_path, num_data, seed)
     elif dataset == "geolife":
         run_geolife(data_path, save_path)
