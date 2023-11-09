@@ -585,6 +585,8 @@ def load(save_path, size=0, seed=0):
     
 def send(path, parent=False):
 
+    path = pathlib.Path(path)
+
     source_file_path = path
     destination_file_path = f'evaluation-server:{path.parent}'
 
