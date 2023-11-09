@@ -367,11 +367,11 @@ def make_raw_data_geolife(test=False):
             files = os.listdir(path)
             files = [os.path.join(path, f) for f in files if f.endswith('.plt')]
             plt_files.extend(files)
-        
-        if test and i == 0:
-            break
         else:
             print(f'{path} does not exist')
+            
+        if test and i == 0:
+            break
 
     def read_plt_file(plt_file):
         with open(plt_file, 'r') as f:

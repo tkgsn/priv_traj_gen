@@ -10,11 +10,12 @@ VARIABLES
 # n_bins=30
 # time_threshold=10
 # location_threshold=200
+dataset=$DATASET
 seed=$SEED
 max_size=$MAX_SIZE
 n_bins=$N_BINS
-time_threshold=$TIME_THRESHOLD
-location_threshold=$LOCATION_THRESHOLD
+time_threshold=$T_THRESH
+location_threshold=$L_THRESH
 """
 VARIABLES END
 """
@@ -22,7 +23,6 @@ VARIABLES END
 # get the data directory from "data_dir" key of config.json
 data_dir=$(jq -r '.data_dir' config.json)
 
-dataset=geolife_test_mm
 data_name=${max_size}
 
 stay_data_name=${location_threshold}_${time_threshold}_bin${n_bins}_seed${seed}

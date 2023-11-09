@@ -1,49 +1,47 @@
 #!/bin/bash
 
-git clone https://github.com/wangyong01/MTNet_Code
+# git clone https://github.com/wangyong01/MTNet_Code
 
-unzip MTNet_Code
-cd MTNet_Code
-unzip MTNet.zip
-cd ..
+# unzip MTNet_Code
+# cd MTNet_Code
+# unzip MTNet.zip
+# cd ..
 
-apt-get update
-apt-get install -y jq unzip
+# apt-get update
+# apt-get install -y jq unzip
 
-data_dir=/data
-# get the data directory from "data_dir" key of config.json
-save_dir=$data_dir/chengdu/raw
-# make save_dir
-mkdir -p $save_dir
+# data_dir=/data
+# # get the data directory from "data_dir" key of config.json
+# save_dir=$data_dir/chengdu/raw
+# # make save_dir
+# mkdir -p $save_dir
 
-# move the demo dataset (./MTNet_Code/MTNet/data/demo/{edge_adj.txt, edge_property.txt, trajs_demo.csv, tstamps_demo.csv}) to save_dir
-mv ./MTNet_Code/MTNet/data/demo/edge_adj.txt $save_dir
-mv ./MTNet_Code/MTNet/data/demo/edge_property.txt $save_dir
-mv ./MTNet_Code/MTNet/data/demo/trajs_demo.csv $save_dir
-mv ./MTNet_Code/MTNet/data/demo/tstamps_demo.csv $save_dir
+# # move the demo dataset (./MTNet_Code/MTNet/data/demo/{edge_adj.txt, edge_property.txt, trajs_demo.csv, tstamps_demo.csv}) to save_dir
+# mv ./MTNet_Code/MTNet/data/demo/edge_adj.txt $save_dir
+# mv ./MTNet_Code/MTNet/data/demo/edge_property.txt $save_dir
+# mv ./MTNet_Code/MTNet/data/demo/trajs_demo.csv $save_dir
+# mv ./MTNet_Code/MTNet/data/demo/tstamps_demo.csv $save_dir
 
-# remove MTNet_Code
-rm -rf MTNet_Code
+# # remove MTNet_Code
+# rm -rf MTNet_Code
 
 pip3 install PyYaml
 
-dataset=chengdu
-max_size=0
-seed=0
-dp=True
-epoch=10
-name=MTNET_DP${dp}
-
+"""
+VARIABLES
+"""
 # use environment variable
-# dataset=$DATASET
+dataset=$DATASET
 # dataset = {chengdu, geolife}
-# max_size=$MAXSIZE
-# seed=$SEED
-# dp=$DP
+max_size=$MAX_SIZE
+seed=$SEED
+dp=$DP
 # False or True
-# epoch=$EPOCH
-# name=MTNET_DP${dp}
-
+epoch=$EPOCH
+"""
+VARIABLES END
+"""
+name=MTNET_DP${dp}
 
 # n_bins=30
 # training_data_name=200_60_bin30_seed0

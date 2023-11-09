@@ -6,7 +6,7 @@
 VARIABLES
 """
 dataset=$DATASET
-max_size=$MAXSIZE
+max_size=$MAX_SIZE
 seed=$SEED
 meta_n_iter=$META_N_ITER
 n_epoch=$EPOCH

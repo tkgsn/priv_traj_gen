@@ -1,0 +1,33 @@
+# register enviornment variables
+
+# prepare.sh
+DATASET=geolife
+
+# preprocess.sh
+DATASET=geolife
+MAX_SIZE=0
+SEED=0
+N_BINS=30
+L_THRESH=200
+T_THRESH=10
+
+# train.sh
+DATASET=geolife
+MAX_SIZE=0
+SEED=0
+META_N_ITER=100
+EPOCH=1000
+N_BINS=30
+L_THRESH=200
+T_THRESH=10
+P_BATCH=100
+N_TEST=30
+DP=True
+MULTI_TASK=True
+
+# MTNet/run.sh
+dataset=geolife
+max_size=0
+seed=0
+dp=True
+epoch=10
