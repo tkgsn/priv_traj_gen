@@ -195,6 +195,7 @@ def make_db(dataset, lat_range, lon_range, n_bins, logger):
     if not (db_save_dir / "paths.db").exists():
     # if True:
         graph_data_dir = get_datadir() / original_dataset / "raw"
+        get(datadir / original_dataset / "raw", parent=True)
         logger.info(f"make pair_to_route to {db_save_dir}")
         make_pair_to_route.run(n_bins, graph_data_dir, lat_range, lon_range, db_save_dir)
     else:
