@@ -102,6 +102,7 @@ if __name__ == '__main__':
     save_dir = sys.argv[2]
     epoch = int(sys.argv[3])
     cuda_number = int(sys.argv[4])
+    config.TRAJ_FIX_LEN = int(sys.argv[6])
     # convert string to bool
     if sys.argv[5] == 'True':
         config.DP = True

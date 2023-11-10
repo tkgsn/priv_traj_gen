@@ -319,13 +319,37 @@ def convert_mr_to_training(data_dir, save_dir):
 
 
 def run_geolife(data_dir, save_dir):
+    # copy to save_dir
 
-    gdf_edges = gpd.read_file(os.path.join(data_dir, "edges.shp"))
-    print(gdf_edges)
+    # load data_path / trajs_demo.csv
+    with open(data_path / "training_data.csv", "r") as f:
+        lines = f.readlines()
 
-    make_edge_property_file(gdf_edges, save_dir)
-    make_edge_adj_file(gdf_edges, save_dir)
-    convert_mr_to_training(data_dir, save_dir)
+    # load data_path / tstamps_demo.csv
+    with open(data_path / "training_data_time.csv", "r") as f:
+        time_lines = f.readlines()
+
+    # shuffle
+    np.random.seed(seed)
+    if num_data != 0:
+        print("shuffle trajectories and choose the first", num_data, "trajectories")
+        # shuffle trajectories and real_time_traj with the same order without using numpy
+        p = np.random.permutation(len(lines))
+        lines = [lines[i] for i in p]
+        lines = lines[:num_data]
+        time_lines = [time_lines[i] for i in p]
+        time_lines = time_lines[:num_data]
+
+    # write
+    with open(save_path / "training_data.csv", "w") as f:
+        for line in lines:
+            f.write(line)
+
+    with open(save_path / "training_data_time.csv", "w") as f:
+        for line in time_lines:
+            f.write(line)
+
+
 
 def run_chengdu(data_path, save_path, num_data, seed):
 

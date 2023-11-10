@@ -29,8 +29,7 @@ max_len = 0
 BATCH_SIZE = 0
 
 EPOCHS = 50
-# print("max length", max_len)
-TRAJ_FIX_LEN = 20
+TRAJ_FIX_LEN = 100
 
 THRESHOLD = 5
 
