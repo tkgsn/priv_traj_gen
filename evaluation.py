@@ -879,6 +879,14 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     model_dir = pathlib.Path(run_args.model_dir)
+    
+    if model_dir.stem.startswith("model_"):
+        model_paths = [model_dir]
+        model_dir = model_dir.parent
+    else:
+        # find the models whose name stats with model_i
+        model_paths = model_dir.glob("model_*")
+    
     with open(model_dir / "params.json", "r") as f:
         training_setting = json.load(f)
     (model_dir / "imgs").mkdir(exist_ok=True)
@@ -923,8 +931,7 @@ if __name__ == "__main__":
     make_second_order_test_data_loader(dataset, args.n_test_locations)
 
 
-    # find the models whose name stats with model_i
-    model_paths = model_dir.glob("model_*")
+
     # sort according to i
     model_paths = sorted(model_paths, key=lambda x: int(x.stem.split("_")[-1]))
     print(model_paths)

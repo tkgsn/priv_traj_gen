@@ -6,8 +6,8 @@
 # VARIABLE
 # 
 model_dir=$MODEL_DIR
-location_threshold=$LOCATION_THRESHOLD
-time_threshold=$TIME_THRESHOLD
+location_threshold=$L_THRESH
+time_threshold=$T_THRESH
 n_bins=$N_BINS
 seed=$SEED
 # 

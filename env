@@ -1,33 +1,41 @@
 # register enviornment variables
 
 # prepare.sh
-export DATASET=geolife
+# export DATASET=geolife
 
 # preprocess.sh
-export DATASET=geolife
-export MAX_SIZE=0
-export SEED=0
-export N_BINS=30
-export L_THRESH=200
-export T_THRESH=10
+# export DATASET=geolife
+# export MAX_SIZE=0
+# export SEED=0
+# export N_BINS=30
+# export L_THRESH=200
+# export T_THRESH=10
 
 # train.sh
-export DATASET=geolife
-export MAX_SIZE=0
-export SEED=0
-export META_N_ITER=100
-export EPOCH=1000
-export N_BINS=30
+# export DATASET=geolife
+# export MAX_SIZE=0
+# export SEED=0
+# export META_N_ITER=100
+# export EPOCH=1000
+# export N_BINS=30
+# export L_THRESH=200
+# export T_THRESH=10
+# export P_BATCH=100
+# export N_TEST=30
+# export DP=True
+# export MULTI_TASK=True
+
+
+# evaluate.sh
 export L_THRESH=200
 export T_THRESH=10
-export P_BATCH=100
-export N_TEST=30
-export DP=True
-export MULTI_TASK=True
+export N_BINS=30
+export SEED=0
+export MODEL_DIR=/data/results/chengdu/10000/200_10_bin30_seed0/fulllinear_quadtree_dpTrue_meta10000_dim100_64_64_256_btch0_cldepth_1000_trTrue_coTrue/model_52.pt
 
 # MTNet/run.sh
-export DATASET=geolife_test
-export MAX_SIZE=0
-export SEED=0
-export DP=True
-export EPOCH=10
+# export DATASET=geolife_test
+# export MAX_SIZE=0
+# export SEED=0
+# export DP=True
+# export EPOCH=10
