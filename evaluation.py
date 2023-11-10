@@ -508,11 +508,12 @@ def compute_auxiliary_information(dataset, save_dir, logger):
             logger.info(f"no location at time {time}")
             continue
         plot_density(real_global_count, dataset.n_locations, save_dir.parent / "imgs" / f"real_global_distribution_{int(time)}.png")
-    global_counts_path = save_dir.parent / f"global_count.json"
-    # save the global counts
-    with open(global_counts_path, "w") as f:
-        json.dump(real_global_counts, f)
-    dataset.global_counts = real_global_counts
+
+    # global_counts_path = save_dir.parent / f"global_count.json"
+    # # save the global counts
+    # with open(global_counts_path, "w") as f:
+    #     json.dump(real_global_counts, f)
+    # dataset.global_counts = real_global_counts
 
     # # make a list of labels
     # label_list = [dataset.format_to_label[traj_to_format(trajectory)] for trajectory in dataset.data]
@@ -545,6 +546,17 @@ def compute_auxiliary_information(dataset, save_dir, logger):
     dataset.n_trajs["route"] = [dataset.route_first_location_counts[location] for location in dataset.top_base_locations]
     dataset.n_trajs["destination"] = [dataset.first_location_counts[location] for location in dataset.top_base_locations]
     dataset.n_trajs["distance"] = len(dataset.data)
+
+    # plot the counts
+    for key, counter in dataset.real_counters.items():
+        if key == "global":
+            for i, count in enumerate(counter):
+                plot_density(count, dataset.n_locations, save_dir.parent / "imgs" / f"real_{key}_distribution_{int(i)}.png")
+        elif key in ["target", "destination", "route"]:
+            for i, count in enumerate(counter):
+                plot_density(count, dataset.n_locations, save_dir.parent / "imgs" / f"real_{key}_distribution_{int(i)}.png", dataset.top_base_locations[i])
+        else:
+            plot_density(counter, dataset.n_locations, save_dir.parent / "imgs" / f"real_{key}_distribution.png")
 
 
     # return locations, next_location_counts, first_next_location_counts, real_global_counts, label_count, time_distribution, reference_distribution
