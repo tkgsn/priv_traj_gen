@@ -273,4 +273,4 @@ if __name__ == "__main__":
 
     logger = set_logger(__name__, "./log.log")
 
-    run(args.dataset, training_data_dir, lat_range, lon_range, args.n_bins, args.time_threshold, args.location_threshold, args.seed, args.max_size, logger)
+    run(args.dataset, training_data_dir, lat_range, lon_range, args.n_bins, args.time_threshold, args.location_threshold, args.max_size, args.seed, logger)
