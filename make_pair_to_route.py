@@ -254,7 +254,6 @@ def process_state_i(i, states, db_path, latlon_to_state, DG):
             paths.append(nx.single_source_dijkstra(DG, node))
 
         for j in states:
-            latlon_routes = []
 
             if i == j:
                 continue
@@ -269,8 +268,8 @@ def process_state_i(i, states, db_path, latlon_to_state, DG):
             for length, path in paths:
                 for end_node in end_nodes:
                     if end_node in path:
-                        if length < shortest_length:
-                            shortest_length = length
+                        if length[end_node] < shortest_length:
+                            shortest_length = length[end_node]
                             shortest_path = path[end_node]
 
             # for path in paths:
@@ -282,7 +281,7 @@ def process_state_i(i, states, db_path, latlon_to_state, DG):
             # print(latlon_routes)
             # state_routes = []
             # for latlon_route in latlon_routes:
-            state_route = latlon_route_to_state_route(latlon_route, latlon_to_state)
+            state_route = latlon_route_to_state_route(shortest_path, latlon_to_state)
             assert state_route[0] == i, f"different start point {i} {j} -> {state_route}"
             assert state_route[-1] == j, f"different end point {i} {j} -> {state_route}"
             # state_routes.append(state_route)

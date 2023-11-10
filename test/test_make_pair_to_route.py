@@ -63,6 +63,73 @@ class TestPreProcessGeolifeTest(unittest.TestCase):
                     folium.Marker(latlon, popup=str(i), icon=folium.Icon(color='red')).add_to(m)
         m.save(f'./test/data/state_node_{self.dataset}.html')
 
+    def test_db(self):
+        n_bins = 2
+        n_locations = (n_bins+2)**2
+        db_path = f"./test/pair_to_route/{self.dataset}/paths.db"
+
+        print("make grid")
+        ranges = Grid.make_ranges_from_latlon_range_and_nbins(self.lat_range, self.lon_range, n_bins)
+        grid = Grid(ranges)
+        
+        
+        # count the number of records in state_edge_to_route
+        with sqlite3.connect(db_path) as conn:
+            c = conn.cursor()
+            c.execute("SELECT COUNT(*) FROM state_edge_to_route")
+            print(c.fetchone()[0], "/", (n_locations)**2-n_locations)
+            # c.execute("SELECT * FROM state_edge_to_route")
+            # print(c.fetchall())
+
+
+        start_state = 4
+        end_state = 7
+        with sqlite3.connect(db_path) as conn:
+            c = conn.cursor()
+            c.execute(f"SELECT route FROM state_edge_to_route WHERE start_state={start_state} AND end_state={end_state}")
+            # c.execute(f"SELECT route FROM state_edge_to_route")
+            path = c.fetchone()
+
+        if path is not None:
+            print(path)
+            path = eval(path[0])
+            # plot path
+            m = folium.Map(location=[30.67, 104.06], zoom_start=12)
+        
+            for j, state in enumerate(path):
+                latlon = grid.state_to_center_latlon(state)
+                # gradiation color
+                color = f"hsl({j*10}, 100%, 50%)"
+                # with anotation
+                folium.CircleMarker(latlon, radius=5, color=color, fill=True, fill_color=color, popup=str(j)).add_to(m)
+
+
+            DG = make_pair_to_route.make_graph(my_utils.get_datadir() / self.dataset / "raw")
+            start_nodes = make_pair_to_route.check_node_in_state(conn, start_state)
+            end_nodes = make_pair_to_route.check_node_in_state(conn, end_state)
+
+            shortest_length = float("inf")
+            for node in start_nodes:
+                length, path = nx.single_source_dijkstra(DG, node)
+                for end_node in end_nodes:
+                    if end_node in path:
+                        if length[end_node] < shortest_length:
+                            shortest_length = length[end_node]
+                            shortest_path = path[end_node]
+
+            # plot start_nodes and end_nodes
+            for node in start_nodes:
+                folium.Marker(node, popup=str(start_state)).add_to(m)
+            for node in end_nodes:
+                folium.Marker(node, popup=str(end_state)).add_to(m)
+            
+            # plot shortest_path
+            folium.PolyLine(shortest_path, color="red", weight=2.5, opacity=1).add_to(m)
+
+            m.save('./test/data/state_route.html')
+
+        else:
+            print("no path")
 
 class TestPreProcessChengdu(unittest.TestCase):
 
