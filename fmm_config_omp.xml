@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<config>
+  <input>
+    <ubodt>
+      <file>data_dir/ubodt.txt</file>
+    </ubodt>
+    <network>
+      <file>data_dir/edges.shp</file>
+      <id>fid</id>
+      <source>u</sourece>
+      <target>v</target>
+    </network>
+    <gps>
+      <file>data_dir/trips.csv</file>
+      <id>id</id>
+    </gps>
+  </input>
+  <parameters>
+    <k>4</k>
+    <r>0.4</r>
+    <pf>0</pf>
+    <gps_error>0.5</gps_error>
+  </parameters>
+  <output>
+    <fields>
+      <opath/>
+      <cpath/>
+      <mgeom/>
+    </fields>
+    <file>data_dir/mr.txt</file>
+  </output>
+  <other>
+    <use_omp/>
+  </other>
+</config>
