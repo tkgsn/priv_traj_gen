@@ -887,6 +887,7 @@ if __name__ == "__main__":
         # find the models whose name stats with model_i
         model_paths = model_dir.glob("model_*")
     
+    get(model_dir / "params.json")
     with open(model_dir / "params.json", "r") as f:
         training_setting = json.load(f)
     (model_dir / "imgs").mkdir(exist_ok=True)
