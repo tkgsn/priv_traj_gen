@@ -318,7 +318,7 @@ def convert_mr_to_training(data_dir, save_dir):
             f.write(" ".join([str(time) for time in times])+"\n")
 
 
-def run_geolife(seed, data_dir, save_dir):
+def run_geolife(data_dir, save_dir, seed, num_data):
     # copy to save_dir
     with open(data_dir / "training_data.csv", "r") as f:
         lines = f.readlines()
@@ -438,16 +438,15 @@ if __name__ == "__main__":
     get(data_path, parent=True)
 
     dataset = sys.argv[3]
-    
+    num_data = int(sys.argv[4])
+    seed = int(sys.argv[5])
     if dataset == "chengdu":
 
         print(data_path, save_path, dataset)
-        num_data = int(sys.argv[4])
-        seed = int(sys.argv[5])
         run_chengdu(data_path, save_path, num_data, seed)
     elif dataset == "geolife":
-        run_geolife(data_path, save_path)
+        run_geolife(data_path, save_path, seed, num_data)
     elif dataset == "geolife_test":
-        run_geolife(data_path, save_path)
+        run_geolife(data_path, save_path, seed, num_data)
     # else:
     #     run(data_path, save_path)
