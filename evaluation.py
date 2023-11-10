@@ -549,12 +549,15 @@ def compute_auxiliary_information(dataset, save_dir, logger):
 
     # plot the counts
     for key, counter in dataset.real_counters.items():
+        print(key)
         if key == "global":
             for i, count in enumerate(counter):
                 plot_density(count, dataset.n_locations, save_dir.parent / "imgs" / f"real_{key}_distribution_{int(i)}.png")
         elif key in ["target", "destination", "route"]:
-            for i, count in enumerate(counter):
+            for i, count in enumerate(counter[:30]):
                 plot_density(count, dataset.n_locations, save_dir.parent / "imgs" / f"real_{key}_distribution_{int(i)}.png", dataset.top_base_locations[i])
+        elif key == "distance":
+            plot_density(counter, dataset.n_bins_for_distance, save_dir.parent / "imgs" / f"real_{key}_distribution.png")
         else:
             plot_density(counter, dataset.n_locations, save_dir.parent / "imgs" / f"real_{key}_distribution.png")
 
