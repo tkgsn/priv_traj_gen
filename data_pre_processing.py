@@ -4,7 +4,7 @@ import pathlib
 import argparse
 import pandas as pd
 import numpy as np
-from my_utils import get_datadir, load, save, set_logger, load_latlon_range, send
+from my_utils import get_datadir, load, save, set_logger, load_latlon_range, send, get
 from grid import Grid
 import tqdm
 from bisect import bisect_left
