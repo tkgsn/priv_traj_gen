@@ -318,15 +318,11 @@ def convert_mr_to_training(data_dir, save_dir):
             f.write(" ".join([str(time) for time in times])+"\n")
 
 
-def run_geolife(data_dir, save_dir):
+def run_geolife(seed, data_dir, save_dir):
     # copy to save_dir
-
-    # load data_path / trajs_demo.csv
-    with open(data_path / "training_data.csv", "r") as f:
+    with open(data_dir / "training_data.csv", "r") as f:
         lines = f.readlines()
-
-    # load data_path / tstamps_demo.csv
-    with open(data_path / "training_data_time.csv", "r") as f:
+    with open(data_dir / "training_data_time.csv", "r") as f:
         time_lines = f.readlines()
 
     # shuffle
@@ -341,11 +337,11 @@ def run_geolife(data_dir, save_dir):
         time_lines = time_lines[:num_data]
 
     # write
-    with open(save_path / "training_data.csv", "w") as f:
+    with open(save_dir / "training_data.csv", "w") as f:
         for line in lines:
             f.write(line)
 
-    with open(save_path / "training_data_time.csv", "w") as f:
+    with open(save_dir / "training_data_time.csv", "w") as f:
         for line in time_lines:
             f.write(line)
 
