@@ -298,16 +298,17 @@ class MetaGRUNet(GRUNet):
         return location, time
 
 def compute_loss_meta_gru_net(target_locations, target_times, output_locations, output_times, coef_location, coef_time):
+    # list type means multi-resolution task learning
     if type(target_locations) != list:
         output_locations = [output_locations[-1]] if type(output_locations) == list else [output_locations]
         target_locations = [target_locations]
+
     n_locations = output_locations[-1].shape[-1]
     loss = []
     for i in range(len(target_locations)):
         location_dim = output_locations[i].shape[-1]
         output_locations[i] = output_locations[i].view(-1, location_dim)
         target_locations[i] = target_locations[i].view(-1)
-        # print(i, output_locations[i], target_locations[i])
         coef = (i+1)/len(target_locations)
         loss.append(coef*F.nll_loss(output_locations[i], target_locations[i], ignore_index=TrajectoryDataset.ignore_idx(n_locations)) * coef_location)
     loss.append(F.nll_loss(output_times.view(-1, output_times.shape[-1]), (target_times).view(-1)) * coef_time)
@@ -398,7 +399,6 @@ class BaseQuadTreeNetwork(nn.Module):
         self.class_to_query = nn.Linear(n_classes, self.memory_dim)
         self.hidden_to_query_ = nn.Sequential(nn.Linear(hidden_dim, hidden_dim), self.activate, nn.Linear(hidden_dim, self.memory_dim))
         self.is_consistent = is_consistent
-        self.consistent = False
 
     def forward(self, hidden):
 
@@ -463,24 +463,36 @@ class BaseQuadTreeNetwork(nn.Module):
         '''
         assert scores.shape[-2] == len(self.tree.get_all_nodes()) - len(self.tree.get_leafs()), "the range of the input distribution should be should be {}, but it is {}".format(len(self.tree.get_all_nodes()) - len(self.tree.get_leafs()), scores.shape[-2])
         
+        # scores is sorted according to node.id
         def get_log_distribution_at_depth(scores, depth):
-            # scores is sorted according to node.id
-            if self.consistent:
+
+            if self.is_consistent:
                 scores = F.log_softmax(scores, dim=-1)
-                distribution = torch.zeros(*scores.shape[:-2], 4**depth).to(scores.device)
-                for i in range(depth):
-                    ids = list(range(sum([4**depth_ for depth_ in range(0,i)]), sum([4**depth_ for depth_ in range(0,i+1)])))
-                    score_at_depth_i = scores[...,ids,:].view(*scores.shape[:-2],-1).repeat_interleave(4**(depth-i-1), dim=-1)
-                    distribution += score_at_depth_i
-                hidden_ids = list(range(sum([4**depth_ for depth_ in range(0,i+1)])-1, sum([4**depth_ for depth_ in range(0,i+2)])-1))
-                node_ids = [self.tree.hidden_id_to_node_id[id] for id in hidden_ids]
-                distribution = distribution[...,[id-node_ids[0] for id in node_ids]]
-            else:
-                hidden_ids = list(range(scores.shape[-1] * scores.shape[-2]))
-                node_ids = [self.tree.hidden_id_to_node_id[id] for id in hidden_ids]
-                scores = scores.view(*scores.shape[:-2], -1)[..., [id-node_ids[0] for id in node_ids]]
-                ids = list(range(sum([4**depth_ for depth_ in range(1,depth)]), sum([4**depth_ for depth_ in range(1,depth+1)])))
+                # when evaluation_mode, conducting consistent sampling for all locations; it generates probability distribution in all layers
+                # that is, this generates Pr(location|depth)
+                if not self.training:
+                    distribution = torch.zeros(*scores.shape[:-2], 4**depth).to(scores.device)
+                    for i in range(depth):
+                        ids = list(range(sum([4**depth_ for depth_ in range(0,i)]), sum([4**depth_ for depth_ in range(0,i+1)])))
+                        score_at_depth_i = scores[...,ids,:].view(*scores.shape[:-2],-1).repeat_interleave(4**(depth-i-1), dim=-1)
+                        distribution += score_at_depth_i
+                    hidden_ids = list(range(sum([4**depth_ for depth_ in range(0,i+1)])-1, sum([4**depth_ for depth_ in range(0,i+2)])-1))
+                    node_ids = [self.tree.hidden_id_to_node_id[id] for id in hidden_ids]
+                    distribution = distribution[...,[id-node_ids[0] for id in node_ids]]
+                    return distribution
+                
+            hidden_ids = list(range(scores.shape[-1] * scores.shape[-2]))
+            node_ids = [self.tree.hidden_id_to_node_id[id] for id in hidden_ids]
+            scores = scores.view(*scores.shape[:-2], -1)[..., [id-node_ids[0] for id in node_ids]]
+            ids = list(range(sum([4**depth_ for depth_ in range(1,depth)]), sum([4**depth_ for depth_ in range(1,depth+1)])))
+            if not self.is_consistent:
+                # in the case of not consistent, this generates probability distribution on the depth layer
                 distribution = F.log_softmax(scores[..., ids], dim=-1)
+            else:
+                # when training_mode, not conducting consistent sampling to avoid the gradient vanishing problem
+                # we consider that each node generates probability distribution on the 4 children nodes, i.e., P(child|parent)
+                distribution = scores[..., ids]
+
             return distribution
         
         if target_depth == 0:
@@ -494,13 +506,6 @@ class BaseQuadTreeNetwork(nn.Module):
         # self.class_to_query.requires_grad_(False)
         del self.class_to_query
 
-    def train(self, mode=True):
-        self.consistent = False
-        return super().train(mode)
-
-    def eval(self):
-        self.consistent = True & self.is_consistent
-        return super().eval()
 
 class LinearQuadTreeNetwork(BaseQuadTreeNetwork):
     def __init__(self, n_locations, memory_dim, hidden_dim, n_classes, activate, multilayer=False):
