@@ -208,13 +208,13 @@ def compensate_edge_by_map(from_state, to_state, db_path):
             # print("WARNING: path not exist", from_state, to_state)
             return []
         else:
-            state_routes = eval(edges[0])
-            if len(state_routes) == 0:
+            state_route = eval(edges[0])
+            if len(state_route) == 0:
                 # print("WARNING: path not exist", from_state, to_state)
                 return []
             # choose the shortest one
-            shortest_route = min(state_routes, key=lambda x: len(x))
-            return shortest_route
+            # shortest_route = min(state_routes, key=lambda x: len(x))
+            return state_route
 
 
 
@@ -958,7 +958,7 @@ if __name__ == "__main__":
                 get(get_datadir() / dataset_name / "raw", parent=True)
             generator = MTNetGeneratorMock(model_path / "samples.txt", model_path / "samples_time.txt", training_setting["dataset"], n_bins)
         else:
-            meta_network, _ = construct_meta_network(training_setting["clustering"], training_setting["network_type"], dataset.n_locations, training_setting["memory_dim"], training_setting["memory_hidden_dim"], training_setting["location_embedding_dim"], training_setting["consistent"], logger)
+            meta_network, _ = construct_meta_network(training_setting["clustering"], training_setting["network_type"], dataset.n_locations, training_setting["memory_dim"], training_setting["memory_hidden_dim"], training_setting["location_embedding_dim"], training_setting["multilayer"], training_setting["consistent"], logger)
             if hasattr(meta_network, "remove_class_to_query"):
                 meta_network.remove_class_to_query()
             generator, _ = construct_generator(dataset.n_locations, meta_network, training_setting["network_type"], training_setting["location_embedding_dim"], training_setting["n_split"], len(dataset.label_to_reference), training_setting["hidden_dim"], dataset.reference_to_label, logger)
