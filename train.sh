@@ -1,7 +1,5 @@
 #!/bin/bash
 
-# source ./enviornment
-
 #
 # VARIABLES
 # 
@@ -17,6 +15,7 @@ physical_batch_size=$P_BATCH
 n_test_locations=$N_TEST
 is_dp=$DP
 train_all_layers=$MULTI_TASK
+consistent=$CONSISTENT
 # 
 # VARIABLES END
 #
@@ -70,7 +69,6 @@ transition_type=first
 # set the options
 remove_first_value=True
 remove_duplicate=False
-consistent=True
 server=True
 
 declare -A arguments=(
