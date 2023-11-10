@@ -213,7 +213,7 @@ def clustering(clustering_type, n_locations):
         raise NotImplementedError
     return location_to_class, privtree
 
-def construct_meta_network(clustering_type, network_type, n_locations, memory_dim, memory_hidden_dim, location_embedding_dim, consistent, logger):
+def construct_meta_network(clustering_type, network_type, n_locations, memory_dim, memory_hidden_dim, location_embedding_dim, multilayer, consistent, logger):
 
     logger.info(f"clustering type: {clustering_type}")
     location_to_class, privtree = clustering(clustering_type, n_locations)
@@ -235,7 +235,7 @@ def construct_meta_network(clustering_type, network_type, n_locations, memory_di
         if network_type == "meta_network":
             meta_network = meta_network_class(memory_hidden_dim, memory_dim, n_locations, n_classes, "relu")
         elif network_type == "fulllinear_quadtree":
-            meta_network = meta_network_class(n_locations, memory_dim, memory_hidden_dim, location_embedding_dim, privtree, "relu", is_consistent=consistent)
+            meta_network = meta_network_class(n_locations, memory_dim, memory_hidden_dim, location_embedding_dim, privtree, "relu", multilayer=multilayer, is_consistent=consistent)
         compute_num_params(meta_network, logger)
         
     return meta_network, location_to_class
@@ -341,6 +341,7 @@ if __name__ == "__main__":
     parser.add_argument('--remove_first_value', action='store_true')
     parser.add_argument('--remove_duplicate', action='store_true')
     parser.add_argument('--consistent', action='store_true')
+    parser.add_argument('--multilayer', action='store_true')
     parser.add_argument('--server', action='store_true')
     parser.add_argument('--patience', type=int)
     parser.add_argument('--physical_batch_size', type=int)
@@ -405,7 +406,7 @@ if __name__ == "__main__":
         args.epsilon = min([args.epsilon, set_budget(len(dataset), int(np.sqrt(dataset.n_locations)) -2)])
         logger.info(f"epsilon is set as: {args.epsilon}")
 
-    meta_network, location_to_class = construct_meta_network(args.clustering, args.network_type, dataset.n_locations, args.memory_dim, args.memory_hidden_dim, args.location_embedding_dim, args.consistent, logger)
+    meta_network, location_to_class = construct_meta_network(args.clustering, args.network_type, dataset.n_locations, args.memory_dim, args.memory_hidden_dim, args.location_embedding_dim, args.multilayer, args.consistent, logger)
     meta_network.to(device)
     meta_network = pre_training_meta_network(meta_network, dataset, location_to_class, args.transition_type)
 

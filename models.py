@@ -399,6 +399,7 @@ class BaseQuadTreeNetwork(nn.Module):
         self.class_to_query = nn.Linear(n_classes, self.memory_dim)
         self.hidden_to_query_ = nn.Sequential(nn.Linear(hidden_dim, hidden_dim), self.activate, nn.Linear(hidden_dim, self.memory_dim))
         self.is_consistent = is_consistent
+        self.pre_training = True
 
     def forward(self, hidden):
 
@@ -462,7 +463,8 @@ class BaseQuadTreeNetwork(nn.Module):
         if the depth is 0, return distributions of all layers (i.e., list of batch_size * seq_len * num_nodes at the depth)
         '''
         assert scores.shape[-2] == len(self.tree.get_all_nodes()) - len(self.tree.get_leafs()), "the range of the input distribution should be should be {}, but it is {}".format(len(self.tree.get_all_nodes()) - len(self.tree.get_leafs()), scores.shape[-2])
-        
+        if not self.training and self.pre_training:
+            print("WARNING: PRE-TRAINING_MODE")
         # scores is sorted according to node.id
         def get_log_distribution_at_depth(scores, depth):
 
@@ -470,7 +472,7 @@ class BaseQuadTreeNetwork(nn.Module):
                 scores = F.log_softmax(scores, dim=-1)
                 # when evaluation_mode, conducting consistent sampling for all locations; it generates probability distribution in all layers
                 # that is, this generates Pr(location|depth)
-                if not self.training:
+                if (not self.training) or self.pre_training:
                     distribution = torch.zeros(*scores.shape[:-2], 4**depth).to(scores.device)
                     for i in range(depth):
                         ids = list(range(sum([4**depth_ for depth_ in range(0,i)]), sum([4**depth_ for depth_ in range(0,i+1)])))
@@ -504,12 +506,14 @@ class BaseQuadTreeNetwork(nn.Module):
     
     def remove_class_to_query(self):
         # self.class_to_query.requires_grad_(False)
+        self.pre_training = False
         del self.class_to_query
 
 
+
 class LinearQuadTreeNetwork(BaseQuadTreeNetwork):
-    def __init__(self, n_locations, memory_dim, hidden_dim, n_classes, activate, multilayer=False):
-        super().__init__(n_locations, memory_dim, hidden_dim, n_classes, activate)
+    def __init__(self, n_locations, memory_dim, hidden_dim, n_classes, activate, multilayer=False, is_consistent=False):
+        super().__init__(n_locations, memory_dim, hidden_dim, n_classes, activate, is_consistent)
         if multilayer:
             self.linears = nn.ModuleList([nn.Sequential(nn.Linear(self.memory_dim, self.memory_dim), self.activate, nn.Linear(self.memory_dim, 4*self.memory_dim)) for _ in range(self.tree.max_depth)])
         else:
@@ -541,12 +545,12 @@ class LinearQuadTreeNetwork(BaseQuadTreeNetwork):
 # in this class, location embedding comes from the tconvs with input of the self.root_value(1)
 # this class requires privtree
 class FullLinearQuadTreeNetwork(LinearQuadTreeNetwork):
-    def __init__(self, n_locations, memory_dim, hidden_dim, location_embedding_dim, privtree, activate, is_consistent):
+    def __init__(self, n_locations, memory_dim, hidden_dim, location_embedding_dim, privtree, activate, multilayer, is_consistent):
         # n_classes = len(privtree.get_leafs())
         self.location_embedding_dim = location_embedding_dim
         n_classes = len(privtree.merged_leafs)
         self.n_locations = n_locations
-        super().__init__(n_locations, memory_dim, hidden_dim, n_classes, activate, is_consistent)
+        super().__init__(n_locations, memory_dim, hidden_dim, n_classes, activate, multilayer, is_consistent)
         self.privtree = privtree
         self.root_value = nn.Embedding(3, self.memory_dim)
         # 0 -> states, 1 -> start value, 2 -> ignore value
