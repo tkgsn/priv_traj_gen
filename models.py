@@ -472,7 +472,8 @@ class BaseQuadTreeNetwork(nn.Module):
                 scores = F.log_softmax(scores, dim=-1)
                 # when evaluation_mode, conducting consistent sampling for all locations; it generates probability distribution in all layers
                 # that is, this generates Pr(location|depth)
-                if (not self.training) or self.pre_training:
+                # if (not self.training) or self.pre_training:
+                if True:
                     distribution = torch.zeros(*scores.shape[:-2], 4**depth).to(scores.device)
                     for i in range(depth):
                         ids = list(range(sum([4**depth_ for depth_ in range(0,i)]), sum([4**depth_ for depth_ in range(0,i+1)])))
