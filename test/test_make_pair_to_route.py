@@ -9,6 +9,7 @@ import os
 sys.path.append('./')
 import make_pair_to_route
 from grid import Grid
+import my_utils
 
 class TestDatabase(unittest.TestCase):
     def setUp(self):
@@ -24,31 +25,26 @@ class TestDatabase(unittest.TestCase):
                 print(row)
 
 class TestPreProcessGeolifeTest(unittest.TestCase):
+
+    def setUp(self):
+        self.dataset = "geolife_test"
+        self.lat_range, self.lon_range = my_utils.load_latlon_range(self.dataset)
+
     def test_run(self):
         n_bins = 2
-        data_dir = "../MTNet_Code/MTNet/data/test/geolife/training_data"
-        save_dir = "./test/pair_to_route/geolife_test"
-        latlon_config_path = "./dataset_configs/geolife_test.json"
+        data_dir = f"/data/{self.dataset}/raw"
+        save_dir = f"./test/pair_to_route/{self.dataset}"
         # make dir of save_dir
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
-        make_pair_to_route.run(n_bins, data_dir, latlon_config_path, save_dir)
+        make_pair_to_route.run(n_bins, data_dir, self.lat_range, self.lon_range, save_dir)
 
     def test_dataset(self):
         n_bins = 2
-        dataset = "geolife_test"
-
-        db_path = f"./test/pair_to_route/{dataset}/paths.db"
-        # db_path = "/data/chengdu/pair_to_route/30/paths.db"
-        data_path = f"./dataset_configs/{dataset}.json"
-        with open(data_path, "r") as f:
-            configs = json.load(f)
-        
-        lat_range = configs["lat_range"]
-        lon_range = configs["lon_range"]
+        db_path = f"./test/pair_to_route/{self.dataset}/paths.db"
 
         print("make grid")
-        ranges = Grid.make_ranges_from_latlon_range_and_nbins(lat_range, lon_range, n_bins)
+        ranges = Grid.make_ranges_from_latlon_range_and_nbins(self.lat_range, self.lon_range, n_bins)
         grid = Grid(ranges)
         
         # m = folium.Map(location=[30.67, 104.06], zoom_start=12)
@@ -65,7 +61,7 @@ class TestPreProcessGeolifeTest(unittest.TestCase):
                     folium.Marker(node, popup=str(i)).add_to(m)
                     latlon = grid.state_to_center_latlon(i)
                     folium.Marker(latlon, popup=str(i), icon=folium.Icon(color='red')).add_to(m)
-        m.save(f'./test/data/state_node_{dataset}.html')
+        m.save(f'./test/data/state_node_{self.dataset}.html')
 
 
 class TestPreProcessChengdu(unittest.TestCase):

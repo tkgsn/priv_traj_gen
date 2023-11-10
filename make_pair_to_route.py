@@ -250,7 +250,8 @@ def process_state_i(i, states, db_path, latlon_to_state, DG):
         # compute path from node
         paths = []
         for node in nodes:
-            paths.append(nx.single_source_dijkstra_path(DG, node))
+            # paths.append(nx.single_source_dijkstra_path(DG, node))
+            paths.append(nx.single_source_dijkstra(DG, node))
 
         for j in states:
             latlon_routes = []
@@ -263,27 +264,36 @@ def process_state_i(i, states, db_path, latlon_to_state, DG):
                 # print("WARNING", j, "has no node")
                 continue
 
-            for path in paths:
+            shortest_length = float("inf")
+            # find the shortest path to end_nodes
+            for length, path in paths:
                 for end_node in end_nodes:
                     if end_node in path:
-                        latlon_routes.append(path[end_node])
+                        if length < shortest_length:
+                            shortest_length = length
+                            shortest_path = path[end_node]
+
+            # for path in paths:
+            #     for end_node in end_nodes:
+            #         if end_node in path:
+            #             latlon_routes.append(path[end_node])
 
 
             # print(latlon_routes)
-            state_routes = []
-            for latlon_route in latlon_routes:
-                state_route = latlon_route_to_state_route(latlon_route, latlon_to_state)
-                assert state_route[0] == i, f"different start point {i} {j} -> {state_route}"
-                assert state_route[-1] == j, f"different end point {i} {j} -> {state_route}"
-                state_routes.append(state_route)
+            # state_routes = []
+            # for latlon_route in latlon_routes:
+            state_route = latlon_route_to_state_route(latlon_route, latlon_to_state)
+            assert state_route[0] == i, f"different start point {i} {j} -> {state_route}"
+            assert state_route[-1] == j, f"different end point {i} {j} -> {state_route}"
+            # state_routes.append(state_route)
 
             # remove duplicate routes
-            state_routes = list(set([tuple(route) for route in state_routes]))
+            # state_routes = list(set([tuple(route) for route in state_routes]))
             # state_routess[j] = state_routes
 
             # save with pickle
             with open(f"temp/state_routes_from_{i}_to_{j}.pkl", "wb") as f:
-                pickle.dump(state_routes, f)
+                pickle.dump(state_route, f)
 
             # c.execute("INSERT INTO state_edge_to_route VALUES (?, ?, ?)", (i, j, str(state_routes)))
 
