@@ -637,10 +637,14 @@ def make_raw_data(dataset, logger):
     if not (save_path).exists():
         if dataset == "geolife":
             trajs = make_raw_data_geolife()
+        elif dataset == "geolife_mm":
+            convert_mr_to_training(dataset)
+            trajs = make_raw_data_from_map_matched_data(get_datadir() / "geolife" / "raw")
         elif dataset == "geolife_test":
             trajs = make_raw_data_geolife(True)
         elif dataset == "geolife_test_mm":
             logger.info(f"make raw data from map matched data {save_path.parent / 'raw'}")
+            convert_mr_to_training(dataset)
             trajs = make_raw_data_from_map_matched_data(get_datadir() / "geolife_test" / "raw")
         elif dataset == "chengdu":
             logger.info(f"make raw data from map matched data {save_path.parent / 'raw'}")
@@ -682,6 +686,91 @@ def make_raw_data(dataset, logger):
         # np.random.seed(args.seed)
         # trajs = load(save_path.parent.parent / "raw_data.csv", args.max_size)
     # return trajs
+
+
+def convert_mr_to_training(dataset):
+    assert dataset.split("_")[-1] == "mm", "dataset must be map matched"
+
+    dataset = "_".join(dataset.split("_")[:-1])
+    data_dir = get_datadir() / dataset / "raw"
+    save_dir = get_datadir() / dataset / "raw"
+
+    # format of training: edge_id edge_id ... edge_id 0
+
+    # load times
+    with open(os.path.join(data_dir, "times.csv"), "r") as f:
+        f.readline()
+        times = []
+        for line in f:
+            time = line.split(",")
+            time = [float(t) for t in time if t != ""]
+            times.append(time)
+
+    training_data = []
+    training_data_time = []
+    n_strange = 0
+    with open(os.path.join(data_dir, "mr.txt"), "r") as f:
+        f.readline()
+        for line in f:
+            id = int(line.split(";")[0])
+            edge_ids_for_each_point = line.split(";")[1]
+            edge_ids = line.split(";")[2]
+            wkt = line.split(";")[3]
+
+            edge_ids = edge_ids.split(",")
+            # convert to int
+            edge_ids = [int(edge_id) for edge_id in edge_ids if edge_id != ""]
+            # if it includes 0, it means that map matching failed
+            if len(edge_ids) == 0:
+                continue
+            # edge_ids.append(0)
+
+            edge_ids_for_each_point = edge_ids_for_each_point.split(",")
+            # convert to int
+            edge_ids_for_each_point = [int(edge_id) for edge_id in edge_ids_for_each_point if edge_id != ""]
+
+            assert len(times[id-1]) == len(edge_ids_for_each_point), f"{len(times[id-1])} != {len(edge_ids_for_each_point)}"
+
+            # get the indice that change the edge
+            change_edge_indices = [0] + [i+1 for i in range(len(edge_ids_for_each_point)-1) if edge_ids_for_each_point[i] != edge_ids_for_each_point[i+1]]
+            edge_ids_ = [edge_ids_for_each_point[i] for i in change_edge_indices] + [0]
+            # get the time of the change
+            change_times = [times[id-1][i] for i in change_edge_indices]
+            # get the difference of the time
+            change_times = [0] + [int(change_times[i+1]-change_times[i]) for i in range(len(change_times)-1)]
+
+            # edge_ids_ <- original edges
+            # edge_ids <- connected by compensation if two adjacent edges are not connected
+            # add 0 to the times where the edge is compensated
+            cursor = 0
+            for i in range(len(edge_ids_)-1):
+                current_edge = edge_ids_[i]
+                while current_edge != edge_ids[cursor]:
+                    cursor += 1
+                    change_times.insert(cursor, 0)
+                cursor += 1
+
+            if len(change_times) != len(edge_ids):
+                n_strange += 1
+                print("WARNING: diffenrt length", len(change_times), len(edge_ids), n_strange)
+                print(edge_ids, edge_ids_)
+                edge_ids = edge_ids[:len(change_times)]
+            # if len(edge_ids_) != len(edge_ids)+1:
+                # print("skip because an edge is not connected")
+                # continue
+
+            training_data_time.append(change_times)
+            training_data.append(edge_ids + [0])
+            assert len(change_times) == len(edge_ids), f"{len(change_times)} != {len(edge_ids)}"
+    
+    with open(os.path.join(save_dir, "training_data.csv"), "w") as f:
+        for edge_ids in training_data:
+            f.write(" ".join([str(edge_id) for edge_id in edge_ids])+"\n")
+    
+    with open(os.path.join(save_dir, "training_data_time.csv"), "w") as f:
+        for times in training_data_time:
+            f.write(" ".join([str(time) for time in times])+"\n")
+
 
 def run(dataset):
     logger = set_logger(__name__, "./log.log")
