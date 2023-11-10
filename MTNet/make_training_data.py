@@ -319,6 +319,20 @@ def convert_mr_to_training(data_dir, save_dir):
 
 
 def run_geolife(data_dir, save_dir, seed, num_data):
+
+    with open(data_dir / "edge_property.txt", "r") as f:
+        lines = f.readlines()
+    with open(save_dir / "edge_property.txt", "w") as f:
+        for line in lines:
+            f.write(line)
+
+    # copy data_path / edge_adj.txt to save_path / edge_adj.txt
+    with open(data_dir / "edge_adj.txt", "r") as f:
+        lines = f.readlines()
+    with open(save_dir / "edge_adj.txt", "w") as f:
+        for line in lines:
+            f.write(line)
+
     # copy to save_dir
     with open(data_dir / "training_data.csv", "r") as f:
         lines = f.readlines()
