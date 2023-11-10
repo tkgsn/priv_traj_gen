@@ -1,5 +1,5 @@
 import argparse
-from my_utils import get_datadir, save, load, construct_default_quadtree, set_logger
+from my_utils import get_datadir, save, load, construct_default_quadtree, set_logger, send
 import pandas as pd
 from data_pre_processing import compute_distance_matrix
 import numpy as np
@@ -690,6 +690,8 @@ def make_raw_data(dataset, logger):
 
 def convert_mr_to_training(dataset):
     assert dataset.split("_")[-1] == "mm", "dataset must be map matched"
+    # send mr to the server for backup
+    send(os.path.join(data_dir, "mr.txt"))
 
     dataset = "_".join(dataset.split("_")[:-1])
     data_dir = get_datadir() / dataset / "raw"
@@ -770,6 +772,9 @@ def convert_mr_to_training(dataset):
     with open(os.path.join(save_dir, "training_data_time.csv"), "w") as f:
         for times in training_data_time:
             f.write(" ".join([str(time) for time in times])+"\n")
+
+    send(os.path.join(save_dir, "training_data.csv"))
+    send(os.path.join(save_dir, "training_data_time.csv"))
 
 
 def run(dataset):
