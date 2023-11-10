@@ -690,13 +690,13 @@ def make_raw_data(dataset, logger):
 
 def convert_mr_to_training(dataset):
     assert dataset.split("_")[-1] == "mm", "dataset must be map matched"
-    # send mr to the server for backup
-    send(os.path.join(data_dir, "mr.txt"))
 
     dataset = "_".join(dataset.split("_")[:-1])
     data_dir = get_datadir() / dataset / "raw"
     save_dir = get_datadir() / dataset / "raw"
 
+    # send mr to the server for backup
+    send(os.path.join(data_dir, "mr.txt"))
     # format of training: edge_id edge_id ... edge_id 0
 
     # load times
