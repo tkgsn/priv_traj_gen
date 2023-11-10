@@ -258,11 +258,13 @@ def process_state_i(i, states, db_path, latlon_to_state, DG):
             if i == j:
                 continue
 
+
             end_nodes = check_node_in_state(c, j)
             if end_nodes is None:
                 # print("WARNING", j, "has no node")
                 continue
 
+            shortest_path = None
             shortest_length = float("inf")
             # find the shortest path to end_nodes
             for length, path in paths:
@@ -281,20 +283,21 @@ def process_state_i(i, states, db_path, latlon_to_state, DG):
             # print(latlon_routes)
             # state_routes = []
             # for latlon_route in latlon_routes:
-            state_route = latlon_route_to_state_route(shortest_path, latlon_to_state)
-            assert state_route[0] == i, f"different start point {i} {j} -> {state_route}"
-            assert state_route[-1] == j, f"different end point {i} {j} -> {state_route}"
-            # state_routes.append(state_route)
+            if shortest_path is not None:
+                state_route = latlon_route_to_state_route(shortest_path, latlon_to_state)
+                assert state_route[0] == i, f"different start point {i} {j} -> {state_route}"
+                assert state_route[-1] == j, f"different end point {i} {j} -> {state_route}"
+                # state_routes.append(state_route)
 
-            # remove duplicate routes
-            # state_routes = list(set([tuple(route) for route in state_routes]))
-            # state_routess[j] = state_routes
+                # remove duplicate routes
+                # state_routes = list(set([tuple(route) for route in state_routes]))
+                # state_routess[j] = state_routes
 
-            # save with pickle
-            with open(f"temp/state_routes_from_{i}_to_{j}.pkl", "wb") as f:
-                pickle.dump(state_route, f)
+                # save with pickle
+                with open(f"temp/state_routes_from_{i}_to_{j}.pkl", "wb") as f:
+                    pickle.dump(state_route, f)
 
-            # c.execute("INSERT INTO state_edge_to_route VALUES (?, ?, ?)", (i, j, str(state_routes)))
+                # c.execute("INSERT INTO state_edge_to_route VALUES (?, ?, ?)", (i, j, str(state_routes)))
 
 def make_state_pair_to_state_route(n_states, db_path, latlon_to_state, DG):
     states = list(range(n_states))
