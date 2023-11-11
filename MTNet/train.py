@@ -20,7 +20,7 @@ def train_epoch(epoch, gen, loader, optim):
         loss_t_list = []
         acc_loss_t_list = []
         if config.DP:
-            with BatchMemoryManager(data_loader=loader, max_physical_batch_size=100, optimizer=optim) as new_data_loader:
+            with BatchMemoryManager(data_loader=loader, max_physical_batch_size=config.P_BATCH, optimizer=optim) as new_data_loader:
                 for (x, dpt, t, y) in new_data_loader:
                     x, dpt, t, y = x.to(config.device), dpt.to(config.device), t.to(config.device).view(-1), y.to(
                         config.device).view(-1)
@@ -103,6 +103,7 @@ if __name__ == '__main__':
     epoch = int(sys.argv[3])
     cuda_number = int(sys.argv[4])
     config.TRAJ_FIX_LEN = int(sys.argv[6])
+    config.P_BATCH = int(sys.argv[7])
     # convert string to bool
     if sys.argv[5] == 'True':
         config.DP = True
