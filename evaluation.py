@@ -47,7 +47,8 @@ def run(generator, dataset, args):
 
         if (args.evaluate_global or args.evaluate_passing or args.evaluate_source or args.evaluate_target or args.evaluate_route or args.evaluate_destination or args.evaluate_distance):
 
-            counters = {"global":[Counter() for _ in dataset.time_ranges], "passing": Counter(), "source": Counter(), "target": [Counter() for _ in range(n_test_locations)], "route": [Counter() for _ in range(n_test_locations)], "destination": [Counter() for _ in range(n_test_locations)], "distance": Counter(), "first_location": Counter()}
+            # counters = {"global":[Counter() for _ in dataset.time_ranges], "passing": Counter(), "source": Counter(), "target": [Counter() for _ in range(n_test_locations)], "route": [Counter() for _ in range(n_test_locations)], "destination": [Counter() for _ in range(n_test_locations)], "distance": Counter(), "first_location": Counter()}
+            counters = {"passing": Counter(), "source": Counter(), "target": [Counter() for _ in range(n_test_locations)], "route": [Counter() for _ in range(n_test_locations)], "destination": [Counter() for _ in range(n_test_locations)], "distance": Counter(), "first_location": Counter()}
             condition = True
             n_gene_traj = 0
             # gene_trajs = []
@@ -270,9 +271,14 @@ def compute_divergence(real_count, n_real_traj, inferred_count, n_gene_traj, n_v
                     raise ValueError("inf")
 
         if kl:
-            return scipy.stats.entropy(real_distribution, inferred_distribution, axis=0).sum()
+            return scipy.stats.entropy(real_distribution, inferred_distribution, axis=0).mean()
         else:
-            return jensenshannon(real_distribution, inferred_distribution, axis=0).sum()
+            # temp_distribution = np.zeros_like(real_distribution)
+            # temp_distribution[1,:] = 1
+            # print("temp", (jensenshannon(real_distribution, temp_distribution, axis=0)**2).mean(), jensenshannon(temp_distribution, inferred_distribution, axis=0)**2)
+            # print("gene", (jensenshannon(real_distribution, inferred_distribution, axis=0)**2).mean(), jensenshannon(real_distribution, inferred_distribution, axis=0)**2)
+
+            return (jensenshannon(real_distribution, inferred_distribution, axis=0)**2).mean()
     else:
         # real_count and inferred_count will be the probability distributions
         assert n_real_traj == sum(real_count.values()), "n_real_traj must be equal to sum(real_count.values())"
