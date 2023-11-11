@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import argparse
 
-from my_utils import construct_default_quadtree, noise_normalize, save, plot_density, get_datadir, set_logger, get, send
+from my_utils import construct_default_quadtree, noise_normalize, save, plot_density, get_datadir, set_logger, get, send, get_original_dataset_name
 from collections import Counter
 import numpy as np
 import scipy
@@ -20,7 +20,9 @@ def run(generator, dataset, args):
     n_bins = int(np.sqrt(dataset.n_locations)-2)
 
     if args.compensation:
-        route_db_path = get_datadir() / f"{args.dataset}/pair_to_route/{n_bins}/paths.db"
+        original_dataset_name = get_original_dataset_name(dataset)
+        print(type(original_dataset_name), original_dataset_name)
+        route_db_path = get_datadir() / original_dataset_name / "pair_to_route"/ f"{n_bins}" / "paths.db"
         print("compensating trajectories by", route_db_path)
     else:
         print("not compensating trajectories")
@@ -866,7 +868,7 @@ def set_args():
     # this is not used
     args.batch_size = 100
     args.route_generator = False
-    args.time_threshold = 10
+    # args.time_threshold = 10
     args.truncate = True
 
     return args
@@ -935,7 +937,7 @@ if __name__ == "__main__":
     args = set_args()
     args.dataset = dataset_name
     args.route_generator = (training_setting["network_type"] == "MTNet")
-    if not args.route_generator and args.truncate:
+    if (training_setting["dataset"] == "chengdu") and (not args.route_generator) and args.truncate:
         print("WARNING: traj is truncated")
         # this is fair comparison to MTNet which truncates the traj by 20
         name = model_dir.stem + "_truncate"

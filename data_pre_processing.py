@@ -4,7 +4,7 @@ import pathlib
 import argparse
 import pandas as pd
 import numpy as np
-from my_utils import get_datadir, load, save, set_logger, load_latlon_range, send, get
+from my_utils import get_datadir, load, save, set_logger, load_latlon_range, send, get, get_original_dataset_name
 from grid import Grid
 import tqdm
 from bisect import bisect_left
@@ -185,12 +185,9 @@ def make_distance_data(training_data_dir, n_bins, gps, logger):
 
 def make_db(dataset, lat_range, lon_range, n_bins, logger):
 
-    if dataset.split("_")[-1] == "mm":
-        original_dataset = "_".join(dataset.split("_")[:-1])
-    else:
-        original_dataset = dataset
+    original_dataset = get_original_dataset_name(dataset)
 
-    db_save_dir = get_datadir() / dataset / "pair_to_route" / f"{n_bins}"
+    db_save_dir = get_datadir() / original_dataset / "pair_to_route" / f"{n_bins}"
     db_save_dir.mkdir(exist_ok=True, parents=True)
     if not (db_save_dir / "paths.db").exists():
     # if True:
@@ -215,6 +212,7 @@ def run(dataset_name, training_data_dir, lat_range, lon_range, n_bins, time_thre
     logger.info(f"saving setting to {training_data_dir}/params.json")
     with open(training_data_dir / "params.json", "w") as f:
         json.dump({"n_locations": (n_bins+2)**2, "n_bins": n_bins, "seed": args.seed}, f)
+    send(training_data_dir / "params.json")
         
     training_data_path = training_data_dir / "training_data.csv"
     if not training_data_path.exists():

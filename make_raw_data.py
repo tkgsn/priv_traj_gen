@@ -639,7 +639,7 @@ def make_raw_data(dataset, logger):
             trajs = make_raw_data_geolife()
         elif dataset == "geolife_mm":
             convert_mr_to_training(dataset)
-            trajs = make_raw_data_from_map_matched_data(get_datadir() / "geolife" / "raw")
+            trajs = make_raw_data_from_map_matched_data(get_datadir() / dataset / "raw")
         elif dataset == "geolife_test":
             trajs = make_raw_data_geolife(True)
         elif dataset == "geolife_test_mm":
