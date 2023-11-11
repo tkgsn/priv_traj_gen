@@ -28,6 +28,7 @@ max_len = 0
 # BATCH_SIZE = int(np.sqrt(n_data))
 BATCH_SIZE = 0
 
+P_BATCH = 20
 EPOCHS = 50
 TRAJ_FIX_LEN = 100
 
