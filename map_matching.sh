@@ -1,4 +1,4 @@
-dataset=$DATASET
+dataset=${DATASET}_mm
 
 data_dir=$(jq -r '.data_dir' config.json)
 graph_data_dir=${data_dir}/${dataset}/raw
