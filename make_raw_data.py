@@ -645,7 +645,7 @@ def make_raw_data(dataset, logger):
         elif dataset == "geolife_test_mm":
             logger.info(f"make raw data from map matched data {save_path.parent / 'raw'}")
             convert_mr_to_training(dataset)
-            trajs = make_raw_data_from_map_matched_data(get_datadir() / "geolife_test" / "raw")
+            trajs = make_raw_data_from_map_matched_data(get_datadir() / dataset / "raw")
         elif dataset == "chengdu":
             logger.info(f"make raw data from map matched data {save_path.parent / 'raw'}")
             trajs = make_raw_data_from_map_matched_data(save_path.parent / "raw")
