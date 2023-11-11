@@ -36,6 +36,7 @@ seed=$SEED
 dp=$DP
 epoch=$EPOCH
 length=$MAX_LENGTH
+p_batch=$P_BATCH
 #
 # VARIABLES END
 #
@@ -54,6 +55,6 @@ save_path=/data/results/${dataset}/${max_size}/${name}
 # setting_path=/data/${dataset}/${max_size}/0_0_bin${n_bins}_seed0/params.json
 cuda_number=3
 python3 make_training_data.py $original_data_dir $training_data_dir $dataset $max_size $seed
-python3 train.py $training_data_dir $save_path $epoch $cuda_number $dp $length
+python3 train.py $training_data_dir $save_path $epoch $cuda_number $dp $length $p_batch
 # python3 convert_to_original_format.py $training_data_dir $save_path
 # python3 evaluate.py $save_path $route_data_dir $stay_point_data_dir $save_path
