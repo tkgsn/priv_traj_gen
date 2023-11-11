@@ -14,6 +14,12 @@ from grid import Grid, QuadTree, priv_tree
 import subprocess
 
 
+def get_original_dataset_name(dataset):
+    if str(dataset).endswith("_mm"):
+        original_dataset = "_".join(str(dataset).split("_")[:-1])
+    else:
+        original_dataset = str(dataset)
+    return original_dataset
 
 # make a dataset for pre-training
 def make_trajectories(global_distribution, reference_distribution, transition_matrix, time_distribution, n_samples):
