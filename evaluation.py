@@ -733,9 +733,9 @@ class MTNetGeneratorMock():
     This generator returns the trajectory in the given path
     '''
     def __init__(self, traj_path, time_traj_path, dataset, n_bins, random=False):
-
+        original_dataset_name = get_original_dataset_name(dataset)
         with open("config.json", "r") as f:
-            config = json.load(f)["latlon"][dataset]
+            config = json.load(f)["latlon"][original_dataset_name]
         lat_range = config["lat_range"]
         lon_range = config["lon_range"]
         edge_to_state_pair, _ = self.make_edge_to_state_pair(get_datadir() / dataset / "raw", lat_range, lon_range, n_bins)
