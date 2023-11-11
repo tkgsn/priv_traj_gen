@@ -691,7 +691,7 @@ def make_raw_data(dataset, logger):
 def convert_mr_to_training(dataset):
     assert dataset.split("_")[-1] == "mm", "dataset must be map matched"
 
-    dataset = "_".join(dataset.split("_")[:-1])
+    # dataset = "_".join(dataset.split("_")[:-1])
     data_dir = get_datadir() / dataset / "raw"
     save_dir = get_datadir() / dataset / "raw"
 
