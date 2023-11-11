@@ -192,7 +192,7 @@ class Benchmarker:
 
         # change to get arbitrary number of samples
         n_generated = len(self.trajs) * config.GENE_RATIO
-        batch_for_generation = 100
+        batch_for_generation = min(100, n_generated)
         for _ in range(n_generated // batch_for_generation):
             indice = np.random.choice(len(self.trajs), batch_for_generation)
             # for traj route
