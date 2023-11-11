@@ -117,6 +117,8 @@ def run(generator, dataset, args):
             # compute js
             real_counters = dataset.real_counters
             n_trajs = dataset.n_trajs
+            img_dir = pathlib.Path(args.save_dir) / "imgs" / args.name
+            img_dir.mkdir(exist_ok=True)
             for key, counter in counters.items():
                 print(key)
                 if key == "first_location":
@@ -149,14 +151,14 @@ def run(generator, dataset, args):
                     results[f"{key}_jss"] = []
                     for i, (counter_, real_counter) in enumerate(zip(counter, real_counters[key])):
                         results[f"{key}_jss"].append(compute_divergence(real_counter, sum(real_counter.values()), counter_, sum(counter_.values()), n_vocabs, axis=1))
-                        plot_density(counter_, dataset.n_locations, pathlib.Path(args.save_dir) / "imgs" / f"{key}_{i}.png", dataset.top_base_locations[i])
+                        plot_density(counter_, dataset.n_locations, img_dir / f"{key}_{i}.png", dataset.top_base_locations[i])
                 elif key == "global":
                     for i, (counter_, real_counter) in enumerate(zip(counter, real_counters[key])):
                         results[f"{key}_jss_{i}"] = compute_divergence(real_counter, sum(real_counter.values()), counter_, sum(counter_.values()), n_vocabs, axis=1)
-                        plot_density(counter_, dataset.n_locations, pathlib.Path(args.save_dir) / "imgs" / f"{key}_{i}.png")
+                        plot_density(counter_, dataset.n_locations, img_dir / f"{key}_{i}.png")
                 else:
                     results[f"{key}_js"] = compute_divergence(real_counters[key], sum(real_counters[key].values()), counter, sum(counter.values()), n_vocabs, axis=1)
-                    plot_density(counter, n_vocabs, pathlib.Path(args.save_dir) / "imgs" / f"{key}.png")
+                    plot_density(counter, n_vocabs, img_dir / f"{key}.png")
 
     return results
 
@@ -483,7 +485,8 @@ def compute_global_counts_from_time_label(trajs, time_label_trajs, time_label):
 
 def compute_auxiliary_information(dataset, save_dir, logger):
     save_dir = pathlib.Path(save_dir)
-    (save_dir.parent / "imgs").mkdir(exist_ok=True)
+    img_dir = save_dir.parent / "imgs"
+    img_dir.mkdir(exist_ok=True)
 
 
     # compute top_base_locations
@@ -551,17 +554,18 @@ def compute_auxiliary_information(dataset, save_dir, logger):
 
     # plot the counts
     for key, counter in dataset.real_counters.items():
-        print(key)
         if key == "global":
             for i, count in enumerate(counter):
-                plot_density(count, dataset.n_locations, save_dir.parent / "imgs" / f"real_{key}_distribution_{int(i)}.png")
+                plot_density(count, dataset.n_locations, img_dir / f"real_{key}_distribution_{int(i)}.png")
         elif key in ["target", "destination", "route"]:
             for i, count in enumerate(counter[:30]):
-                plot_density(count, dataset.n_locations, save_dir.parent / "imgs" / f"real_{key}_distribution_{int(i)}.png", dataset.top_base_locations[i])
+                plot_density(count, dataset.n_locations, img_dir / f"real_{key}_distribution_{int(i)}.png", dataset.top_base_locations[i])
         elif key == "distance":
-            plot_density(counter, dataset.n_bins_for_distance, save_dir.parent / "imgs" / f"real_{key}_distribution.png")
+            plot_density(counter, dataset.n_bins_for_distance, img_dir / f"real_{key}_distribution.png")
         else:
-            plot_density(counter, dataset.n_locations, save_dir.parent / "imgs" / f"real_{key}_distribution.png")
+            plot_density(counter, dataset.n_locations, img_dir / f"real_{key}_distribution.png")
+    
+    send(img_dir, parent=True)
 
 
     # return locations, next_location_counts, first_next_location_counts, real_global_counts, label_count, time_distribution, reference_distribution
@@ -964,10 +968,12 @@ if __name__ == "__main__":
             generator, _ = construct_generator(dataset.n_locations, meta_network, training_setting["network_type"], training_setting["location_embedding_dim"], training_setting["n_split"], len(dataset.label_to_reference), training_setting["hidden_dim"], dataset.reference_to_label, logger)
             logger.info(f"evaluate {model_path}")
             generator.load_state_dict(torch.load(model_path, map_location=device))
-
+        
+        args.name = model_path.stem
         results = run(generator, dataset, args)
         with open(args.save_dir / f"evaluated_{model_path.stem}.json", "w") as f:
             json.dump(results, f)
         if run_args.server:
             send(args.save_dir / f"evaluated_{model_path.stem}.json")
+            send(args.save_dir / "imgs" / args.name, parent=True)
         print(results)
