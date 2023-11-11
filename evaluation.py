@@ -917,7 +917,7 @@ if __name__ == "__main__":
         data_path = get_datadir() / training_setting["dataset"] / training_setting["data_name"] / f"{run_args.location_threshold}_{run_args.time_threshold}_bin{run_args.n_bins}_seed{run_args.seed}"
     if run_args.server:
         get(data_path, parent=True)
-
+ls data/geolife_test_mm/0/200_30_bin30_seed
     with open(data_path / "params.json", "r") as f:
         data_setting = json.load(f)
     n_bins = int(np.sqrt(data_setting["n_locations"]) -2)
@@ -928,9 +928,10 @@ if __name__ == "__main__":
 
     if run_args.server:
         get(route_data_path, parent=True)
-        get(get_datadir() / training_setting["dataset"] / "pair_to_route" / str(n_bins) / "paths.db")
+        get(get_datadir() / get_original_dataset_name(training_setting["dataset"]) / "pair_to_route" / str(n_bins) / "paths.db")
         get(get_datadir() / training_setting["dataset"] / f"distance_matrix_bin{n_bins}.npy")
-
+        get(get_datadir() / dataset_name / "raw", parent=True)
+    
     dataset = construct_dataset(data_path, route_data_path, 5, training_setting["dataset"])
     compute_auxiliary_information(dataset, model_dir, logger)
 
@@ -948,17 +949,13 @@ if __name__ == "__main__":
     (args.save_dir / "imgs").mkdir(exist_ok=True, parents=True)
     make_first_order_test_data_loader(dataset, args.n_test_locations)
     make_second_order_test_data_loader(dataset, args.n_test_locations)
-
-
-
+        
     # sort according to i
     model_paths = sorted(model_paths, key=lambda x: int(x.stem.split("_")[-1]))
     print(model_paths)
     for model_path in model_paths:
             
         if training_setting["network_type"] == "MTNet":
-            if run_args.server:
-                get(get_datadir() / dataset_name / "raw", parent=True)
             generator = MTNetGeneratorMock(model_path / "samples.txt", model_path / "samples_time.txt", training_setting["dataset"], n_bins)
         else:
             meta_network, _ = construct_meta_network(training_setting["clustering"], training_setting["network_type"], dataset.n_locations, training_setting["memory_dim"], training_setting["memory_hidden_dim"], training_setting["location_embedding_dim"], training_setting["multilayer"], training_setting["consistent"], logger)
