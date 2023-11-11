@@ -917,7 +917,7 @@ if __name__ == "__main__":
         data_path = get_datadir() / training_setting["dataset"] / training_setting["data_name"] / f"{run_args.location_threshold}_{run_args.time_threshold}_bin{run_args.n_bins}_seed{run_args.seed}"
     if run_args.server:
         get(data_path, parent=True)
-ls data/geolife_test_mm/0/200_30_bin30_seed
+        
     with open(data_path / "params.json", "r") as f:
         data_setting = json.load(f)
     n_bins = int(np.sqrt(data_setting["n_locations"]) -2)
