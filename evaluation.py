@@ -868,7 +868,7 @@ def set_args():
     # this is not used
     args.batch_size = 100
     args.route_generator = False
-    # args.time_threshold = 10
+    args.time_threshold = 10
     args.truncate = True
 
     return args
@@ -936,6 +936,7 @@ if __name__ == "__main__":
 
     args = set_args()
     args.dataset = dataset_name
+    args.time_threshold = run_args.time_threshold
     args.route_generator = (training_setting["network_type"] == "MTNet")
     if (training_setting["dataset"] == "chengdu") and (not args.route_generator) and args.truncate:
         print("WARNING: traj is truncated")

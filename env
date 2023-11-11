@@ -45,3 +45,5 @@
 # export DP=True
 # export EPOCH=10
 # export MAX_LENGTH=100
+
+docker run -it -e L_THRESH=200 -e T_THRESH=30 -e N_BINS=30 -e SEED=0 -e MODEL_DIR=/data/results/geolife_mm/0//MTNET_DPTrue kyotohiemrnet.azurecr.io/hiemrnet /bin/bash -c "./evaluate.sh"
