@@ -458,9 +458,9 @@ if __name__ == "__main__":
 
         print(data_path, save_path, dataset)
         run_chengdu(data_path, save_path, num_data, seed)
-    elif dataset == "geolife":
+    elif dataset == "geolife_mm":
         run_geolife(data_path, save_path, seed, num_data)
-    elif dataset == "geolife_test":
+    elif dataset == "geolife_test_mm":
         run_geolife(data_path, save_path, seed, num_data)
     # else:
     #     run(data_path, save_path)
