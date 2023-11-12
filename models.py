@@ -309,7 +309,8 @@ def compute_loss_meta_gru_net(target_locations, target_times, output_locations, 
         location_dim = output_locations[i].shape[-1]
         output_locations[i] = output_locations[i].view(-1, location_dim)
         target_locations[i] = target_locations[i].view(-1)
-        coef = (i+1)/len(target_locations)
+        # coef = (i+1)/len(target_locations)
+        coef = 1
         loss.append(coef*F.nll_loss(output_locations[i], target_locations[i], ignore_index=TrajectoryDataset.ignore_idx(n_locations)) * coef_location)
     loss.append(F.nll_loss(output_times.view(-1, output_times.shape[-1]), (target_times).view(-1)) * coef_time)
     return loss

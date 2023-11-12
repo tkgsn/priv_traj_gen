@@ -36,6 +36,7 @@
 # export N_BINS=30
 # export SEED=0
 # export MODEL_DIR=/data/results/geolife_mm/0/200_30_bin30_seed0/fulllinear_quadtree_dpTrue_meta10000_dim100_64_64_256_btch0_cldepth_1000_trTrue_coTrue
+# export MODEL_DIR=/data/results/geolife_mm/0/MTNET_DPTrue/model_0
 
 # MTNet/run.sh
 # docker run -it -e DATASET=geolife_test_mm -e SEED=0 -e MAX_SIZE=0 -e DP=True -e EPOCH=100 -e MAX_LENGTH=100 kyotohiemrnet.azurecr.io/hiemrnet /bin/bash -c "cd MTNet && ./run.sh"
