@@ -264,7 +264,7 @@ def compute_divergence(real_count, n_real_traj, inferred_count, n_gene_traj, n_v
         # real_count and inferred_count will be density
         true_hist = real_distribution
         inferred_hist = inferred_distribution
-        emd = pyemd.emd(true_hist, inferred_hist, distance_matrix)
+        emd = pyemd.emd(inferred_hist, true_hist, distance_matrix)
         return emd
 
     if axis == 0:
