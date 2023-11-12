@@ -447,6 +447,7 @@ def count_distance(distance_matrix, trajs, n_bins):
 
 
 def count_first_next_locations(trajs, source_location):
+    trajs = [traj for traj in trajs if traj[0] == source_location and len(traj) > 1]
     # count the appearance of locations
     first_next_locations = []
     for traj in trajs:
