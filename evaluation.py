@@ -14,6 +14,7 @@ import pathlib
 import sqlite3
 import tqdm
 import json
+import pyemd
 
 def run(generator, dataset, args):
 
@@ -37,6 +38,7 @@ def run(generator, dataset, args):
         results = {}
 
         if args.evaluate_first_next_location and not args.route_generator:
+            print("DEPRECATED: evaluate_first_next_location")
             jss = evaluate_next_location_on_test_dataset(dataset.first_next_location_counts, dataset.first_order_test_data_loader, dataset.first_counters, generator, 1)
             results["first_next_location_js"] = jss
 
@@ -45,13 +47,14 @@ def run(generator, dataset, args):
         #     results["second_next_location_js"] = jss
 
         if args.evaluate_second_order_next_location and (dataset.seq_len > 2) and not args.route_generator:
+            print("DEPRECATED: evaluate_second_order_next_location")
             jss = evaluate_next_location_on_test_dataset(dataset.second_order_next_location_counts, dataset.second_order_test_data_loader, dataset.second_counters, generator, 2)
             results["second_order_next_location_js"] = jss
 
         if (args.evaluate_global or args.evaluate_passing or args.evaluate_source or args.evaluate_target or args.evaluate_route or args.evaluate_destination or args.evaluate_distance):
 
             # counters = {"global":[Counter() for _ in dataset.time_ranges], "passing": Counter(), "source": Counter(), "target": [Counter() for _ in range(n_test_locations)], "route": [Counter() for _ in range(n_test_locations)], "destination": [Counter() for _ in range(n_test_locations)], "distance": Counter(), "first_location": Counter()}
-            counters = {"passing": Counter(), "source": Counter(), "emp_next": [Counter() for _ in range(n_test_locations)], "2nd_emp_next": [Counter() for _ in range(n_2nd_order_test_locations)], "target": [Counter() for _ in range(n_test_locations)], "route": [Counter() for _ in range(n_test_locations)], "destination": [Counter() for _ in range(n_test_locations)], "distance": Counter(), "first_location": Counter()}
+            counters = {"passing": Counter(), "source": Counter(), "emp_next": [Counter() for _ in range(n_test_locations)], "second_emp_next": [Counter() for _ in range(n_2nd_order_test_locations)], "target": [Counter() for _ in range(n_test_locations)], "route": [Counter() for _ in range(n_test_locations)], "destination": [Counter() for _ in range(n_test_locations)], "distance": Counter(), "first_location": Counter()}
             condition = True
             n_gene_traj = 0
             # gene_trajs = []
@@ -108,8 +111,8 @@ def run(generator, dataset, args):
                         counters["route"][i] += count_route_locations(generated_route_trajs, location)
 
                 for i, locations in enumerate(dataset.top_2nd_order_base_locations):
-                    if args.evaluate_2nd_emp_next:
-                        counters["2nd_emp_next"][i] += count_second_order_first_next_locations(generated_stay_trajs, locations)
+                    if args.evaluate_second_emp_next:
+                        counters["second_emp_next"][i] += count_second_order_first_next_locations(generated_stay_trajs, locations)
 
                 if args.evaluate_distance:
                     counters["distance"] += count_distance(dataset.distance_matrix, generated_stay_trajs, dataset.n_bins_for_distance)
@@ -143,23 +146,24 @@ def run(generator, dataset, args):
                 # compute kl divergence for a dimension
                 if key in ["target", "destination", "route", "emp_next"]:
                     results[f"{key}_kls_eachdim"] = [compute_divergence(real_counter, n_traj, counter_, counters["first_location"][location], n_vocabs, save_path=img_dir / f"{key}_{i}.png", location=location) for i, (counter_, real_counter, n_traj, location) in enumerate(zip(counter, real_counters[key], n_trajs[key], dataset.top_base_locations))]
-                    results[f"{key}_jss_eachdim"] = [compute_divergence(real_counter, n_traj, counter_, counters["first_location"][location], n_vocabs, kl=False) for counter_, real_counter, n_traj, location in zip(counter, real_counters[key], n_trajs[key], dataset.top_base_locations)]
+                    results[f"{key}_jss_eachdim"] = [compute_divergence(real_counter, n_traj, counter_, counters["first_location"][location], n_vocabs, type="kl") for counter_, real_counter, n_traj, location in zip(counter, real_counters[key], n_trajs[key], dataset.top_base_locations)]
                     results[f"{key}_kls_positivedim"] = [compute_divergence(real_counter, n_traj, counter_, counters["first_location"][location], n_vocabs, positive=True) for counter_, real_counter, n_traj, location in zip(counter, real_counters[key], n_trajs[key], dataset.top_base_locations)]
-                    results[f"{key}_jss_positivedim"] = [compute_divergence(real_counter, n_traj, counter_, counters["first_location"][location], n_vocabs, positive=True, kl=False) for counter_, real_counter, n_traj, location in zip(counter, real_counters[key], n_trajs[key], dataset.top_base_locations)]
+                    results[f"{key}_jss_positivedim"] = [compute_divergence(real_counter, n_traj, counter_, counters["first_location"][location], n_vocabs, positive=True, type="kl") for counter_, real_counter, n_traj, location in zip(counter, real_counters[key], n_trajs[key], dataset.top_base_locations)]
                     results[f"{key}_jss"] = [compute_divergence(real_counter, sum(real_counter.values()), counter_, sum(counter_.values()), n_vocabs, axis=1) for counter_, real_counter in zip(counter, real_counters[key])]
-                elif key == "2nd_emp_next":
+                    results[f"{key}_emd"] = [compute_divergence(real_counter, n_traj, counter_, n_gene_traj, n_vocabs, type="emd", distance_matrix=dataset.distance_matrix) for counter_, real_counter, n_traj in zip(counter, real_counters[key], n_trajs[key])]
+                elif key == "second_emp_next":
                     results[f"{key}_jss"] = [compute_divergence(real_counter, sum(real_counter.values()), counter_, sum(counter_.values()), n_vocabs, axis=1) for counter_, real_counter in zip(counter, real_counters[key])]
                 elif key == "global":
                     results[f"{key}_kls_eachdim"] = [compute_divergence(real_counter, n_traj, counter_, n_gene_traj, n_vocabs) for counter_, real_counter, n_traj in zip(counter, real_counters[key], n_trajs[key])]
                     results[f"{key}_kls_positivedim"] = [compute_divergence(real_counter, n_traj, counter_, n_gene_traj, n_vocabs, positive=True) for counter_, real_counter, n_traj in zip(counter, real_counters[key], n_trajs[key])]
-                    results[f"{key}_jss_eachdim"] = [compute_divergence(real_counter, n_traj, counter_, n_gene_traj, n_vocabs, kl=False) for counter_, real_counter, n_traj in zip(counter, real_counters[key], n_trajs[key])]
-                    results[f"{key}_jss_positivedim"] = [compute_divergence(real_counter, n_traj, counter_, n_gene_traj, n_vocabs, positive=True, kl=False) for counter_, real_counter, n_traj in zip(counter, real_counters[key], n_trajs[key])]
+                    results[f"{key}_jss_eachdim"] = [compute_divergence(real_counter, n_traj, counter_, n_gene_traj, n_vocabs, type="kl") for counter_, real_counter, n_traj in zip(counter, real_counters[key], n_trajs[key])]
+                    results[f"{key}_jss_positivedim"] = [compute_divergence(real_counter, n_traj, counter_, n_gene_traj, n_vocabs, positive=True, type="kl") for counter_, real_counter, n_traj in zip(counter, real_counters[key], n_trajs[key])]
                     results[f"{key}_jss"] = [compute_divergence(real_counter, sum(real_counter.values()), counter_, sum(counter_.values()), n_vocabs, axis=1) for counter_, real_counter in zip(counter, real_counters[key])]
                 else:
                     results[f"{key}_kl_eachdim"] = compute_divergence(real_counters[key], n_trajs[key], counter, n_gene_traj, n_vocabs)
                     results[f"{key}_kl_positivedim"] = compute_divergence(real_counters[key], n_trajs[key], counter, n_gene_traj, n_vocabs, positive=True)
-                    results[f"{key}_js_eachdim"] = compute_divergence(real_counters[key], n_trajs[key], counter, n_gene_traj, n_vocabs, kl=False)
-                    results[f"{key}_js_positivedim"] = compute_divergence(real_counters[key], n_trajs[key], counter, n_gene_traj, n_vocabs, positive=True, kl=False)
+                    results[f"{key}_js_eachdim"] = compute_divergence(real_counters[key], n_trajs[key], counter, n_gene_traj, n_vocabs, type="kl")
+                    results[f"{key}_js_positivedim"] = compute_divergence(real_counters[key], n_trajs[key], counter, n_gene_traj, n_vocabs, positive=True, type="kl")
                     results[f"{key}_js"] = compute_divergence(real_counters[key], sum(real_counters[key].values()), counter, sum(counter.values()), n_vocabs, axis=1)
 
                 # # compute js divergence
@@ -238,7 +242,7 @@ def compensate_edge_by_map(from_state, to_state, db_path):
 
 
 
-def compute_divergence(real_count, n_real_traj, inferred_count, n_gene_traj, n_vocabs, axis=0, positive=False, kl=True, save_path=None, location=None):
+def compute_divergence(real_count, n_real_traj, inferred_count, n_gene_traj, n_vocabs, axis=0, positive=False, type="kl", save_path=None, location=None, distance_matrix=None):
     if n_real_traj == 0:
         print("WARNING: n_real_traj is zero")
         raise ValueError("no trajectory is evaluated")
@@ -246,16 +250,27 @@ def compute_divergence(real_count, n_real_traj, inferred_count, n_gene_traj, n_v
         print("WARNING: n_gene_traj is zero, convert to uniform")
         inferred_count = {key: 1 for key in range(n_vocabs)}
         n_gene_traj = n_vocabs
+
+    real_distribution = compute_distribution_from_count(real_count, n_vocabs, n_real_traj)
+    if save_path is not None:
+        plot_density(real_distribution, n_vocabs, save_path.parent / ("real_" + save_path.stem), anotation=location)
+
+    inferred_distribution = compute_distribution_from_count(inferred_count, n_vocabs, n_gene_traj)
+    if save_path is not None:
+        plot_density(inferred_distribution, n_vocabs, save_path.parent / ("inferred_" + save_path.stem), anotation=location)
+
+    if type == "emd":
+        # compute the earth mover's distance using pyemd
+        # real_count and inferred_count will be density
+        true_hist = real_distribution
+        inferred_hist = inferred_distribution
+        emd = pyemd.emd(true_hist, inferred_hist, distance_matrix)
+        return emd
+
     if axis == 0:
 
         # compute the kl divergence on the dimensions that are positive
-        real_distribution = compute_distribution_from_count(real_count, n_vocabs, n_real_traj)
-        if save_path is not None:
-            plot_density(real_distribution, n_vocabs, save_path.parent / ("real_" + save_path.stem), anotation=location)
         real_distribution = np.stack([real_distribution, 1-real_distribution], axis=0)
-        inferred_distribution = compute_distribution_from_count(inferred_count, n_vocabs, n_gene_traj)
-        if save_path is not None:
-            plot_density(inferred_distribution, n_vocabs, save_path.parent / ("inferred_" + save_path.stem), anotation=location)
         inferred_distribution = np.stack([inferred_distribution, 1-inferred_distribution], axis=0)
         # plus epsilon value to avoid inf for zero dimension
         inferred_distribution[inferred_distribution == 0] = 1e-10
@@ -265,15 +280,8 @@ def compute_divergence(real_count, n_real_traj, inferred_count, n_gene_traj, n_v
             positive_indices = np.where(real_distribution[0] > 0)[0]
             real_distribution = real_distribution[:, positive_indices]
             inferred_distribution = inferred_distribution[:, positive_indices]
-            # print(positive_indices)
-            # print([real_count[i] for i in positive_indices])
-            # print([inferred_count[i] for i in positive_indices])
 
-            a = scipy.stats.entropy(real_distribution, inferred_distribution, axis=0)
-            # print(a)
-            # print(np.argmax(a), positive_indices[np.argmax(a)], real_count[positive_indices[np.argmax(a)]], n_real_traj, inferred_count[positive_indices[np.argmax(a)]], n_gene_traj)
-            # print(real_distribution[:, np.argmax(a)], inferred_distribution[:, np.argmax(a)])
-
+        # this is for debug
         if scipy.stats.entropy(real_distribution, inferred_distribution, axis=0).sum() == float("inf"):
             for i in range(n_vocabs):
                 if scipy.stats.entropy(real_distribution[:, i], inferred_distribution[:, i], axis=0) == float("inf"):
@@ -291,21 +299,14 @@ def compute_divergence(real_count, n_real_traj, inferred_count, n_gene_traj, n_v
                     print(n_gene_traj, inferred_count)
                     raise ValueError("inf")
 
-        if kl:
+        if type == "kl":
             return scipy.stats.entropy(real_distribution, inferred_distribution, axis=0).sum()
         else:
-            # temp_distribution = np.zeros_like(real_distribution)
-            # temp_distribution[1,:] = 1
-            # print("temp", (jensenshannon(real_distribution, temp_distribution, axis=0)**2).sum()(), jensenshannon(temp_distribution, inferred_distribution, axis=0)**2)
-            # print("gene", (jensenshannon(real_distribution, inferred_distribution, axis=0)**2).sum()(), jensenshannon(real_distribution, inferred_distribution, axis=0)**2)
-
             return (jensenshannon(real_distribution, inferred_distribution, axis=0)**2).sum()
     else:
         # real_count and inferred_count will be the probability distributions
         assert n_real_traj == sum(real_count.values()), "n_real_traj must be equal to sum(real_count.values())"
         assert n_gene_traj == sum(inferred_count.values()), "n_gene_traj must be equal to sum(inferred_count.values())"
-        real_distribution = compute_distribution_from_count(real_count, n_vocabs, n_real_traj)
-        inferred_distribution = compute_distribution_from_count(inferred_count, n_vocabs, n_gene_traj)
         return jensenshannon(real_distribution, inferred_distribution)**2
 
 
@@ -457,7 +458,7 @@ def count_second_order_first_next_locations(trajs, source_location):
     # count the appearance of locations
     second_order_first_next_locations = []
     for traj in trajs:
-        if len(traj) < 2:
+        if len(traj) < 3:
             continue
         if traj[0] == source_location[0] and traj[1] == source_location[1]:
             second_order_first_next_locations.append(traj[2])
@@ -588,24 +589,25 @@ def compute_auxiliary_information(dataset, save_dir, logger):
     dataset.first_location_counts = Counter(dataset.first_locations)
     dataset.route_first_locations = [trajectory[0] for trajectory in dataset.route_data if len(trajectory) > 1]
     dataset.route_first_location_counts = Counter(dataset.route_first_locations)
-    dataset.second_order_first_next_locations = [trajectory[:2] for trajectory in dataset.data if len(trajectory) > 2]
+    dataset.second_order_first_locations = [tuple(trajectory[:2]) for trajectory in dataset.data if len(trajectory) > 2]
+    dataset.second_order_first_locations_counts = Counter(dataset.second_order_first_locations)
     # find locations whose count is larger than test_thresh and sort them
     test_thresh = 100
     test_locations = {location:count for location, count in dataset.first_location_counts.items() if count > test_thresh}
-    test_thresh_second = 50
-    second_order_test_locations = {locations:count for locations, count in dataset.second_orderfirst_next_locations.items() if count > test_thresh_second}
     if len(test_locations) == 0:
-        logger.info("WARNING no tes location is found")
+        logger.info("WARNING no test location is found")
         # find the location that has the largest count
-        test_locations = {location:count for location, count in dataset.first_location_counts.items()}
-        test_locations = {k: v for k, v in sorted(test_locations.items(), key=lambda item: item[1], reverse=True)[:1]}
-    if len(second_order_test_locations) == 0:
-        logger.info("WARNING no tes location is found")
-        # find the location that has the largest count
-        second_order_test_locations = {locations:count for locations, count in dataset.second_order_first_next_locations.items()}
-        second_order_test_locations = {k: v for k, v in sorted(second_order_test_locations.items(), key=lambda item: item[1], reverse=True)[:1]}
-
+        test_locations = {k: v for k, v in sorted(dataset.first_location_counts.items(), key=lambda item: item[1], reverse=True)[:1]}
     logger.info(f"number of test locations: {len(test_locations)}; {test_locations}")
+
+    test_thresh_second = 50
+    second_order_test_locations = {locations:count for locations, count in dataset.second_order_first_locations_counts.items() if count > test_thresh_second}
+    if len(second_order_test_locations) == 0:
+        logger.info("WARNING no 2nd order test location is found")
+        # find the location that has the largest count
+        second_order_test_locations = {k: v for k, v in sorted(dataset.second_order_first_locations_counts.items(), key=lambda item: item[1], reverse=True)[:1]}
+    logger.info(f"number of 2nd order test locations: {len(second_order_test_locations)}; {second_order_test_locations}")
+
     dataset.top_base_locations = sorted(test_locations, key=lambda x: dataset.first_location_counts[x], reverse=True)
     dataset.top_route_base_locations = sorted(test_locations, key=lambda x: dataset.route_first_location_counts[x], reverse=True)
     dataset.top_2nd_order_base_locations = sorted(second_order_test_locations, key=lambda x: dataset.first_location_counts[x], reverse=True)
@@ -651,8 +653,8 @@ def compute_auxiliary_information(dataset, save_dir, logger):
     dataset.real_counters["target"] = [count_target_locations(dataset.data, location) for location in dataset.top_base_locations]
     dataset.real_counters["route"] = [count_route_locations(dataset.route_data, location) for location in dataset.top_base_locations]
     dataset.real_counters["destination"] = [count_route_locations(dataset.data, location) for location in dataset.top_base_locations]
-    dataset.real_counters["next"] = [count_first_next_locations(dataset.data, location) for location in dataset.top_base_locations]
-    dataset.real_counters["2nd_next"] = [count_second_order_first_next_locations(dataset.data, locations) for locations in dataset.top_2nd_order_base_locations]
+    dataset.real_counters["emp_next"] = [count_first_next_locations(dataset.data, location) for location in dataset.top_base_locations]
+    dataset.real_counters["second_emp_next"] = [count_second_order_first_next_locations(dataset.data, locations) for locations in dataset.top_2nd_order_base_locations]
     logger.info("load distance matrix from {}".format(get_datadir() / str(dataset)  / f"distance_matrix_bin{int(np.sqrt(dataset.n_locations)) -2}.npy"))
     dataset.distance_matrix = np.load(get_datadir() / str(dataset)  / f"distance_matrix_bin{int(np.sqrt(dataset.n_locations)) -2}.npy")
     dataset.real_counters["distance"] = count_distance(dataset.distance_matrix, dataset.data, dataset.n_bins_for_distance)
@@ -666,21 +668,21 @@ def compute_auxiliary_information(dataset, save_dir, logger):
     dataset.n_trajs["route"] = [dataset.route_first_location_counts[location] for location in dataset.top_base_locations]
     dataset.n_trajs["destination"] = [dataset.first_location_counts[location] for location in dataset.top_base_locations]
     dataset.n_trajs["distance"] = len(dataset.data)
-    dataset.n_trajs["next"] = [sum(counter.values()) for counter in dataset.real_counters["next"]]
-    dataset.n_trajs["2nd_next"] = [sum(counter.values()) for counter in dataset.real_counters["2nd_next"]]
+    dataset.n_trajs["emp_next"] = [sum(counter.values()) for counter in dataset.real_counters["emp_next"]]
+    dataset.n_trajs["second_emp_next"] = [sum(counter.values()) for counter in dataset.real_counters["second_emp_next"]]
 
     # plot the counts
-    for key, counter in dataset.real_counters.items():
-        if key == "global":
-            for i, count in enumerate(counter):
-                plot_density(count, dataset.n_locations, img_dir / f"real_{key}_distribution_{int(i)}.png")
-        elif key in ["target", "destination", "route"]:
-            for i, count in enumerate(counter[:test_thresh]):
-                plot_density(count, dataset.n_locations, img_dir / f"real_{key}_distribution_{int(i)}.png", dataset.top_base_locations[i], coef=1/dataset.n_trajs[key][i])
-        elif key == "distance":
-            plot_density(counter, dataset.n_bins_for_distance, img_dir / f"real_{key}_distribution.png")
-        else:
-            plot_density(counter, dataset.n_locations, img_dir / f"real_{key}_distribution.png")
+    # for key, counter in dataset.real_counters.items():
+    #     if key == "global":
+    #         for i, count in enumerate(counter):
+    #             plot_density(count, dataset.n_locations, img_dir / f"real_{key}_distribution_{int(i)}.png")
+    #     elif key in ["target", "destination", "route"]:
+    #         for i, count in enumerate(counter[:test_thresh]):
+    #             plot_density(count, dataset.n_locations, img_dir / f"real_{key}_distribution_{int(i)}.png", dataset.top_base_locations[i], coef=1/dataset.n_trajs[key][i])
+    #     elif key == "distance":
+    #         plot_density(counter, dataset.n_bins_for_distance, img_dir / f"real_{key}_distribution.png")
+    #     else:
+    #         plot_density(counter, dataset.n_locations, img_dir / f"real_{key}_distribution.png")
     
     send(img_dir, parent=True)
 
@@ -928,6 +930,8 @@ def set_args():
     args.evaluate_route = True
     args.evaluate_destination = True
     args.evaluate_distance = True
+    args.evaluate_emp_next = True
+    args.evaluate_second_emp_next = True
     args.evaluate_first_next_location = False
     args.evaluate_second_next_location = False
     args.evaluate_second_order_next_location = False
@@ -1019,8 +1023,8 @@ if __name__ == "__main__":
         name = model_dir.stem    
     args.save_dir = get_datadir() / "results" / training_setting["dataset"] / training_setting["data_name"] / route_data_name / name
     (args.save_dir / "imgs").mkdir(exist_ok=True, parents=True)
-    make_first_order_test_data_loader(dataset, args.n_test_locations)
-    make_second_order_test_data_loader(dataset, args.n_test_locations)
+    # make_first_order_test_data_loader(dataset, args.n_test_locations)
+    # make_second_order_test_data_loader(dataset, args.n_test_locations)
         
     # sort according to i
     model_paths = sorted(model_paths, key=lambda x: int(x.stem.split("_")[-1]))

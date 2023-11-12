@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# apt-get install libgl1-mesa-glx
+# pip install opencv-python
+
+pip install pyemd
 
 # source ./enviornment
 #
