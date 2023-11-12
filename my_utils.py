@@ -346,7 +346,7 @@ def global_clipping(trajectories, global_clip):
     return clipped_trajectories
 
 
-def plot_density(counts, n_locations, save_path, anotation=None):
+def plot_density(counts, n_locations, save_path, anotation=None, coef=1):
 
     if type(counts) is Counter:
         counts_ = [0 for i in range(n_locations)]
@@ -355,10 +355,11 @@ def plot_density(counts, n_locations, save_path, anotation=None):
         counts = counts_
         
     if np.sqrt(n_locations).is_integer():
-            
+
         n_x = int(np.sqrt(n_locations))
         n_y = int(np.sqrt(n_locations))
         values = np.rot90(np.array(counts).reshape(n_x, n_y))
+        values = values * coef
         plt.figure(figsize=(10, 10))
         ax = sns.heatmap(values, cmap="YlGnBu", vmin=0, vmax=values.max(), square=True, cbar_kws={"shrink": 0.8})
         if anotation is not None:

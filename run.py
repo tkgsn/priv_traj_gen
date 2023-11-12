@@ -144,6 +144,26 @@ def train_with_discrete_time(generator, optimizer, loss_model, input_locations, 
         output_locations, output_times = generator([input_locations, input_times], labels)
         if train_all_layers:
             target_locations = make_targets_of_all_layers(target_locations, generator.meta_net.tree)
+
+    # if generator.meta_net.is_consistent:
+    if False:
+        # same thing as the below one
+        losses = []
+        for i in range(len(target_locations)):
+            loss_depth_i = 0
+            counter_depth_i = 0
+            for j in range(len(target_locations[i])):
+                for k in range(len(target_locations[i][j])):
+                    if target_locations[i][j][k].item() != TrajectoryDataset.ignore_idx(generator.meta_net.n_locations):
+                        # new_target_locations.append(0)
+                        # new_output_locations.append(output_locations[i][j][k][target_locations[i][j][k]])
+                        # print(output_locations[i][j][k][target_locations[i][j][k]].view(-1,1))
+                        loss_depth_i += (torch.nn.functional.nll_loss(output_locations[i][j][k][target_locations[i][j][k]].view(-1,1), torch.tensor([0])))
+                        counter_depth_i += 1
+            losses.append(loss_depth_i / counter_depth_i)
+
+        losses.append(F.nll_loss(output_times.view(-1, output_times.shape[-1]), (target_times).view(-1)))
+    
     losses = loss_model(target_locations, target_times, output_locations, output_times, coef_location, coef_time)
     loss = sum(losses)
     optimizer.zero_grad()

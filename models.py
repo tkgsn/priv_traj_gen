@@ -473,8 +473,8 @@ class BaseQuadTreeNetwork(nn.Module):
                 scores = F.log_softmax(scores, dim=-1)
                 # when evaluation_mode, conducting consistent sampling for all locations; it generates probability distribution in all layers
                 # that is, this generates Pr(location|depth)
-                # if (not self.training) or self.pre_training:
-                if True:
+                if (not self.training) or self.pre_training:
+                # if True:
                     distribution = torch.zeros(*scores.shape[:-2], 4**depth).to(scores.device)
                     for i in range(depth):
                         ids = list(range(sum([4**depth_ for depth_ in range(0,i)]), sum([4**depth_ for depth_ in range(0,i+1)])))
@@ -493,8 +493,7 @@ class BaseQuadTreeNetwork(nn.Module):
                 # in the case of not consistent, this generates probability distribution on the depth layer
                 distribution = F.log_softmax(scores[..., ids], dim=-1)
             else:
-                # when training_mode, not conducting consistent sampling to avoid the gradient vanishing problem
-                # we consider that each node generates probability distribution on the 4 children nodes, i.e., P(child|parent)
+                # when training_mode, we consider that each node generates probability distribution on the 4 children nodes, i.e., P(child|parent)
                 distribution = scores[..., ids]
 
             return distribution

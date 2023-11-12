@@ -152,7 +152,7 @@ def run(generator, dataset, args):
                     results[f"{key}_jss"] = []
                     for i, (counter_, real_counter) in enumerate(zip(counter, real_counters[key])):
                         results[f"{key}_jss"].append(compute_divergence(real_counter, sum(real_counter.values()), counter_, sum(counter_.values()), n_vocabs, axis=1))
-                        plot_density(counter_, dataset.n_locations, img_dir / f"{key}_{i}.png", dataset.top_base_locations[i])
+                        plot_density(counter_, dataset.n_locations, img_dir / f"{key}_{i}.png", dataset.top_base_locations[i], coef=1/counters["first_location"][dataset.top_base_locations[i]])
                 elif key == "global":
                     for i, (counter_, real_counter) in enumerate(zip(counter, real_counters[key])):
                         results[f"{key}_jss_{i}"] = compute_divergence(real_counter, sum(real_counter.values()), counter_, sum(counter_.values()), n_vocabs, axis=1)
@@ -565,7 +565,7 @@ def compute_auxiliary_information(dataset, save_dir, logger):
                 plot_density(count, dataset.n_locations, img_dir / f"real_{key}_distribution_{int(i)}.png")
         elif key in ["target", "destination", "route"]:
             for i, count in enumerate(counter[:30]):
-                plot_density(count, dataset.n_locations, img_dir / f"real_{key}_distribution_{int(i)}.png", dataset.top_base_locations[i])
+                plot_density(count, dataset.n_locations, img_dir / f"real_{key}_distribution_{int(i)}.png", dataset.top_base_locations[i], coef=1/dataset.n_trajs[key][i])
         elif key == "distance":
             plot_density(counter, dataset.n_bins_for_distance, img_dir / f"real_{key}_distribution.png")
         else:
