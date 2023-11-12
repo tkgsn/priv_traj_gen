@@ -132,34 +132,37 @@ def run(generator, dataset, args):
 
                 # compute kl divergence for a dimension
                 if key in ["target", "destination", "route"]:
-                    results[f"{key}_kls_eachdim"] = [compute_divergence(real_counter, n_traj, counter_, counters["first_location"][location], n_vocabs, save_path=img_dir / f"{key}_{i}.png", location=location) for counter_, real_counter, n_traj, location in zip(counter, real_counters[key], n_trajs[key], dataset.top_base_locations)]
-                    results[f"{key}_jss_eachdim"] = [compute_divergence(real_counter, n_traj, counter_, counters["first_location"][location], n_vocabs, kl=False, save_path=img_dir / f"{key}_{i}.png", location=location) for counter_, real_counter, n_traj, location in zip(counter, real_counters[key], n_trajs[key], dataset.top_base_locations)]
-                    results[f"{key}_kls_positivedim"] = [compute_divergence(real_counter, n_traj, counter_, counters["first_location"][location], n_vocabs, positive=True, save_path=img_dir / f"{key}_{i}.png", location=location) for counter_, real_counter, n_traj, location in zip(counter, real_counters[key], n_trajs[key], dataset.top_base_locations)]
-                    results[f"{key}_jss_positivedim"] = [compute_divergence(real_counter, n_traj, counter_, counters["first_location"][location], n_vocabs, positive=True, kl=False, save_path=img_dir / f"{key}_{i}.png", location=location) for counter_, real_counter, n_traj, location in zip(counter, real_counters[key], n_trajs[key], dataset.top_base_locations)]
+                    results[f"{key}_kls_eachdim"] = [compute_divergence(real_counter, n_traj, counter_, counters["first_location"][location], n_vocabs, save_path=img_dir / f"{key}_{i}.png", location=location) for i, (counter_, real_counter, n_traj, location) in enumerate(zip(counter, real_counters[key], n_trajs[key], dataset.top_base_locations))]
+                    results[f"{key}_jss_eachdim"] = [compute_divergence(real_counter, n_traj, counter_, counters["first_location"][location], n_vocabs, kl=False) for counter_, real_counter, n_traj, location in zip(counter, real_counters[key], n_trajs[key], dataset.top_base_locations)]
+                    results[f"{key}_kls_positivedim"] = [compute_divergence(real_counter, n_traj, counter_, counters["first_location"][location], n_vocabs, positive=True) for counter_, real_counter, n_traj, location in zip(counter, real_counters[key], n_trajs[key], dataset.top_base_locations)]
+                    results[f"{key}_jss_positivedim"] = [compute_divergence(real_counter, n_traj, counter_, counters["first_location"][location], n_vocabs, positive=True, kl=False) for counter_, real_counter, n_traj, location in zip(counter, real_counters[key], n_trajs[key], dataset.top_base_locations)]
+                    results[f"{key}_jss"] = [compute_divergence(real_counter, sum(real_counter.values()), counter_, sum(counter_.values()), n_vocabs, axis=1) for counter_, real_counter in zip(counter, real_counters[key])]
                 elif key == "global":
                     results[f"{key}_kls_eachdim"] = [compute_divergence(real_counter, n_traj, counter_, n_gene_traj, n_vocabs) for counter_, real_counter, n_traj in zip(counter, real_counters[key], n_trajs[key])]
                     results[f"{key}_kls_positivedim"] = [compute_divergence(real_counter, n_traj, counter_, n_gene_traj, n_vocabs, positive=True) for counter_, real_counter, n_traj in zip(counter, real_counters[key], n_trajs[key])]
                     results[f"{key}_jss_eachdim"] = [compute_divergence(real_counter, n_traj, counter_, n_gene_traj, n_vocabs, kl=False) for counter_, real_counter, n_traj in zip(counter, real_counters[key], n_trajs[key])]
                     results[f"{key}_jss_positivedim"] = [compute_divergence(real_counter, n_traj, counter_, n_gene_traj, n_vocabs, positive=True, kl=False) for counter_, real_counter, n_traj in zip(counter, real_counters[key], n_trajs[key])]
+                    results[f"{key}_jss_{i}"] = [compute_divergence(real_counter, sum(real_counter.values()), counter_, sum(counter_.values()), n_vocabs, axis=1) for counter_, real_counter in zip(counter, real_counters[key])]
                 else:
                     results[f"{key}_kl_eachdim"] = compute_divergence(real_counters[key], n_trajs[key], counter, n_gene_traj, n_vocabs)
                     results[f"{key}_kl_positivedim"] = compute_divergence(real_counters[key], n_trajs[key], counter, n_gene_traj, n_vocabs, positive=True)
                     results[f"{key}_js_eachdim"] = compute_divergence(real_counters[key], n_trajs[key], counter, n_gene_traj, n_vocabs, kl=False)
                     results[f"{key}_js_positivedim"] = compute_divergence(real_counters[key], n_trajs[key], counter, n_gene_traj, n_vocabs, positive=True, kl=False)
-
-                # compute js divergence
-                if key in ["target", "destination", "route"]:
-                    results[f"{key}_jss"] = []
-                    for i, (counter_, real_counter) in enumerate(zip(counter, real_counters[key])):
-                        results[f"{key}_jss"].append(compute_divergence(real_counter, sum(real_counter.values()), counter_, sum(counter_.values()), n_vocabs, axis=1))
-                        # plot_density(counter_, dataset.n_locations, img_dir / f"{key}_{i}.png", dataset.top_base_locations[i], coef=1/counters["first_location"][dataset.top_base_locations[i]])
-                elif key == "global":
-                    for i, (counter_, real_counter) in enumerate(zip(counter, real_counters[key])):
-                        results[f"{key}_jss_{i}"] = compute_divergence(real_counter, sum(real_counter.values()), counter_, sum(counter_.values()), n_vocabs, axis=1)
-                        # plot_density(counter_, dataset.n_locations, img_dir / f"{key}_{i}.png")
-                else:
                     results[f"{key}_js"] = compute_divergence(real_counters[key], sum(real_counters[key].values()), counter, sum(counter.values()), n_vocabs, axis=1)
-                    # plot_density(counter, n_vocabs, img_dir / f"{key}.png")
+
+                # # compute js divergence
+                # if key in ["target", "destination", "route"]:
+                #     results[f"{key}_jss"] = []
+                #     for i, (counter_, real_counter) in enumerate(zip(counter, real_counters[key])):
+                #         results[f"{key}_jss"].append(compute_divergence(real_counter, sum(real_counter.values()), counter_, sum(counter_.values()), n_vocabs, axis=1))
+                #         # plot_density(counter_, dataset.n_locations, img_dir / f"{key}_{i}.png", dataset.top_base_locations[i], coef=1/counters["first_location"][dataset.top_base_locations[i]])
+                # elif key == "global":
+                #     for i, (counter_, real_counter) in enumerate(zip(counter, real_counters[key])):
+                #         results[f"{key}_jss_{i}"] = compute_divergence(real_counter, sum(real_counter.values()), counter_, sum(counter_.values()), n_vocabs, axis=1)
+                #         # plot_density(counter_, dataset.n_locations, img_dir / f"{key}_{i}.png")
+                # else:
+                #     results[f"{key}_js"] = compute_divergence(real_counters[key], sum(real_counters[key].values()), counter, sum(counter.values()), n_vocabs, axis=1)
+                #     # plot_density(counter, n_vocabs, img_dir / f"{key}.png")
 
     return results
 
