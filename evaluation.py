@@ -944,7 +944,8 @@ if __name__ == "__main__":
         get(route_data_path, parent=True)
         get(get_datadir() / get_original_dataset_name(training_setting["dataset"]) / "pair_to_route" / str(n_bins) / "paths.db")
         get(get_datadir() / training_setting["dataset"] / f"distance_matrix_bin{n_bins}.npy")
-        get(get_datadir() / dataset_name / "raw", parent=True)
+        if training_setting["network_type"] == "MTNet":
+            get(get_datadir() / dataset_name / "raw", parent=True)
     
     dataset = construct_dataset(data_path, route_data_path, 5, training_setting["dataset"])
     compute_auxiliary_information(dataset, model_dir, logger)
