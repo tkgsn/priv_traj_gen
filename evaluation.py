@@ -27,7 +27,10 @@ def run(generator, dataset, args):
     else:
         print("not compensating trajectories")
 
-    n_test_locations = min(args.n_test_locations, len(dataset.top_base_locations))
+    # n_test_locations = min(1, len(dataset.top_base_locations))
+    # n_2nd_order_test_locations = min(1, len(dataset.top_2nd_order_base_locations))
+    n_test_locations = len(dataset.top_base_locations)
+    n_2nd_order_test_locations = len(dataset.top_2nd_order_base_locations)
 
     generator.eval()
     with torch.no_grad():
@@ -48,7 +51,7 @@ def run(generator, dataset, args):
         if (args.evaluate_global or args.evaluate_passing or args.evaluate_source or args.evaluate_target or args.evaluate_route or args.evaluate_destination or args.evaluate_distance):
 
             # counters = {"global":[Counter() for _ in dataset.time_ranges], "passing": Counter(), "source": Counter(), "target": [Counter() for _ in range(n_test_locations)], "route": [Counter() for _ in range(n_test_locations)], "destination": [Counter() for _ in range(n_test_locations)], "distance": Counter(), "first_location": Counter()}
-            counters = {"passing": Counter(), "source": Counter(), "target": [Counter() for _ in range(n_test_locations)], "route": [Counter() for _ in range(n_test_locations)], "destination": [Counter() for _ in range(n_test_locations)], "distance": Counter(), "first_location": Counter()}
+            counters = {"passing": Counter(), "source": Counter(), "emp_next": [Counter() for _ in range(n_test_locations)], "2nd_emp_next": [Counter() for _ in range(n_2nd_order_test_locations)], "target": [Counter() for _ in range(n_test_locations)], "route": [Counter() for _ in range(n_test_locations)], "destination": [Counter() for _ in range(n_test_locations)], "distance": Counter(), "first_location": Counter()}
             condition = True
             n_gene_traj = 0
             # gene_trajs = []
@@ -91,7 +94,10 @@ def run(generator, dataset, args):
                 if args.evaluate_source:
                     counters["source"] += count_source_locations(generated_stay_trajs)
 
-                for i, location in enumerate(dataset.top_base_locations[:n_test_locations]):
+                for i, location in enumerate(dataset.top_base_locations):
+                    if args.evaluate_emp_next:
+                        counters["emp_next"][i] += count_first_next_locations(generated_stay_trajs, location)
+
                     if args.evaluate_target:
                         counters["target"][i] += count_target_locations(generated_stay_trajs, location)
 
@@ -100,6 +106,10 @@ def run(generator, dataset, args):
 
                     if args.evaluate_route:
                         counters["route"][i] += count_route_locations(generated_route_trajs, location)
+
+                for i, locations in enumerate(dataset.top_2nd_order_base_locations):
+                    if args.evaluate_2nd_emp_next:
+                        counters["2nd_emp_next"][i] += count_second_order_first_next_locations(generated_stay_trajs, locations)
 
                 if args.evaluate_distance:
                     counters["distance"] += count_distance(dataset.distance_matrix, generated_stay_trajs, dataset.n_bins_for_distance)
@@ -131,18 +141,20 @@ def run(generator, dataset, args):
 
 
                 # compute kl divergence for a dimension
-                if key in ["target", "destination", "route"]:
+                if key in ["target", "destination", "route", "emp_next"]:
                     results[f"{key}_kls_eachdim"] = [compute_divergence(real_counter, n_traj, counter_, counters["first_location"][location], n_vocabs, save_path=img_dir / f"{key}_{i}.png", location=location) for i, (counter_, real_counter, n_traj, location) in enumerate(zip(counter, real_counters[key], n_trajs[key], dataset.top_base_locations))]
                     results[f"{key}_jss_eachdim"] = [compute_divergence(real_counter, n_traj, counter_, counters["first_location"][location], n_vocabs, kl=False) for counter_, real_counter, n_traj, location in zip(counter, real_counters[key], n_trajs[key], dataset.top_base_locations)]
                     results[f"{key}_kls_positivedim"] = [compute_divergence(real_counter, n_traj, counter_, counters["first_location"][location], n_vocabs, positive=True) for counter_, real_counter, n_traj, location in zip(counter, real_counters[key], n_trajs[key], dataset.top_base_locations)]
                     results[f"{key}_jss_positivedim"] = [compute_divergence(real_counter, n_traj, counter_, counters["first_location"][location], n_vocabs, positive=True, kl=False) for counter_, real_counter, n_traj, location in zip(counter, real_counters[key], n_trajs[key], dataset.top_base_locations)]
+                    results[f"{key}_jss"] = [compute_divergence(real_counter, sum(real_counter.values()), counter_, sum(counter_.values()), n_vocabs, axis=1) for counter_, real_counter in zip(counter, real_counters[key])]
+                elif key == "2nd_emp_next":
                     results[f"{key}_jss"] = [compute_divergence(real_counter, sum(real_counter.values()), counter_, sum(counter_.values()), n_vocabs, axis=1) for counter_, real_counter in zip(counter, real_counters[key])]
                 elif key == "global":
                     results[f"{key}_kls_eachdim"] = [compute_divergence(real_counter, n_traj, counter_, n_gene_traj, n_vocabs) for counter_, real_counter, n_traj in zip(counter, real_counters[key], n_trajs[key])]
                     results[f"{key}_kls_positivedim"] = [compute_divergence(real_counter, n_traj, counter_, n_gene_traj, n_vocabs, positive=True) for counter_, real_counter, n_traj in zip(counter, real_counters[key], n_trajs[key])]
                     results[f"{key}_jss_eachdim"] = [compute_divergence(real_counter, n_traj, counter_, n_gene_traj, n_vocabs, kl=False) for counter_, real_counter, n_traj in zip(counter, real_counters[key], n_trajs[key])]
                     results[f"{key}_jss_positivedim"] = [compute_divergence(real_counter, n_traj, counter_, n_gene_traj, n_vocabs, positive=True, kl=False) for counter_, real_counter, n_traj in zip(counter, real_counters[key], n_trajs[key])]
-                    results[f"{key}_jss_{i}"] = [compute_divergence(real_counter, sum(real_counter.values()), counter_, sum(counter_.values()), n_vocabs, axis=1) for counter_, real_counter in zip(counter, real_counters[key])]
+                    results[f"{key}_jss"] = [compute_divergence(real_counter, sum(real_counter.values()), counter_, sum(counter_.values()), n_vocabs, axis=1) for counter_, real_counter in zip(counter, real_counters[key])]
                 else:
                     results[f"{key}_kl_eachdim"] = compute_divergence(real_counters[key], n_trajs[key], counter, n_gene_traj, n_vocabs)
                     results[f"{key}_kl_positivedim"] = compute_divergence(real_counters[key], n_trajs[key], counter, n_gene_traj, n_vocabs, positive=True)
@@ -280,14 +292,14 @@ def compute_divergence(real_count, n_real_traj, inferred_count, n_gene_traj, n_v
                     raise ValueError("inf")
 
         if kl:
-            return scipy.stats.entropy(real_distribution, inferred_distribution, axis=0).mean()
+            return scipy.stats.entropy(real_distribution, inferred_distribution, axis=0).sum()
         else:
             # temp_distribution = np.zeros_like(real_distribution)
             # temp_distribution[1,:] = 1
-            # print("temp", (jensenshannon(real_distribution, temp_distribution, axis=0)**2).mean(), jensenshannon(temp_distribution, inferred_distribution, axis=0)**2)
-            # print("gene", (jensenshannon(real_distribution, inferred_distribution, axis=0)**2).mean(), jensenshannon(real_distribution, inferred_distribution, axis=0)**2)
+            # print("temp", (jensenshannon(real_distribution, temp_distribution, axis=0)**2).sum()(), jensenshannon(temp_distribution, inferred_distribution, axis=0)**2)
+            # print("gene", (jensenshannon(real_distribution, inferred_distribution, axis=0)**2).sum()(), jensenshannon(real_distribution, inferred_distribution, axis=0)**2)
 
-            return (jensenshannon(real_distribution, inferred_distribution, axis=0)**2).mean()
+            return (jensenshannon(real_distribution, inferred_distribution, axis=0)**2).sum()
     else:
         # real_count and inferred_count will be the probability distributions
         assert n_real_traj == sum(real_count.values()), "n_real_traj must be equal to sum(real_count.values())"
@@ -424,8 +436,6 @@ def compute_distances(distance_matrix, trajs):
         distances.append(distance)
     return distances
 
-
-
 def count_distance(distance_matrix, trajs, n_bins):
     distances = compute_distances(distance_matrix, trajs)
     # make histogram using n_bins
@@ -435,14 +445,33 @@ def count_distance(distance_matrix, trajs, n_bins):
     return count
 
 
-def compute_next_location_distribution(target, trajectories, n_locations):
-    # compute the next location probability for each location
-    counts = compute_next_location_count(target, trajectories, n_locations)
-    summation = sum(counts)
-    if summation == 0:
-        return None
-    distribution = [count/summation for count in counts]
-    return distribution
+def count_first_next_locations(trajs, source_location):
+    # count the appearance of locations
+    first_next_locations = []
+    for traj in trajs:
+        if traj[0] == source_location:
+            first_next_locations.append(traj[1])
+    return Counter(first_next_locations)
+
+def count_second_order_first_next_locations(trajs, source_location):
+    # count the appearance of locations
+    second_order_first_next_locations = []
+    for traj in trajs:
+        if len(traj) < 2:
+            continue
+        if traj[0] == source_location[0] and traj[1] == source_location[1]:
+            second_order_first_next_locations.append(traj[2])
+    return Counter(second_order_first_next_locations)
+
+
+# def compute_next_location_distribution(target, trajectories, n_locations):
+#     # compute the next location probability for each location
+#     counts = compute_next_location_count(target, trajectories, n_locations)
+#     summation = sum(counts)
+#     if summation == 0:
+#         return None
+#     distribution = [count/summation for count in counts]
+#     return distribution
 
 def compute_next_location_count(target, trajectories, n_locations, target_index=0):
     # compute the count of next location for each location
@@ -461,6 +490,59 @@ def compute_next_location_count(target, trajectories, n_locations, target_index=
         else:
             counts.append(count[i])
     return counts
+
+
+
+def make_next_location_count(dataset, target_index, order=1):
+    if order == 1:
+        print(f"compute {target_index} next location count")
+        # compute the next location probability for each location
+        next_location_counts = {}
+        for label, traj in tqdm.tqdm(zip(dataset.labels, dataset.data)):
+            reference = dataset.label_to_reference[label]
+
+            if target_index == 0:
+                # count next location by the marginal way
+                for i in range(1,len(reference)):
+                    if not (reference[i] == max(reference[:i+1])):
+                        continue
+                    if traj[i-1] not in next_location_counts:
+                        next_location_counts[traj[i-1]] = [0 for _ in range(dataset.n_locations)]
+                    next_location_counts[traj[i-1]][traj[i]] += 1
+            elif target_index == 1:
+                # count next location by the first next location
+                if len(reference) < 2:
+                    continue
+                if traj[0] not in next_location_counts:
+                    next_location_counts[traj[0]] = [0 for _ in range(dataset.n_locations)]
+                next_location_counts[traj[0]][traj[1]] += 1
+            elif target_index == 2:
+                # count next location by the second next location
+                if len(reference) < 3:
+                    continue
+                if reference[2] != 2:
+                    continue
+                if traj[1] not in next_location_counts:
+                    next_location_counts[traj[1]] = [0 for _ in range(dataset.n_locations)]
+                next_location_counts[traj[1]][traj[2]] += 1
+
+    elif order == 2:
+        print(f"compute {target_index} first second order next location count")
+        # compute the next location probability for each location
+        next_location_counts = {}
+        for label, traj in tqdm.tqdm(zip(dataset.labels, dataset.data)):
+            reference = dataset.label_to_reference[label]
+            if len(reference) < 3:
+                continue
+            if reference[2] != 2:
+                continue
+
+            if (traj[0], traj[1]) not in next_location_counts:
+                next_location_counts[(traj[0], traj[1])] = [0 for _ in range(dataset.n_locations)]
+            next_location_counts[(traj[0], traj[1])][traj[2]] += 1
+
+    return next_location_counts
+
 
 
 
@@ -501,23 +583,32 @@ def compute_auxiliary_information(dataset, save_dir, logger):
     img_dir = save_dir.parent / "imgs"
     img_dir.mkdir(exist_ok=True)
 
-    test_thresh = 100
     # compute top_base_locations
     dataset.first_locations = [trajectory[0] for trajectory in dataset.data if len(trajectory) > 1]
     dataset.first_location_counts = Counter(dataset.first_locations)
     dataset.route_first_locations = [trajectory[0] for trajectory in dataset.route_data if len(trajectory) > 1]
     dataset.route_first_location_counts = Counter(dataset.route_first_locations)
+    dataset.second_order_first_next_locations = [trajectory[:2] for trajectory in dataset.data if len(trajectory) > 2]
     # find locations whose count is larger than test_thresh and sort them
+    test_thresh = 100
     test_locations = {location:count for location, count in dataset.first_location_counts.items() if count > test_thresh}
+    test_thresh_second = 50
+    second_order_test_locations = {locations:count for locations, count in dataset.second_orderfirst_next_locations.items() if count > test_thresh_second}
     if len(test_locations) == 0:
         logger.info("WARNING no tes location is found")
         # find the location that has the largest count
         test_locations = {location:count for location, count in dataset.first_location_counts.items()}
         test_locations = {k: v for k, v in sorted(test_locations.items(), key=lambda item: item[1], reverse=True)[:1]}
+    if len(second_order_test_locations) == 0:
+        logger.info("WARNING no tes location is found")
+        # find the location that has the largest count
+        second_order_test_locations = {locations:count for locations, count in dataset.second_order_first_next_locations.items()}
+        second_order_test_locations = {k: v for k, v in sorted(second_order_test_locations.items(), key=lambda item: item[1], reverse=True)[:1]}
 
     logger.info(f"number of test locations: {len(test_locations)}; {test_locations}")
     dataset.top_base_locations = sorted(test_locations, key=lambda x: dataset.first_location_counts[x], reverse=True)
-    dataset.top_route_base_locations = sorted(dataset.route_first_location_counts, key=lambda x: dataset.route_first_location_counts[x], reverse=True)
+    dataset.top_route_base_locations = sorted(test_locations, key=lambda x: dataset.route_first_location_counts[x], reverse=True)
+    dataset.top_2nd_order_base_locations = sorted(second_order_test_locations, key=lambda x: dataset.first_location_counts[x], reverse=True)
     # compute the next location counts
     dataset.next_location_counts = make_next_location_count(dataset, 0)
     dataset.first_next_location_counts = make_next_location_count(dataset, 1)
@@ -560,6 +651,8 @@ def compute_auxiliary_information(dataset, save_dir, logger):
     dataset.real_counters["target"] = [count_target_locations(dataset.data, location) for location in dataset.top_base_locations]
     dataset.real_counters["route"] = [count_route_locations(dataset.route_data, location) for location in dataset.top_base_locations]
     dataset.real_counters["destination"] = [count_route_locations(dataset.data, location) for location in dataset.top_base_locations]
+    dataset.real_counters["next"] = [count_first_next_locations(dataset.data, location) for location in dataset.top_base_locations]
+    dataset.real_counters["2nd_next"] = [count_second_order_first_next_locations(dataset.data, locations) for locations in dataset.top_2nd_order_base_locations]
     logger.info("load distance matrix from {}".format(get_datadir() / str(dataset)  / f"distance_matrix_bin{int(np.sqrt(dataset.n_locations)) -2}.npy"))
     dataset.distance_matrix = np.load(get_datadir() / str(dataset)  / f"distance_matrix_bin{int(np.sqrt(dataset.n_locations)) -2}.npy")
     dataset.real_counters["distance"] = count_distance(dataset.distance_matrix, dataset.data, dataset.n_bins_for_distance)
@@ -573,6 +666,8 @@ def compute_auxiliary_information(dataset, save_dir, logger):
     dataset.n_trajs["route"] = [dataset.route_first_location_counts[location] for location in dataset.top_base_locations]
     dataset.n_trajs["destination"] = [dataset.first_location_counts[location] for location in dataset.top_base_locations]
     dataset.n_trajs["distance"] = len(dataset.data)
+    dataset.n_trajs["next"] = [sum(counter.values()) for counter in dataset.real_counters["next"]]
+    dataset.n_trajs["2nd_next"] = [sum(counter.values()) for counter in dataset.real_counters["2nd_next"]]
 
     # plot the counts
     for key, counter in dataset.real_counters.items():
@@ -668,57 +763,6 @@ def make_first_order_test_data_loader(dataset, n_test_locations):
     dataset.first_order_test_data_loader = test_data_loader
     dataset.first_counters = counters
     return test_data_loader, counters
-
-def make_next_location_count(dataset, target_index, order=1):
-    if order == 1:
-        print(f"compute {target_index} next location count")
-        # compute the next location probability for each location
-        next_location_counts = {}
-        for label, traj in tqdm.tqdm(zip(dataset.labels, dataset.data)):
-            reference = dataset.label_to_reference[label]
-
-            if target_index == 0:
-                # count next location by the marginal way
-                for i in range(1,len(reference)):
-                    if not (reference[i] == max(reference[:i+1])):
-                        continue
-                    if traj[i-1] not in next_location_counts:
-                        next_location_counts[traj[i-1]] = [0 for _ in range(dataset.n_locations)]
-                    next_location_counts[traj[i-1]][traj[i]] += 1
-            elif target_index == 1:
-                # count next location by the first next location
-                if len(reference) < 2:
-                    continue
-                if traj[0] not in next_location_counts:
-                    next_location_counts[traj[0]] = [0 for _ in range(dataset.n_locations)]
-                next_location_counts[traj[0]][traj[1]] += 1
-            elif target_index == 2:
-                # count next location by the second next location
-                if len(reference) < 3:
-                    continue
-                if reference[2] != 2:
-                    continue
-                if traj[1] not in next_location_counts:
-                    next_location_counts[traj[1]] = [0 for _ in range(dataset.n_locations)]
-                next_location_counts[traj[1]][traj[2]] += 1
-
-    elif order == 2:
-        print(f"compute {target_index} first second order next location count")
-        # compute the next location probability for each location
-        next_location_counts = {}
-        for label, traj in tqdm.tqdm(zip(dataset.labels, dataset.data)):
-            reference = dataset.label_to_reference[label]
-            if len(reference) < 3:
-                continue
-            if reference[2] != 2:
-                continue
-
-            if (traj[0], traj[1]) not in next_location_counts:
-                next_location_counts[(traj[0], traj[1])] = [0 for _ in range(dataset.n_locations)]
-            next_location_counts[(traj[0], traj[1])][traj[2]] += 1
-
-    return next_location_counts
-
 
 # def compute_global_counts(trajectories, real_time_traj, time, n_locations, time_to_label):
 #     def location_at_time(trajectory, time_traj, t):
@@ -984,7 +1028,7 @@ if __name__ == "__main__":
     for i, model_path in enumerate(model_paths):
         if i % args.eval_interval != 0:
             continue
-        
+
         if training_setting["network_type"] == "MTNet":
             generator = MTNetGeneratorMock(model_path / "samples.txt", model_path / "samples_time.txt", training_setting["dataset"], n_bins)
         else:
