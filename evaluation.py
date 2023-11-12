@@ -236,7 +236,7 @@ def compute_divergence(real_count, n_real_traj, inferred_count, n_gene_traj, n_v
         # compute the kl divergence on the dimensions that are positive
         real_distribution = compute_distribution_from_count(real_count, n_vocabs, n_real_traj)
         if save_path is not None:
-            plot_density(real_distribution, n_vocabs, save_path.panret / "real_" + save_path.stem, anotation=location)
+            plot_density(real_distribution, n_vocabs, save_path.parent / "real_" + save_path.stem, anotation=location)
         real_distribution = np.stack([real_distribution, 1-real_distribution], axis=0)
         inferred_distribution = compute_distribution_from_count(inferred_count, n_vocabs, n_gene_traj)
         if save_path is not None:
