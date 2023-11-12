@@ -132,10 +132,10 @@ def run(generator, dataset, args):
 
                 # compute kl divergence for a dimension
                 if key in ["target", "destination", "route"]:
-                    results[f"{key}_kls_eachdim"] = [compute_divergence(real_counter, n_traj, counter_, counters["first_location"][location], n_vocabs) for counter_, real_counter, n_traj, location in zip(counter, real_counters[key], n_trajs[key], dataset.top_base_locations)]
-                    results[f"{key}_jss_eachdim"] = [compute_divergence(real_counter, n_traj, counter_, counters["first_location"][location], n_vocabs, kl=False) for counter_, real_counter, n_traj, location in zip(counter, real_counters[key], n_trajs[key], dataset.top_base_locations)]
-                    results[f"{key}_kls_positivedim"] = [compute_divergence(real_counter, n_traj, counter_, counters["first_location"][location], n_vocabs, positive=True) for counter_, real_counter, n_traj, location in zip(counter, real_counters[key], n_trajs[key], dataset.top_base_locations)]
-                    results[f"{key}_jss_positivedim"] = [compute_divergence(real_counter, n_traj, counter_, counters["first_location"][location], n_vocabs, positive=True, kl=False) for counter_, real_counter, n_traj, location in zip(counter, real_counters[key], n_trajs[key], dataset.top_base_locations)]
+                    results[f"{key}_kls_eachdim"] = [compute_divergence(real_counter, n_traj, counter_, counters["first_location"][location], n_vocabs, save_path=img_dir / f"{key}_{i}.png", location=location) for counter_, real_counter, n_traj, location in zip(counter, real_counters[key], n_trajs[key], dataset.top_base_locations)]
+                    results[f"{key}_jss_eachdim"] = [compute_divergence(real_counter, n_traj, counter_, counters["first_location"][location], n_vocabs, kl=False, save_path=img_dir / f"{key}_{i}.png", location=location) for counter_, real_counter, n_traj, location in zip(counter, real_counters[key], n_trajs[key], dataset.top_base_locations)]
+                    results[f"{key}_kls_positivedim"] = [compute_divergence(real_counter, n_traj, counter_, counters["first_location"][location], n_vocabs, positive=True, save_path=img_dir / f"{key}_{i}.png", location=location) for counter_, real_counter, n_traj, location in zip(counter, real_counters[key], n_trajs[key], dataset.top_base_locations)]
+                    results[f"{key}_jss_positivedim"] = [compute_divergence(real_counter, n_traj, counter_, counters["first_location"][location], n_vocabs, positive=True, kl=False, save_path=img_dir / f"{key}_{i}.png", location=location) for counter_, real_counter, n_traj, location in zip(counter, real_counters[key], n_trajs[key], dataset.top_base_locations)]
                 elif key == "global":
                     results[f"{key}_kls_eachdim"] = [compute_divergence(real_counter, n_traj, counter_, n_gene_traj, n_vocabs) for counter_, real_counter, n_traj in zip(counter, real_counters[key], n_trajs[key])]
                     results[f"{key}_kls_positivedim"] = [compute_divergence(real_counter, n_traj, counter_, n_gene_traj, n_vocabs, positive=True) for counter_, real_counter, n_traj in zip(counter, real_counters[key], n_trajs[key])]
@@ -152,14 +152,14 @@ def run(generator, dataset, args):
                     results[f"{key}_jss"] = []
                     for i, (counter_, real_counter) in enumerate(zip(counter, real_counters[key])):
                         results[f"{key}_jss"].append(compute_divergence(real_counter, sum(real_counter.values()), counter_, sum(counter_.values()), n_vocabs, axis=1))
-                        plot_density(counter_, dataset.n_locations, img_dir / f"{key}_{i}.png", dataset.top_base_locations[i], coef=1/counters["first_location"][dataset.top_base_locations[i]])
+                        # plot_density(counter_, dataset.n_locations, img_dir / f"{key}_{i}.png", dataset.top_base_locations[i], coef=1/counters["first_location"][dataset.top_base_locations[i]])
                 elif key == "global":
                     for i, (counter_, real_counter) in enumerate(zip(counter, real_counters[key])):
                         results[f"{key}_jss_{i}"] = compute_divergence(real_counter, sum(real_counter.values()), counter_, sum(counter_.values()), n_vocabs, axis=1)
-                        plot_density(counter_, dataset.n_locations, img_dir / f"{key}_{i}.png")
+                        # plot_density(counter_, dataset.n_locations, img_dir / f"{key}_{i}.png")
                 else:
                     results[f"{key}_js"] = compute_divergence(real_counters[key], sum(real_counters[key].values()), counter, sum(counter.values()), n_vocabs, axis=1)
-                    plot_density(counter, n_vocabs, img_dir / f"{key}.png")
+                    # plot_density(counter, n_vocabs, img_dir / f"{key}.png")
 
     return results
 
@@ -223,7 +223,7 @@ def compensate_edge_by_map(from_state, to_state, db_path):
 
 
 
-def compute_divergence(real_count, n_real_traj, inferred_count, n_gene_traj, n_vocabs, axis=0, positive=False, kl=True):
+def compute_divergence(real_count, n_real_traj, inferred_count, n_gene_traj, n_vocabs, axis=0, positive=False, kl=True, save_path=None, location=None):
     if n_real_traj == 0:
         print("WARNING: n_real_traj is zero")
         raise ValueError("no trajectory is evaluated")
@@ -236,8 +236,12 @@ def compute_divergence(real_count, n_real_traj, inferred_count, n_gene_traj, n_v
         # compute the kl divergence on the dimensions that are positive
         real_distribution = compute_distribution_from_count(real_count, n_vocabs, n_real_traj)
         real_distribution = np.stack([real_distribution, 1-real_distribution], axis=0)
+        if save_path is not None:
+            plot_density(i, n_vocabs, save_path.panret / "real_" + save_path.stem, anotation=location)
         inferred_distribution = compute_distribution_from_count(inferred_count, n_vocabs, n_gene_traj)
         inferred_distribution = np.stack([inferred_distribution, 1-inferred_distribution], axis=0)
+        if save_path is not None:
+            plot_density(i, n_vocabs, save_path.parent / "inferred_" + save_path.stem, anotation=location)
         # plus epsilon value to avoid inf for zero dimension
         inferred_distribution[inferred_distribution == 0] = 1e-10
 
