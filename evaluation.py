@@ -896,6 +896,7 @@ def set_args():
     args.route_generator = False
     args.time_threshold = 10
     args.truncate = True
+    args.eval_interval = 10
 
     return args
 
@@ -980,8 +981,10 @@ if __name__ == "__main__":
     # sort according to i
     model_paths = sorted(model_paths, key=lambda x: int(x.stem.split("_")[-1]))
     print(model_paths)
-    for model_path in model_paths:
-            
+    for i, model_path in enumerate(model_paths):
+        if i % args.eval_interval != 0:
+            continue
+        
         if training_setting["network_type"] == "MTNet":
             generator = MTNetGeneratorMock(model_path / "samples.txt", model_path / "samples_time.txt", training_setting["dataset"], n_bins)
         else:
