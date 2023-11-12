@@ -498,13 +498,22 @@ def compute_auxiliary_information(dataset, save_dir, logger):
     img_dir = save_dir.parent / "imgs"
     img_dir.mkdir(exist_ok=True)
 
-
+    test_thresh = 100
     # compute top_base_locations
     dataset.first_locations = [trajectory[0] for trajectory in dataset.data if len(trajectory) > 1]
     dataset.first_location_counts = Counter(dataset.first_locations)
     dataset.route_first_locations = [trajectory[0] for trajectory in dataset.route_data if len(trajectory) > 1]
     dataset.route_first_location_counts = Counter(dataset.route_first_locations)
-    dataset.top_base_locations = sorted(dataset.first_location_counts, key=lambda x: dataset.first_location_counts[x], reverse=True)
+    # find locations whose count is larger than test_thresh and sort them
+    test_locations = {location:count for location, count in dataset.first_location_counts.items() if count > test_thresh}
+    if len(test_locations) == 0:
+        logger.info("WARNING no tes location is found")
+        # find the location that has the largest count
+        test_locations = {location:count for location, count in dataset.first_location_counts.items()}
+        test_locations = {k: v for k, v in sorted(test_locations.items(), key=lambda item: item[1], reverse=True)[:1]}
+
+    logger.info(f"number of test locations: {len(test_locations)}; {test_locations}")
+    dataset.top_base_locations = sorted(test_locations, key=lambda x: dataset.first_location_counts[x], reverse=True)
     dataset.top_route_base_locations = sorted(dataset.route_first_location_counts, key=lambda x: dataset.route_first_location_counts[x], reverse=True)
     # compute the next location counts
     dataset.next_location_counts = make_next_location_count(dataset, 0)
@@ -568,7 +577,7 @@ def compute_auxiliary_information(dataset, save_dir, logger):
             for i, count in enumerate(counter):
                 plot_density(count, dataset.n_locations, img_dir / f"real_{key}_distribution_{int(i)}.png")
         elif key in ["target", "destination", "route"]:
-            for i, count in enumerate(counter[:30]):
+            for i, count in enumerate(counter[:test_thresh]):
                 plot_density(count, dataset.n_locations, img_dir / f"real_{key}_distribution_{int(i)}.png", dataset.top_base_locations[i], coef=1/dataset.n_trajs[key][i])
         elif key == "distance":
             plot_density(counter, dataset.n_bins_for_distance, img_dir / f"real_{key}_distribution.png")
@@ -628,14 +637,14 @@ def make_first_order_test_data_loader(dataset, n_test_locations):
 
     from dataset import TrajectoryDataset
 
-    top_base_locations = dataset.top_base_locations[:n_test_locations]
+    top_base_locations = dataset.top_base_locations
     n_test_locations = min(n_test_locations, len(top_base_locations))
 
     # retrieving the trajectories that start with the first_location_counts
     counters = {}
     trajs = []
     time_trajs = []
-    first_locations = top_base_locations[:n_test_locations]
+    first_locations = top_base_locations
     for first_location in first_locations:
         trajs_for_the_first_location = []
         time_trajs_for_the_first_location = []
