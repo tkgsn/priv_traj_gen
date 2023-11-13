@@ -150,7 +150,7 @@ def run(generator, dataset, args):
                     results[f"{key}_kls_positivedim"] = [compute_divergence(real_counter, n_traj, counter_, counters["first_location"][location], n_vocabs, positive=True) for counter_, real_counter, n_traj, location in zip(counter, real_counters[key], n_trajs[key], dataset.top_base_locations)]
                     results[f"{key}_jss_positivedim"] = [compute_divergence(real_counter, n_traj, counter_, counters["first_location"][location], n_vocabs, positive=True, type="kl") for counter_, real_counter, n_traj, location in zip(counter, real_counters[key], n_trajs[key], dataset.top_base_locations)]
                     results[f"{key}_jss"] = [compute_divergence(real_counter, sum(real_counter.values()), counter_, sum(counter_.values()), n_vocabs, axis=1) for counter_, real_counter in zip(counter, real_counters[key])]
-                    results[f"{key}_emd"] = [compute_divergence(real_counter, n_traj, counter_, n_gene_traj, n_vocabs, type="emd", distance_matrix=dataset.distance_matrix) for counter_, real_counter, n_traj in zip(counter, real_counters[key], n_trajs[key])]
+                    results[f"{key}_emd"] = [compute_divergence(real_counter, sum(real_counter.values()), counter_, sum(counter_.values()), n_vocabs, type="emd", distance_matrix=dataset.distance_matrix) for counter_, real_counter, n_traj in zip(counter, real_counters[key], n_trajs[key])]
                 elif key == "second_emp_next":
                     results[f"{key}_jss"] = [compute_divergence(real_counter, sum(real_counter.values()), counter_, sum(counter_.values()), n_vocabs, axis=1) for counter_, real_counter in zip(counter, real_counters[key])]
                 elif key == "global":
@@ -264,6 +264,7 @@ def compute_divergence(real_count, n_real_traj, inferred_count, n_gene_traj, n_v
         # real_count and inferred_count will be density
         true_hist = real_distribution
         inferred_hist = inferred_distribution
+        # print(true_hist.shape, inferred_hist.shape, distance_matrix.shape)
         emd = pyemd.emd(inferred_hist, true_hist, distance_matrix)
         return emd
 
