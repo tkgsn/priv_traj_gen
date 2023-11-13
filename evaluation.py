@@ -996,17 +996,19 @@ if __name__ == "__main__":
         data_path = get_datadir() / training_setting["dataset"] / training_setting["data_name"] / f"{run_args.location_threshold}_{run_args.time_threshold}_bin{run_args.n_bins}_seed{run_args.seed}"
     if run_args.server:
         get(data_path, parent=True)
+
+    route_data_path = data_path / "route_training_data.csv"
         
     with open(data_path / "params.json", "r") as f:
         data_setting = json.load(f)
     n_bins = int(np.sqrt(data_setting["n_locations"]) -2)
     assert n_bins == run_args.n_bins, "n_bins should be equal to the n_bins in the data"
 
-    route_data_name = f"0_0_bin{n_bins}_seed{data_setting['seed']}"
-    route_data_path = get_datadir() / training_setting["dataset"] / training_setting["data_name"] / route_data_name
+    # route_data_name = f"0_0_bin{n_bins}_seed{data_setting['seed']}"
+    # route_data_path = get_datadir() / training_setting["dataset"] / training_setting["data_name"] / route_data_name
 
     if run_args.server:
-        get(route_data_path, parent=True)
+        # get(route_data_path, parent=True)
         get(get_datadir() / get_original_dataset_name(training_setting["dataset"]) / "pair_to_route" / str(n_bins) / "paths.db")
         get(get_datadir() / training_setting["dataset"] / f"distance_matrix_bin{n_bins}.npy")
         if training_setting["network_type"] == "MTNet":
