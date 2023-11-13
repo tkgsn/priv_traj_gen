@@ -310,7 +310,7 @@ def construct_generator(n_locations, meta_network, network_type, location_embedd
     
     return generator, compute_loss_meta_gru_net
 
-def construct_dataset(training_data_dir, route_data_dir, n_time_split, dataset_name):
+def construct_dataset(training_data_dir, route_data_path, n_time_split, dataset_name):
 
     # load dataset config    
     with open(training_data_dir / "params.json", "r") as f:
@@ -318,8 +318,8 @@ def construct_dataset(training_data_dir, route_data_dir, n_time_split, dataset_n
     n_locations = param["n_locations"]
 
     trajectories = load(training_data_dir / "training_data.csv")
-    if route_data_dir is not None:
-        route_trajectories = load(route_data_dir / "training_data.csv")
+    if route_data_path is not None:
+        route_trajectories = load(route_data_path)
     else:
         route_trajectories = None
     time_trajectories = load(training_data_dir / "training_data_time.csv")
