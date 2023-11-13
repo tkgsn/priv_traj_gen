@@ -260,6 +260,8 @@ def compute_divergence(real_count, n_real_traj, inferred_count, n_gene_traj, n_v
         plot_density(inferred_distribution, n_vocabs, save_path.parent / ("inferred_" + save_path.stem), anotation=location)
 
     if type == "emd":
+        assert n_real_traj == sum(real_count.values()), "n_real_traj must be equal to sum(real_count.values())"
+        assert n_gene_traj == sum(inferred_count.values()), "n_gene_traj must be equal to sum(inferred_count.values())"
         # compute the earth mover's distance using pyemd
         # real_count and inferred_count will be density
         true_hist = real_distribution

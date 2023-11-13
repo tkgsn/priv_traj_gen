@@ -318,7 +318,7 @@ def convert_mr_to_training(data_dir, save_dir):
             f.write(" ".join([str(time) for time in times])+"\n")
 
 
-def run_geolife(data_dir, save_dir, seed, num_data):
+def run_geolife(data_dir, save_dir, indice=None):
 
     with open(data_dir / "edge_property.txt", "r") as f:
         lines = f.readlines()
@@ -340,15 +340,15 @@ def run_geolife(data_dir, save_dir, seed, num_data):
         time_lines = f.readlines()
 
     # shuffle
-    np.random.seed(seed)
-    if num_data != 0:
-        print("shuffle trajectories and choose the first", num_data, "trajectories")
-        # shuffle trajectories and real_time_traj with the same order without using numpy
-        p = np.random.permutation(len(lines))
-        lines = [lines[i] for i in p]
-        lines = lines[:num_data]
-        time_lines = [time_lines[i] for i in p]
-        time_lines = time_lines[:num_data]
+    # np.random.seed(seed)
+    # if num_data != 0:
+    #     print("shuffle trajectories and choose the first", num_data, "trajectories")
+    #     # shuffle trajectories and real_time_traj with the same order without using numpy
+    #     p = np.random.permutation(len(lines))
+    #     lines = [lines[i] for i in p]
+    #     lines = lines[:num_data]
+    #     time_lines = [time_lines[i] for i in p]
+    #     time_lines = time_lines[:num_data]
 
     # write
     with open(save_dir / "training_data.csv", "w") as f:
@@ -361,7 +361,7 @@ def run_geolife(data_dir, save_dir, seed, num_data):
 
 
 
-def run_chengdu(data_path, save_path, num_data, seed):
+def run(data_path, save_path, indice=None):
 
     # # make id_to_edge.json
     # with open(setting_path, "r") as f:
@@ -422,16 +422,19 @@ def run_chengdu(data_path, save_path, num_data, seed):
         time_lines = f.readlines()
 
     # shuffle
-    np.random.seed(seed)
-    if num_data != 0:
-        print("shuffle trajectories and choose the first", num_data, "trajectories")
-        # shuffle trajectories and real_time_traj with the same order without using numpy
-        p = np.random.permutation(len(lines))
-        lines = [lines[i] for i in p]
-        lines = lines[:num_data]
-        time_lines = [time_lines[i] for i in p]
-        time_lines = time_lines[:num_data]
-
+    # np.random.seed(seed)
+    # if num_data != 0:
+    #     print("shuffle trajectories and choose the first", num_data, "trajectories")
+    #     # shuffle trajectories and real_time_traj with the same order without using numpy
+    #     p = np.random.permutation(len(lines))
+    #     lines = [lines[i] for i in p]
+    #     lines = lines[:num_data]
+    #     time_lines = [time_lines[i] for i in p]
+    #     time_lines = time_lines[:num_data]
+    if indice is None:
+        indice = list(range(len(lines)))
+    lines = [lines[i] for i in indice]
+    time_lines = [time_lines[i] for i in indice]
     
     # write
     with open(save_path / "training_data.csv", "w") as f:
@@ -452,15 +455,15 @@ if __name__ == "__main__":
     get(data_path, parent=True)
 
     dataset = sys.argv[3]
-    num_data = int(sys.argv[4])
-    seed = int(sys.argv[5])
+    indice_path = sys.argv[4]
+    print("load index information", indice_path)
+    with open(indice_path, "r") as f:
+        indice = json.load(f)
     if dataset == "chengdu":
-
-        print(data_path, save_path, dataset)
-        run_chengdu(data_path, save_path, num_data, seed)
+        run(data_path, save_path, indice)
     elif dataset == "geolife_mm":
-        run_geolife(data_path, save_path, seed, num_data)
+        run(data_path, save_path, indice)
     elif dataset == "geolife_test_mm":
-        run_geolife(data_path, save_path, seed, num_data)
+        run(data_path, save_path, indice)
     # else:
     #     run(data_path, save_path)

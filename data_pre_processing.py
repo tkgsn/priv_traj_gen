@@ -124,10 +124,17 @@ def compless(state_trajectory, time_trajectory, cost=False):
     return state_trajectory, complessed_time_trajectory
 
 
-def make_complessed_dataset(time_trajectories, trajectories, grid):
+def make_complessed_dataset(time_trajectories, trajectories, grid, indice=None):
     dataset = []
     times = []
+    if indice is None:
+        indice = range(len(trajectories))
+    added_indice = []
+
     for ind in tqdm.tqdm(range(len(trajectories))):
+        if ind not in indice:
+            continue
+
         trajectory = trajectories[ind]
         time_trajectory = time_trajectories[ind]
         state_trajectory = []
@@ -144,12 +151,18 @@ def make_complessed_dataset(time_trajectories, trajectories, grid):
 
         state_trajectory, complessed_time_trajectory = compless(state_trajectory, time_trajectory)
 
+        if len(state_trajectory) <= 1:
+            print("removed because of length")
+            print(state_trajectory)
+            continue
+
         dataset.append(state_trajectory)
         times.append(complessed_time_trajectory)
+        added_indice.append(ind)
 
         assert len(state_trajectory) == len(complessed_time_trajectory), f"state trajectory length {len(state_trajectory)} != time trajectory length {len(complessed_time_trajectory)}"
         # times.append([time for time, _, _ in trajectory])
-    return dataset, times
+    return dataset, times, added_indice
 
 def check_in_range(trajs, grid):
     new_trajs = []
@@ -219,7 +232,7 @@ def run(dataset_name, training_data_dir, lat_range, lon_range, n_bins, time_thre
 
         raw_data_path = training_data_dir.parent.parent / f"raw_data.csv"
         logger.info(f"load raw data from {raw_data_path}")
-        raw_trajs = load(raw_data_path, size=size, seed=seed)
+        raw_trajs = load(raw_data_path, size, seed)
 
         logger.info(f"make grid lat {lat_range} lon {lon_range} n_bins {n_bins}")
         ranges = Grid.make_ranges_from_latlon_range_and_nbins(lat_range, lon_range, n_bins)
@@ -229,18 +242,30 @@ def run(dataset_name, training_data_dir, lat_range, lon_range, n_bins, time_thre
 
         logger.info(f"make stay trajectory by {time_threshold}min and {location_threshold}m")
         time_trajs, trajs = make_stay_trajectory(raw_trajs, time_threshold, location_threshold)
+        route_time_trajs, route_trajs = make_stay_trajectory(raw_trajs, 0, 0)
 
         logger.info("make complessed dataset by the grid")
-        dataset, times = make_complessed_dataset(time_trajs, trajs, grid)
-        
+        dataset, times, indice = make_complessed_dataset(time_trajs, trajs, grid)
+        route_dataset, route_times, _ = make_complessed_dataset(route_time_trajs, route_trajs, grid, indice)
+        with open(training_data_dir / "indice.json", "w") as f:
+            json.dump(indice, f)
+        send(training_data_dir / "indice.json")
+
         save_path = training_data_dir / f"training_data.csv"
         logger.info(f"save complessed dataset to {save_path}")
         save(save_path, dataset)
+        save_path = training_data_dir / f"route_training_data.csv"
+        logger.info(f"save route complessed dataset to {save_path}")
+        save(save_path, route_dataset)
         
         times = [[time[0] for time in traj] for traj in times]
         time_save_path = training_data_dir / f"training_data_time.csv"
         logger.info(f"save time dataset to {time_save_path}")
         save(time_save_path, times)
+        route_times = [[time[0] for time in traj] for traj in route_times]
+        time_save_path = training_data_dir / f"route_training_data_time.csv"
+        logger.info(f"save route time dataset to {time_save_path}")
+        save(time_save_path, route_times)
 
     gps = make_gps_data(training_data_dir, lat_range, lon_range, n_bins)
     make_distance_data(training_data_dir, n_bins, gps, logger)
