@@ -14,20 +14,21 @@
 # export T_THRESH=30
 
 # train.sh
-# export DATASET=geolife_test_mm
-# export MAX_SIZE=0
-# export SEED=0
-# export META_N_ITER=0
-# export EPOCH=1000
-# export N_BINS=30
-# export L_THRESH=200
-# export T_THRESH=30
-# export P_BATCH=100
-# export N_TEST=30
-# export DP=True
-# export MULTI_TASK=True
-# export CONSISTENT=True
-# export MULTILAYER=True
+export DATASET=chengdu
+export MAX_SIZE=10000
+export SEED=0
+export TRAINING_SEED=0
+export META_N_ITER=10000
+export EPOCH=100
+export N_BINS=30
+export L_THRESH=200
+export T_THRESH=30
+export P_BATCH=100
+export N_TEST=30
+export DP=True
+export MULTI_TASK=True
+export CONSISTENT=False
+export MULTILAYER=False
 
 # evaluate.sh
 # docker run -it -e L_THRESH=200 -e T_THRESH=30 -e N_BINS=30 -e SEED=0 -e MODEL_DIR=/data/results/chengdu/10000/200_30_bin30_seed0/fulllinear_quadtree_dpTrue_meta10000_dim100_64_64_256_btch0_cldepth_1000_trTrue_coTrue kyotohiemrnet.azurecr.io/hiemrnet /bin/bash -c "./evaluate.sh"
@@ -38,17 +39,18 @@
 # export MODEL_DIR=/data/results/geolife_test_mm/0/200_30_bin30_seed0/fulllinear_quadtree_dpTrue_meta0_dim100_64_64_256_btch0_cldepth_1000_trTrue_coTrue
 
 # MTNet/run.sh
-docker run -it -e DATASET=geolife_test_mm -e SEED=0 -e MAX_SIZE=0 -e DP=True -e EPOCH=100 -e MAX_LENGTH=100 kyotohiemrnet.azurecr.io/hiemrnet /bin/bash -c "cd MTNet && ./run.sh"
-export DATASET=chengdu
-export MAX_SIZE=10000
-l_thresh=200
-t_thresh=30
-n_bins=30
-seed=0
-export INDICE_PATH=/data/${DATASET}/${MAX_SIZE}/${l_thresh}_${t_thresh}_bin${n_bins}_seed${seed}/indice.json
-export SEED=0
-export DP=True
-export EPOCH=10
-export MAX_LENGTH=100
+# docker run -it -e DATASET=geolife_test_mm -e SEED=0 -e MAX_SIZE=0 -e DP=True -e EPOCH=100 -e MAX_LENGTH=100 kyotohiemrnet.azurecr.io/hiemrnet /bin/bash -c "cd MTNet && ./run.sh"
+# export DATASET=chengdu
+# export MAX_SIZE=10000
+# l_thresh=200
+# t_thresh=30
+# n_bins=30
+# seed=0
+# export INDICE_PATH=/data/${DATASET}/${MAX_SIZE}/${l_thresh}_${t_thresh}_bin${n_bins}_seed${seed}/indice.json
+# export SEED=0
+# export DP=True
+# export EPOCH=10
+# export MAX_LENGTH=100
+# export P_BATCH=40
 
 # docker run -it -e L_THRESH=200 -e T_THRESH=30 -e N_BINS=30 -e SEED=0 -e MODEL_DIR=/data/results/geolife_mm/0//MTNET_DPTrue kyotohiemrnet.azurecr.io/hiemrnet /bin/bash -c "./evaluate.sh"
