@@ -1026,8 +1026,8 @@ if __name__ == "__main__":
         # this is fair comparison to MTNet which truncates the traj by 20
         name = model_dir.stem + "_truncate"
     else:
-        name = model_dir.stem    
-    args.save_dir = get_datadir() / "results" / training_setting["dataset"] / training_setting["data_name"] / route_data_name / name
+        name = model_dir.stem
+    args.save_dir = model_dir
     (args.save_dir / "imgs").mkdir(exist_ok=True, parents=True)
     # make_first_order_test_data_loader(dataset, args.n_test_locations)
     # make_second_order_test_data_loader(dataset, args.n_test_locations)
