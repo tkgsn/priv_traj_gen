@@ -457,6 +457,7 @@ if __name__ == "__main__":
     dataset = sys.argv[3]
     indice_path = sys.argv[4]
     print("load index information", indice_path)
+    get(indice_path)
     with open(indice_path, "r") as f:
         indice = json.load(f)
     if dataset == "chengdu":
