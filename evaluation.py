@@ -1027,6 +1027,10 @@ if __name__ == "__main__":
         name = model_dir.stem + "_truncate"
     else:
         name = model_dir.stem
+    if run_args.location_threshold == 0 and run_args.time_threshold == 0:
+        args.compensation = False
+        args.route_generator = True
+
     args.save_dir = model_dir
     (args.save_dir / "imgs").mkdir(exist_ok=True, parents=True)
     # make_first_order_test_data_loader(dataset, args.n_test_locations)

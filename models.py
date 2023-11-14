@@ -233,7 +233,9 @@ class GRUNet(BaseTimeReferenceGenerator):
         return location, time
     
     def init_hidden(self, references):
-        labels = torch.tensor([self.reference_to_label(reference) for reference in references]).to(next(self.parameters()).device)
+        # labels = torch.tensor([self.reference_to_label(reference) for reference in references]).to(next(self.parameters()).device)
+        # print(labels)
+        labels = torch.zeros(len(references), dtype=int).to(next(self.parameters()).device)
         hidden = self.traj_type_embedding(labels).view(-1, self.hidden_dim)
         return hidden
     
