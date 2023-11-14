@@ -14,6 +14,7 @@
 # export T_THRESH=30
 
 # train.sh
+<<<<<<< HEAD
 # export DATASET=chengdu
 # export MAX_SIZE=10000
 # export SEED=0
@@ -29,6 +30,23 @@
 # export MULTI_TASK=True
 # export CONSISTENT=False
 # export MULTILAYER=False
+=======
+export DATASET=chengdu
+export MAX_SIZE=10000
+export SEED=0
+export TRAINING_SEED=0
+export META_N_ITER=0
+export EPOCH=100
+export N_BINS=30
+export L_THRESH=0
+export T_THRESH=0
+export P_BATCH=100
+export N_TEST=30
+export DP=True
+export MULTI_TASK=True
+export CONSISTENT=False
+export MULTILAYER=False
+>>>>>>> 6371fa39174a8e966999c837107e4ca374ad795c
 
 # evaluate.sh
 # docker run -it -e L_THRESH=200 -e T_THRESH=30 -e N_BINS=30 -e SEED=0 -e MODEL_DIR=/data/results/chengdu/10000/200_30_bin30_seed0/fulllinear_quadtree_dpTrue_meta10000_dim100_64_64_256_btch0_cldepth_1000_trTrue_coTrue kyotohiemrnet.azurecr.io/hiemrnet /bin/bash -c "./evaluate.sh"
