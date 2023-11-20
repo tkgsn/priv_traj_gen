@@ -536,7 +536,7 @@ class LinearQuadTreeNetwork(BaseQuadTreeNetwork):
         # state_to_key is the standard MLP
         # self.state_to_key = nn.Sequential(nn.Linear(self.memory_dim, self.memory_dim), self.activate, nn.Linear(self.memory_dim, self.memory_dim))
         # self.state_to_key = nn.Linear(self.memory_dim, self.memory_dim)
-        self.state_to_key = nn.ModuleList([nn.Linear(self.memory_dim, self.memory_dim) for _ in range(self.tree.max_depth)])
+        self.state_to_key = nn.ModuleList([nn.Sequential(nn.Linear(self.memory_dim, self.memory_dim), self.activate, nn.Linear(self.memory_dim, self.memory_dim)) for _ in range(self.tree.max_depth)])
         self.root_value = nn.Embedding(1, self.memory_dim)
 
     def make_states(self, shape):
@@ -576,7 +576,9 @@ class FullLinearQuadTreeNetwork(LinearQuadTreeNetwork):
         self.class_to_query = nn.ModuleList([nn.Linear(location_embedding_dim, self.memory_dim) for _ in range(self.tree.max_depth)])
         # self.class_to_query = nn.Sequential(nn.Linear(location_embedding_dim, self.memory_dim), self.activate, nn.Linear(self.memory_dim, self.memory_dim))
         self.state_to_location_embedding = nn.Linear(self.memory_dim, location_embedding_dim)
-        self.hidden_to_query_ = nn.ModuleList([nn.Linear(hidden_dim, self.memory_dim) for _ in range(self.tree.max_depth)])
+
+        # self.hidden_to_query_ = nn.ModuleList([nn.Linear(hidden_dim, self.memory_dim) for _ in range(self.tree.max_depth)])
+        self.hidden_to_query_ = nn.ModuleList([nn.Sequential(nn.Linear(hidden_dim, self.memory_dim), self.activate, nn.Linear(self.memory_dim, self.memory_dim)) for _ in range(self.tree.max_depth)])
 
     def compute_scores(self, querys):
         '''

@@ -340,7 +340,6 @@ if __name__ == "__main__":
     parser.add_argument('--seed', type=int)
     parser.add_argument('--batch_size', type=int)
     parser.add_argument('--meta_n_iter', type=int)
-    parser.add_argument('--n_layers', type=int)
     parser.add_argument('--n_epochs', type=int)
     parser.add_argument('--embed_dim', type=int)
     parser.add_argument('--hidden_dim', type=int)

@@ -20,6 +20,7 @@ hidden_dim=$HIDDEN_DIM
 location_embedding_dim=$LOC_DIM
 memory_dim=$MEM_DIM
 memory_hidden_dim=$MEM_HIDDEN_DIM
+coef_time=$COEF_TIME
 # 
 # VARIABLES END
 #
@@ -42,13 +43,11 @@ noise_multiplier=1
 clipping_bound=1
 epsilon=1000
 n_split=5
-n_layers=1
 learning_rate=1e-3
 accountant_mode=rdp
 dp_delta=1e-5
 meta_network_load_path=None
 coef_location=1
-coef_time=1
 n_classes=10
 global_clip=1
 meta_patience=1000
@@ -83,7 +82,6 @@ declare -A arguments=(
     ["clipping_bound"]=$clipping_bound
     ["epsilon"]=$epsilon
     ["n_split"]=$n_split
-    ["n_layers"]=$n_layers
     ["hidden_dim"]=$hidden_dim
     ["location_embedding_dim"]=$location_embedding_dim
     ["learning_rate"]=$learning_rate
