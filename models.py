@@ -400,7 +400,8 @@ class BaseQuadTreeNetwork(nn.Module):
         self.n_locations = len(self.tree.get_leafs())
         self.n_classes = n_classes
         self.class_to_query = nn.Linear(n_classes, self.memory_dim)
-        self.hidden_to_query_ = nn.Sequential(nn.Linear(hidden_dim, hidden_dim), self.activate, nn.Linear(hidden_dim, self.memory_dim))
+        # self.hidden_to_query_ = nn.Sequential(nn.Linear(hidden_dim, hidden_dim), self.activate, nn.Linear(hidden_dim, self.memory_dim))
+        self.hidden_to_query_ = nn.Linear(hidden_dim, self.memory_dim)
         self.is_consistent = is_consistent
         self.pre_training = True
 
@@ -571,9 +572,29 @@ class FullLinearQuadTreeNetwork(LinearQuadTreeNetwork):
         self.leaf_ids = self.privtree.get_leaf_ids_in_tree(self.tree)
         # self.hidden_ids = torch.tensor([self.tree.node_id_to_hidden_id[node_id] for node_id in self.leaf_ids])
         self.node_ids = torch.tensor(self.privtree.get_leaf_ids_in_tree(self.tree))
-        self.class_to_query = nn.Linear(location_embedding_dim, self.memory_dim)
+        # self.class_to_query = nn.Linear(location_embedding_dim, self.memory_dim)
+        self.class_to_query = nn.ModuleList([nn.Linear(location_embedding_dim, self.memory_dim) for _ in range(self.tree.max_depth)])
         # self.class_to_query = nn.Sequential(nn.Linear(location_embedding_dim, self.memory_dim), self.activate, nn.Linear(self.memory_dim, self.memory_dim))
         self.state_to_location_embedding = nn.Linear(self.memory_dim, location_embedding_dim)
+        self.hidden_to_query_ = nn.ModuleList([nn.Linear(hidden_dim, self.memory_dim) for _ in range(self.tree.max_depth)])
+
+    def compute_scores(self, querys):
+        '''
+        scores: batch_size * (seq_len) * (4^depth+4^depth-1+...+4)
+        '''
+        keys = self.make_keys(querys[0].shape)
+
+        scores = []
+
+        for key, query in zip(keys, querys):
+            original_shape = query.shape
+            # matmal key and field
+            query = query.view(original_shape[0] * original_shape[1], -1, self.memory_dim)
+            key = key.view(original_shape[0] * original_shape[1], -1, self.memory_dim)
+            scores.append(torch.bmm(key, query.transpose(-2,-1)).view(*original_shape[:-1], -1, 4))
+        
+        scores = torch.cat(scores, dim=-2)
+        return scores
 
     def hidden_to_query(self, hidden):
        # for pre_training
@@ -587,11 +608,16 @@ class FullLinearQuadTreeNetwork(LinearQuadTreeNetwork):
                     node_embeddings_[i] += node_embeddings[index]
 
             location_embeddings = hidden.matmul(node_embeddings_) # batch_size * memory_dim
-            query = self.class_to_query(location_embeddings)
+
+            querys = []
+            for linear in self.class_to_query:
+                querys.append(linear(location_embeddings))
         else:
-            query = self.hidden_to_query_(hidden)
+            querys = []
+            for linear in self.hidden_to_query_:
+                querys.append(linear(hidden))
         # output hidden: batch_size * seq_len * memory_dim
-        return query
+        return querys
     
     def location_embedding(self, location, is_node_id=False):
         # virtual input for grad_sample
@@ -622,7 +648,24 @@ class FullLinearQuadTreeNetwork(LinearQuadTreeNetwork):
         location_embeddings = self.state_to_location_embedding(states).view(batch_size, -1)
         return location_embeddings
     
+    def make_keys(self, shape):
+        '''
+        convert state to key by self.state_to_key (MLP)
+        shaep should be [batch_size, seq_len, memory_dim]
+        output: batch_size * seq_len * (4^depth+4^depth-1+...+4) * memory_dim
+        the key is aligned with the order of the node_id in the tree
+        '''
+        states = self.make_states(shape)
 
+        cursor = 0
+        keys = []
+        for i in range(1,1+self.tree.max_depth):
+            keys_i = self.state_to_key[i-1](states[...,cursor:cursor+4**i,:])
+            keys.append(keys_i)
+            cursor += 4**i
+
+        return keys
+    
 
 
 def guide_to_model(type):

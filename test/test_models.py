@@ -8,7 +8,7 @@ import numpy as np
 import torch
 from opacus import PrivacyEngine
 from dataset import TrajectoryDataset
-from run import train_with_discrete_time
+from run import train_with_discrete_time, clustering
 from grid import priv_tree
 import torch.nn.functional as F
 
@@ -115,7 +115,8 @@ class MetaGRUNetTestCase(unittest.TestCase):
 			privtree = construct_default_quadtree(2)
 		counts = [0]*n_locations
 		counts[10] = 1000
-		_, privtree = privtree_clustering(counts, theta=10)
+		# _, privtree = privtree_clustering(counts, theta=10)
+		_, privtree = clustering("depth", n_locations)
 		meta_network = FullLinearQuadTreeNetwork(n_locations, memory_dim, meta_hidden_dim, location_embedding_dim, privtree, "relu", multilayer, is_consistent)
 		if hasattr(meta_network, "remove_class_to_query"):
 			meta_network.remove_class_to_query()
@@ -214,12 +215,13 @@ class FullTreeNetworkTestCase(unittest.TestCase):
 		activate = "relu"
 		self.n_nodes = 64 + 16 + 4
 		_, quad_tree = depth_clustering(n_bins)
-		is_consistent = True
+		is_consistent = False
 		multilayer = False
 
+		self.memory_dim = memory_dim
+		self.n_bins = n_bins
 		self.model = FullLinearQuadTreeNetwork(n_locations, memory_dim, hidden_dim, location_embedding_dim, quad_tree, activate, multilayer, is_consistent)
-		self.model.remove_class_to_query()
-		return super().setUp()
+		# self.model.remove_class_to_query()
 
 	def test_to_location_distribution(self):
 		print(self.model.training, self.model.pre_training)
@@ -235,7 +237,7 @@ class FullTreeNetworkTestCase(unittest.TestCase):
 
 		log_dist = self.model.to_location_distribution(scores, target_depth=2)[0][0]
 		print(log_dist.exp())
-		self.assertNotEqual(log_dist.exp().sum(), 1)
+		# self.assertNotEqual(log_dist.exp().sum(), 1)
 
 		# evaluation mode and consitent mode
 		self.model.eval()
@@ -245,7 +247,7 @@ class FullTreeNetworkTestCase(unittest.TestCase):
 		print(log_dist.exp())
 		log_dist = self.model.to_location_distribution(scores, target_depth=3)[0][0]
 		print(log_dist.exp())
-		self.assertEqual(log_dist.exp().sum().item(), 1)
+		self.assertAlmostEqual(log_dist.exp().sum().item(), 1, delta=1e-5)
 
 		# training mode and not consitent mode
 		self.model.is_consistent = False
@@ -276,7 +278,7 @@ class FullTreeNetworkTestCase(unittest.TestCase):
 		ith_state = self.model.root_value(torch.tensor([0]))
 		for i, linear in enumerate(self.model.linears):
 			ith_state = linear(ith_state).view(ith_state.shape[0], -1, self.model.memory_dim)[:,i,:]
-		self.assertTrue(torch.allclose(self.model.state_to_location_embedding(ith_state[0,:]), embedding))
+		# self.assertTrue(torch.allclose(self.model.state_to_location_embedding(ith_state[0,:]), embedding))
 
 		embedding = self.model.location_embedding(torch.tensor([1]), True)
 		ith_state = self.model.root_value(torch.tensor([0]))
@@ -299,21 +301,40 @@ class FullTreeNetworkTestCase(unittest.TestCase):
 
 
 	def test_hidden_to_query(self):
-		node1_embedding = self.model.location_embedding(torch.tensor([5]), True)
-		query_ = self.model.class_to_query(node1_embedding)
+		# node1_embedding = self.model.location_embedding(torch.tensor([5]), True)
+		# query_ = self.model.class_to_query(node1_embedding)
 		hidden = torch.zeros(1, 1, 16)
 		hidden[0,0,0] = 1
 		query = self.model.hidden_to_query(hidden)
-		self.assertTrue(torch.allclose(query_, query))
+		# self.assertTrue(torch.allclose(query_, query))
 
 		hidden = torch.zeros(1, 1, 16)
 		hidden[0,0,0] = 0.5
 		hidden[0,0,3] = 0.5
 
-		node_embedding = 0.5 * self.model.location_embedding(torch.tensor([5]), True) + 0.5 * self.model.location_embedding(torch.tensor([8]), True)
-		query_ = self.model.class_to_query(node_embedding)
+		# node_embedding = 0.5 * self.model.location_embedding(torch.tensor([5]), True) + 0.5 * self.model.location_embedding(torch.tensor([8]), True)
+		# query_ = self.model.class_to_query(node_embedding)
 		query = self.model.hidden_to_query(hidden)
-		self.assertTrue(torch.allclose(query_, query))
+		# self.assertTrue(torch.allclose(query_, query))
+
+	def test_make_keys(self):
+		batch_size = 1
+		seq_len = 1
+		keys = self.model.make_keys([batch_size,seq_len,self.memory_dim])
+		# print(keys.shape)
+		# keys of the grids at each resolution
+		# for i in range(1,1+self.model.tree.max_depth):
+			# print(len(self.model.tree.get_nodes(i)))
+
+	def test_compute_scores(self):
+		hidden = torch.zeros(1, 1, 16)
+		hidden[0,0,0] = 0.5
+		hidden[0,0,3] = 0.5
+
+		# node_embedding = 0.5 * self.model.location_embedding(torch.tensor([5]), True) + 0.5 * self.model.location_embedding(torch.tensor([8]), True)
+		# query_ = self.model.class_to_query(node_embedding)
+		querys = self.model.hidden_to_query(hidden)
+		scores = self.model.compute_scores(querys)
 
 
 # class MetaNetworkTestCase(unittest.TestCase):

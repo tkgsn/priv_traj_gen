@@ -1024,9 +1024,9 @@ if __name__ == "__main__":
     if (training_setting["dataset"] == "chengdu") and (not args.route_generator) and args.truncate:
         print("WARNING: traj is truncated")
         # this is fair comparison to MTNet which truncates the traj by 20
-        name = model_dir.stem + "_truncate"
     else:
-        name = model_dir.stem
+        args.truncate = False
+
     if run_args.location_threshold == 0 and run_args.time_threshold == 0:
         args.compensation = False
         args.route_generator = True
