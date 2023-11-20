@@ -478,3 +478,5 @@ if __name__ == "__main__":
         logger.info(f'epoch: {early_stopping.epoch} epsilon: {epsilon} | best loss: {early_stopping.best_score} | current loss: location {losses[:-2]}, time {losses[-2]}, norm {losses[-1]}')
         if early_stopping.early_stop:
             break
+    
+    send(save_path / f"log.log")
