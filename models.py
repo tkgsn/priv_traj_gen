@@ -528,10 +528,10 @@ class BaseQuadTreeNetwork(nn.Module):
 class LinearQuadTreeNetwork(BaseQuadTreeNetwork):
     def __init__(self, n_locations, memory_dim, hidden_dim, n_classes, activate, multilayer=False, is_consistent=False):
         super().__init__(n_locations, memory_dim, hidden_dim, n_classes, activate, is_consistent)
-        if multilayer:
-            self.linears = nn.ModuleList([nn.Sequential(nn.Linear(self.memory_dim, self.memory_dim), self.activate, nn.Linear(self.memory_dim, 4*self.memory_dim)) for _ in range(self.tree.max_depth)])
-        else:
-            self.linears = nn.ModuleList([nn.Sequential(nn.Linear(self.memory_dim, 4*self.memory_dim), self.activate) for _ in range(self.tree.max_depth)])
+        # if multilayer:
+            # self.linears = nn.ModuleList([nn.Sequential(nn.Linear(self.memory_dim, self.memory_dim), self.activate, nn.Linear(self.memory_dim, 4*self.memory_dim)) for _ in range(self.tree.max_depth)])
+        # else:
+        self.linears = nn.ModuleList([nn.Linear(self.memory_dim, 4*self.memory_dim) for _ in range(self.tree.max_depth)])
         self.input_dim = hidden_dim
         # state_to_key is the standard MLP
         # self.state_to_key = nn.Sequential(nn.Linear(self.memory_dim, self.memory_dim), self.activate, nn.Linear(self.memory_dim, self.memory_dim))
@@ -576,7 +576,8 @@ class FullLinearQuadTreeNetwork(LinearQuadTreeNetwork):
         # self.class_to_query = nn.Linear(location_embedding_dim, self.memory_dim)
         self.class_to_query = nn.ModuleList([nn.Linear(location_embedding_dim, self.memory_dim) for _ in range(self.tree.max_depth)])
         # self.class_to_query = nn.Sequential(nn.Linear(location_embedding_dim, self.memory_dim), self.activate, nn.Linear(self.memory_dim, self.memory_dim))
-        self.state_to_location_embedding = nn.Linear(self.memory_dim, location_embedding_dim)
+        # self.state_to_location_embedding = nn.Linear(self.memory_dim, location_embedding_dim)
+        self.state_to_location_embedding = nn.ModuleList([nn.Linear(self.memory_dim, location_embedding_dim) for _ in range(self.tree.max_depth)])
 
         self.hidden_to_query_ = nn.ModuleList([nn.Linear(hidden_dim, self.memory_dim) for _ in range(self.tree.max_depth)])
         # self.hidden_to_query_ = nn.ModuleList([nn.Sequential(nn.Linear(hidden_dim, self.memory_dim), nn.Linear(self.memory_dim, self.memory_dim)) for _ in range(self.tree.max_depth)])
@@ -628,10 +629,20 @@ class FullLinearQuadTreeNetwork(LinearQuadTreeNetwork):
         start_value = self.root_value(torch.ones(batch_size, device=location.device).long()).view(batch_size, -1, 1, self.memory_dim)
         ignore_value = self.root_value(torch.ones(batch_size, device=location.device).long()*2).view(batch_size, -1, 1, self.memory_dim)
         states = self.make_states([batch_size, 1, 1])
+
+        location_embeddings = []
+        curosor = 0
+        for i in range(1,self.tree.max_depth+1):
+            location_embeddings.append(self.state_to_location_embedding[i-1](states[...,curosor:curosor+4**i,:]))
+            curosor += 4**i
+        location_embeddings = torch.cat(location_embeddings, dim=-2)
+
+        start_embeddings = self.state_to_location_embedding[-1](start_value)
+        ignore_embeddings = self.state_to_location_embedding[-1](ignore_value)
         # add the start value to states
-        states = torch.cat([states, start_value], dim=-2)
-        # add the ignore value to states
-        states = torch.cat([states, ignore_value], dim=-2)
+        location_embeddings = torch.cat([location_embeddings, start_embeddings], dim=-2)
+        # add the ignore value to location_embeddings
+        location_embeddings = torch.cat([location_embeddings, ignore_embeddings], dim=-2)
 
         if not is_node_id:
             # input is a state, which is in the order of from upper left to lower right
@@ -647,9 +658,10 @@ class FullLinearQuadTreeNetwork(LinearQuadTreeNetwork):
             location = location -1
             # because the first node is the root node and make_states does not include the root node
             location = location.view(-1).tolist()
-        states = states[list(range(batch_size)), ..., location, :]
-        location_embeddings = self.state_to_location_embedding(states).view(batch_size, -1)
-        return location_embeddings
+        # states = states[list(range(batch_size)), ..., location, :]
+        # location_embeddings = self.state_to_location_embedding(states).view(batch_size, -1)
+        # return location_embeddings
+        return location_embeddings[list(range(batch_size)), ..., location, :].view(batch_size, -1)
     
     def make_keys(self, shape):
         '''
