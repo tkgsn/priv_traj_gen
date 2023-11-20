@@ -34,7 +34,7 @@ mkdir -p ${data_dir}/${dataset}/${data_name}
 scp -r -o StrictHostKeyChecking=no evaluation-server:${data_dir}/${dataset}/${data_name}/${training_data_name} ${data_dir}/${dataset}/${data_name}
 
 
-cuda_number=3
+cuda_number=0
 patience=10
 batch_size=0
 noise_multiplier=1
