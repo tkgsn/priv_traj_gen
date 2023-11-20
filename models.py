@@ -525,6 +525,7 @@ class LinearQuadTreeNetwork(BaseQuadTreeNetwork):
         # state_to_key is the standard MLP
         # self.state_to_key = nn.Sequential(nn.Linear(self.memory_dim, self.memory_dim), self.activate, nn.Linear(self.memory_dim, self.memory_dim))
         self.state_to_key = nn.Linear(self.memory_dim, self.memory_dim)
+        # self.state_to_key = nn.ModuleList([nn.Linear(self.memory_dim, self.memory_dim) for _ in range(self.tree.max_depth)])
         self.root_value = nn.Embedding(1, self.memory_dim)
 
     def make_states(self, shape):
@@ -612,125 +613,6 @@ class FullLinearQuadTreeNetwork(LinearQuadTreeNetwork):
         return location_embeddings
     
 
-
-
-class GRUQuadTreeNetwork(nn.Module):
-    def __init__(self, tree, memory_dim, n_classes, n_layers, activate="relu") -> None:
-        super(GRUQuadTreeNetwork, self).__init__()
-
-        self.depth = tree.max_depth
-        self.n_classes = n_classes
-        self.memory_dim = int(memory_dim/2)
-        self.n_margin = 0
-        # self.gru_cell = DPGRUCell(4, self.memory_dim, True)
-        self.gru_cells = torch.nn.ModuleList([DPGRUCell(4, self.memory_dim, True)])
-        for _ in range(n_layers-1):
-            self.gru_cells.append(DPGRUCell(self.memory_dim, self.memory_dim, True))
-        self.tree = tree
-        self.tree.make_self_complete()
-        self.embeddings_query = nn.Linear(n_classes, self.memory_dim*2)
-        self.hidden_to_key = nn.Linear(self.memory_dim, self.memory_dim)
-
-        if activate == "relu":
-            self.activate = nn.ReLU()
-        elif activate == "leaky_relu":
-            self.activate = nn.LeakyReLU()
-        elif activate == "sigmoid":
-            self.activate = nn.Sigmoid()
-        else:
-            raise NotImplementedError("activate should be relu or sigmoid, but it is {}".format(activate))
-
-
-    # if target is given, output is the distribution on the tree path to the target
-    # else, output is the distribution of all locations
-    def forward(self, hidden):
-        node_size = len(self.tree.get_all_nodes())-1
-        hidden = self.convert_hidden(hidden)
-
-        field, query = torch.split(hidden, [self.memory_dim, self.memory_dim], dim=-1)
-        keys = self.deconv(field)
-
-
-        # matmal key and field
-        query = query.view(-1, 1, self.memory_dim)
-        keys = keys.view(-1, node_size, self.memory_dim)
-        scores = torch.bmm(query, keys.transpose(-2,-1)).view(*hidden.shape[:-1], self.depth, 4)
-
-        distribution = F.log_softmax(scores.view(*hidden.shape[:-1], -1, 4), dim=-1)
-        return distribution
-    
-    def convert_hidden(self, hidden):
-       # for pre_training
-        if hidden.shape[-1] == self.n_classes:
-            hidden = self.embeddings_query(hidden)
-        return hidden
-    
-    def deconv(self, query, gru_cells=None, target=None):
-        '''
-        '''
-            
-        original_shape = query.shape
-        query = query.view(query.shape[0], -1, query.shape[-1])
-        batch_size = query.shape[0]
-        seq_len = query.shape[1]
-        if gru_cells is None:
-            gru_cells = self.gru_cells
-        if target is not None:
-            target = target.view(batch_size, seq_len, -1)
-    
-        def choose_field(fields, target, seq_i, depth):
-            if target is None or depth == -1:
-                return fields
-            else:
-                assert len(fields) == 4, "the number of fields should be 4, but it is {}".format(len(fields))
-                target = target[:, seq_i, depth].int()
-                target[target == 4] = 0
-                return [fields[target.tolist(), :, list(range(len(target))), :].permute(1,0,2)]
-
-        places = [F.one_hot(torch.tensor([place]*batch_size), num_classes=4).float().to(query.device) for place in range(4)]
-        seq_outputs = []
-        for seq_i in range(seq_len):
-            fields = [[[query[:, seq_i]]*len(gru_cells)]]
-            outputs = []
-            for depth in range(self.depth):
-                fields_at_depth = []
-                outputs_at_depth = []
-                for query_ in choose_field(fields[-1], target, seq_i, depth-1):
-                    for place in places:
-                        hidden = []
-                        for i, gru_cell in enumerate(gru_cells):
-                            # print(depth, place.shape, query_[i].shape)
-                            hidden.append(gru_cell(place, query_[i]))
-                            place = hidden[-1]
-                        outputs_at_depth.append(self.hidden_to_key(place))
-                        fields_at_depth.append(torch.stack(hidden, dim=0))
-                fields.append(torch.stack(fields_at_depth, dim=0))
-                outputs.append(torch.stack(outputs_at_depth, dim=0))
-            seq_outputs.append(torch.concat(outputs, dim=0))
-        seq_outputs = torch.stack(seq_outputs, dim=-2).permute(1,2,0,3).view(*original_shape[:-1], -1, original_shape[-1])
-        return seq_outputs
-
-    def set_probs_to_tree(self, scores):
-        '''
-        '''
-        device = next(self.parameters()).device
-
-        self.tree.root_node.prob = torch.zeros(scores.shape[:-1]).to(device)
-        for node in self.tree.get_all_nodes():
-            if node.children is not None:
-                children_ids = [child.id-1 for child in node.children]
-                assert len(children_ids) == 4, "the number of children should be 4, but it is {}".format(len(children_ids))
-                # choose values of children_ids from the last dimension of scores and softmax
-                # the dimensionarity of scores is variable
-                children_scores = scores[..., children_ids]
-                children_distribution = F.log_softmax(children_scores, dim=-1)
-                # assert torch.exp(children_distribution).sum(dim=-1).allclose(torch.ones(query.shape[:-1]).to(device), atol=1e-4), "the sum of children_distribution should be 1, but it is {}".format(torch.exp(children_distribution).sum(dim=-1))
-                for i in range(4):
-                    node.children[i].prob = node.prob + children_distribution[..., i]
-
-    def remove_embeddings_query(self):
-        self.embeddings_query.requires_grad_(False)
-        self.n_margin = - self.n_classes
 
 
 def guide_to_model(type):

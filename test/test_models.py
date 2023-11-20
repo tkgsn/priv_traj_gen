@@ -2,7 +2,7 @@ import unittest
 # add parent path
 import sys
 sys.path.append('./')
-from models import GRUNet, MetaGRUNet, compute_loss_meta_gru_net, GRUQuadTreeNetwork, compute_loss_gru_meta_gru_net, LinearQuadTreeNetwork, FullLinearQuadTreeNetwork, MetaNetwork, Markov1Generator, BaseQuadTreeNetwork
+from models import GRUNet, MetaGRUNet, compute_loss_meta_gru_net, compute_loss_gru_meta_gru_net, LinearQuadTreeNetwork, FullLinearQuadTreeNetwork, MetaNetwork, Markov1Generator, BaseQuadTreeNetwork
 from my_utils import construct_default_quadtree, privtree_clustering, depth_clustering
 import numpy as np
 import torch
@@ -97,6 +97,8 @@ class MetaGRUNetTestCase(unittest.TestCase):
 		location_embedding_dim = 10
 		n_split = 5
 		time_dim = n_split+3
+		multilayer = False
+		is_consistent = False
 
 		pad = np.ones((n_data, 1), dtype=int)
 		traj = np.concatenate([np.zeros((n_data, 1)), pad, np.zeros((n_data, 1))], axis=1).tolist()
@@ -114,7 +116,7 @@ class MetaGRUNetTestCase(unittest.TestCase):
 		counts = [0]*n_locations
 		counts[10] = 1000
 		_, privtree = privtree_clustering(counts, theta=10)
-		meta_network = FullLinearQuadTreeNetwork(n_locations, memory_dim, meta_hidden_dim, location_embedding_dim, privtree, "relu")
+		meta_network = FullLinearQuadTreeNetwork(n_locations, memory_dim, meta_hidden_dim, location_embedding_dim, privtree, "relu", multilayer, is_consistent)
 		if hasattr(meta_network, "remove_class_to_query"):
 			meta_network.remove_class_to_query()
 
@@ -212,9 +214,50 @@ class FullTreeNetworkTestCase(unittest.TestCase):
 		activate = "relu"
 		self.n_nodes = 64 + 16 + 4
 		_, quad_tree = depth_clustering(n_bins)
+		is_consistent = True
+		multilayer = False
 
-		self.model = FullLinearQuadTreeNetwork(n_locations, memory_dim, hidden_dim, location_embedding_dim, quad_tree, activate)
+		self.model = FullLinearQuadTreeNetwork(n_locations, memory_dim, hidden_dim, location_embedding_dim, quad_tree, activate, multilayer, is_consistent)
+		self.model.remove_class_to_query()
 		return super().setUp()
+
+	def test_to_location_distribution(self):
+		print(self.model.training, self.model.pre_training)
+		from run import make_targets_of_all_layers
+		a = make_targets_of_all_layers(torch.tensor([4]), self.model.tree)
+		print(a)
+		# training mode and consitent mode
+		batch_size = 1
+		seq_len = 1
+		scores = torch.zeros(batch_size, seq_len, int(self.n_nodes/4), 4)
+		scores[0][0][0][2] = 1
+		print(scores)
+
+		log_dist = self.model.to_location_distribution(scores, target_depth=2)[0][0]
+		print(log_dist.exp())
+		self.assertNotEqual(log_dist.exp().sum(), 1)
+
+		# evaluation mode and consitent mode
+		self.model.eval()
+		log_dist = self.model.to_location_distribution(scores, target_depth=1)[0][0]
+		print(log_dist.exp())
+		log_dist = self.model.to_location_distribution(scores, target_depth=2)[0][0]
+		print(log_dist.exp())
+		log_dist = self.model.to_location_distribution(scores, target_depth=3)[0][0]
+		print(log_dist.exp())
+		self.assertEqual(log_dist.exp().sum().item(), 1)
+
+		# training mode and not consitent mode
+		self.model.is_consistent = False
+		self.model.train()
+		log_dist = self.model.to_location_distribution(scores)[0][0]
+		self.assertEqual(log_dist.exp().sum(), 1)
+
+		# evaluation mode and not consitent mode
+		self.model.eval()
+		log_dist = self.model.to_location_distribution(scores)[0][0]
+		self.assertEqual(log_dist.exp().sum(), 1)
+
 	
 	def test_location_embedding(self):
 		embedding = self.model.location_embedding(torch.tensor([0]))
