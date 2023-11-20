@@ -451,10 +451,20 @@ class BaseQuadTreeNetwork(nn.Module):
     def make_keys(self, shape):
         '''
         convert state to key by self.state_to_key (MLP)
+        shaep should be [batch_size, seq_len, memory_dim]
+        output: batch_size * seq_len * (4^depth+4^depth-1+...+4) * memory_dim
+        the key is aligned with the order of the node_id in the tree
         '''
         states = self.make_states(shape)
-        keys = self.state_to_key(states)
 
+        cursor = 0
+        keys = []
+        for i in range(1,1+self.tree.max_depth):
+            keys_i = self.state_to_key[i-1](states[...,cursor:cursor+4**i,:])
+            keys.append(keys_i)
+            cursor += 4**i
+
+        keys = torch.cat(keys, dim=-2)
         return keys
     
     def to_location_distribution(self, scores, target_depth=-1):
@@ -524,8 +534,8 @@ class LinearQuadTreeNetwork(BaseQuadTreeNetwork):
         self.input_dim = hidden_dim
         # state_to_key is the standard MLP
         # self.state_to_key = nn.Sequential(nn.Linear(self.memory_dim, self.memory_dim), self.activate, nn.Linear(self.memory_dim, self.memory_dim))
-        self.state_to_key = nn.Linear(self.memory_dim, self.memory_dim)
-        # self.state_to_key = nn.ModuleList([nn.Linear(self.memory_dim, self.memory_dim) for _ in range(self.tree.max_depth)])
+        # self.state_to_key = nn.Linear(self.memory_dim, self.memory_dim)
+        self.state_to_key = nn.ModuleList([nn.Linear(self.memory_dim, self.memory_dim) for _ in range(self.tree.max_depth)])
         self.root_value = nn.Embedding(1, self.memory_dim)
 
     def make_states(self, shape):

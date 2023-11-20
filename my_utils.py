@@ -413,47 +413,47 @@ def compute_next_location_count(target, trajectories, n_locations, next_first=Fa
 # clustering based on the global distribution and distance
 # each cluster has the probability that is approximately larger than 1/n_classes
 # basically, locations in the same cluster are closer to each other than locations in different clusters
-def clustering(global_distribution, distance_matrix, n_classes):
+# def clustering(global_distribution, distance_matrix, n_classes):
 
-    def check_threshold(clustered_in_i, global_distribution, threshold):
-        # check if the sum of probability of locations in clustered_in_i is larger than threshold
-        sum_prob = 0
-        for loc in clustered_in_i:
-            sum_prob += global_distribution[loc]
-        return sum_prob > threshold
+#     def check_threshold(clustered_in_i, global_distribution, threshold):
+#         # check if the sum of probability of locations in clustered_in_i is larger than threshold
+#         sum_prob = 0
+#         for loc in clustered_in_i:
+#             sum_prob += global_distribution[loc]
+#         return sum_prob > threshold
 
-    location_to_class = {}
-    threshold = 1/n_classes
-    clustered = []
-    all_locations = list(range(len(global_distribution)))
-    # find locations to be clustered to class i
-    for i in range(n_classes):
-        # base_location is the smallest id of location that is not clustered yet
-        remained = set(all_locations) - set(clustered)
-        if len(remained) == 0:
-            print('all locations are clustered')
-            break
-        else:
-            base_location = min(set(all_locations) - set(clustered))
-        clustered_in_i = [base_location]
-        location_to_class[base_location] = i
-        # sort locations by distance to base_location to find the closest location
-        sorted_locations = sorted(set(all_locations) - set(clustered_in_i+clustered), key=lambda x: distance_matrix[x][base_location])
-        for loc in sorted_locations:
-            # check if the sum of probability of locations in clustered_in_i is larger than threshold
-            if check_threshold(clustered_in_i, global_distribution, threshold):
-                # print(f"prob for class {i} is {sum([global_distribution[loc] for loc in clustered_in_i])}")
-                break
-            # add the closest location to clustered_in_i
-            clustered_in_i.append(loc)
-            location_to_class[loc] = i
-        clustered.extend(clustered_in_i)
+#     location_to_class = {}
+#     threshold = 1/n_classes
+#     clustered = []
+#     all_locations = list(range(len(global_distribution)))
+#     # find locations to be clustered to class i
+#     for i in range(n_classes):
+#         # base_location is the smallest id of location that is not clustered yet
+#         remained = set(all_locations) - set(clustered)
+#         if len(remained) == 0:
+#             print('all locations are clustered')
+#             break
+#         else:
+#             base_location = min(set(all_locations) - set(clustered))
+#         clustered_in_i = [base_location]
+#         location_to_class[base_location] = i
+#         # sort locations by distance to base_location to find the closest location
+#         sorted_locations = sorted(set(all_locations) - set(clustered_in_i+clustered), key=lambda x: distance_matrix[x][base_location])
+#         for loc in sorted_locations:
+#             # check if the sum of probability of locations in clustered_in_i is larger than threshold
+#             if check_threshold(clustered_in_i, global_distribution, threshold):
+#                 # print(f"prob for class {i} is {sum([global_distribution[loc] for loc in clustered_in_i])}")
+#                 break
+#             # add the closest location to clustered_in_i
+#             clustered_in_i.append(loc)
+#             location_to_class[loc] = i
+#         clustered.extend(clustered_in_i)
     
-    # assign the rest of locations to the last class
-    for loc in set(all_locations) - set(clustered):
-        location_to_class[loc] = n_classes-1
+#     # assign the rest of locations to the last class
+#     for loc in set(all_locations) - set(clustered):
+#         location_to_class[loc] = n_classes-1
         
-    return location_to_class
+#     return location_to_class
 
 def construct_default_quadtree(n_bins):
     ranges = Grid.make_ranges_from_latlon_range_and_nbins([0,1], [0,1], n_bins)

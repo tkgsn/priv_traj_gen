@@ -9,7 +9,7 @@ from scipy.spatial.distance import jensenshannon
 from collections import Counter
 import pathlib
 
-from my_utils import get_datadir, clustering, privtree_clustering, depth_clustering, noise_normalize, add_noise, plot_density, make_trajectories, set_logger, construct_default_quadtree, save, load, compute_num_params, set_budget, send
+from my_utils import get_datadir, privtree_clustering, depth_clustering, noise_normalize, add_noise, plot_density, make_trajectories, set_logger, construct_default_quadtree, save, load, compute_num_params, set_budget, send
 from dataset import TrajectoryDataset
 from models import compute_loss_meta_gru_net, compute_loss_gru_meta_gru_net, Markov1Generator, MetaGRUNet, MetaNetwork, FullLinearQuadTreeNetwork, guide_to_model
 import torch.nn.functional as F
