@@ -16,6 +16,10 @@ n_test_locations=$N_TEST
 is_dp=$DP
 train_all_layers=$MULTI_TASK
 consistent=$CONSISTENT
+hidden_dim=$HIDDEN_DIM
+location_embedding_dim=$LOC_DIM
+memory_dim=$MEM_DIM
+memory_hidden_dim=$MEM_HIDDEN_DIM
 # 
 # VARIABLES END
 #
@@ -39,10 +43,6 @@ clipping_bound=1
 epsilon=1000
 n_split=5
 n_layers=1
-hidden_dim=256
-location_embedding_dim=64
-memory_dim=100
-memory_hidden_dim=64
 learning_rate=1e-3
 accountant_mode=rdp
 dp_delta=1e-5
