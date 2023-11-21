@@ -5,44 +5,45 @@
 # export DATASET=geolife_test
 
 # preprocess.sh
-# docker run -it -e DATASET=geolife_test_mm -e SEED=0 -e MAX_SIZE=0 -e N_BINS=30 -e T_THRESH=30 -e L_THRESH=200 kyotohiemrnet.azurecr.io/hiemrnet /bin/bash -c "./preprocess.sh"
+# docker run -it -e DATASET=chengdu -e SEED=0 -e MAX_SIZE=10000 -e N_BINS=30 -e T_THRESH=30 -e L_THRESH=200 -e TRUNCATE=21 kyotohiemrnet.azurecr.io/hiemrnet /bin/bash -c "./preprocess.sh"
 # export DATASET=chengdu
 # export MAX_SIZE=10000
 # export SEED=0
 # export N_BINS=30
 # export L_THRESH=200
 # export T_THRESH=30
+# export TRUNCATE=0
 
 # train.sh
 # docker run -it --gpus all -e DATASET=chengdu -e SEED=0 -e TRAINING_SEED=0 -e META_N_ITER=10000 -e MAX_SIZE=10000 -e SEED=0 -e EPOCH=100 -e N_BINS=30 -e L_THRESH=200 -e T_THRESH=30 -e P_BATCH=100 -e N_TEST=30 -e DP=True -e MULTI_TASK=True -e CONSISTENT=False -e MULTILAYER=False -e HIDDEN_DIM=64 -e LOC_DIM=64 -e MEM_DIM=64 -e MEM_HIDDEN_DIM=64 -e COEF_TIME=1 kyotohiemrnet.azurecr.io/hiemrnet_cu117 /bin/bash -c "./train.sh"
-export DATASET=chengdu
-export MAX_SIZE=10000
-export SEED=0
-export TRAINING_SEED=0
-export META_N_ITER=10
-export EPOCH=100
-export N_BINS=30
-export L_THRESH=200
-export T_THRESH=30
-export P_BATCH=100
-export N_TEST=30
-export DP=True
-export MULTI_TASK=True
-export CONSISTENT=False
-export MULTILAYER=False
-export HIDDEN_DIM=64
-export LOC_DIM=64
-export MEM_DIM=64
-export MEM_HIDDEN_DIM=64
-export COEF_TIME=1
-
-# evaluate.sh
-# docker run -it -e L_THRESH=200 -e T_THRESH=30 -e N_BINS=30 -e SEED=0 -e MODEL_DIR=/data/results/chengdu/10000/200_30_bin30_seed0/fulllinear_quadtree_dpTrue_meta10000_dim100_64_64_256_btch0_cldepth_1000_trTrue_coTrue kyotohiemrnet.azurecr.io/hiemrnet /bin/bash -c "./evaluate.sh"
+# export DATASET=chengdu
+# export MAX_SIZE=10000
+# export SEED=0
+# export TRAINING_SEED=0
+# export META_N_ITER=10
+# export EPOCH=100
+# export N_BINS=30
 # export L_THRESH=200
 # export T_THRESH=30
-# export N_BINS=30
-# export SEED=0
-# export MODEL_DIR=/data/results/geolife_test_mm/0/200_30_bin30_seed0/fulllinear_quadtree_dpTrue_meta0_dim100_64_64_256_btch0_cldepth_1000_trTrue_coTrue
+# export P_BATCH=100
+# export N_TEST=30
+# export DP=True
+# export MULTI_TASK=True
+# export CONSISTENT=False
+# export MULTILAYER=False
+# export HIDDEN_DIM=64
+# export LOC_DIM=64
+# export MEM_DIM=64
+# export MEM_HIDDEN_DIM=64
+# export COEF_TIME=1
+
+# evaluate.sh
+# docker run -it -e L_THRESH=200 -e T_THRESH=30 -e N_BINS=30 -e SEED=0 -e MODEL_DIR=/data/results/chengdu/10000/200_30_bin30_seed0/fulllinear_quadtree_dpTrue_meta10000_dim32_32_32_128_btch0_cldepth_1000_trTrue_coFalse_mulkeyquery kyotohiemrnet.azurecr.io/hiemrnet /bin/bash -c "./evaluate.sh"
+export L_THRESH=200
+export T_THRESH=30
+export N_BINS=30
+export SEED=0
+export MODEL_DIR=/data/results/chengdu/10000/200_30_bin30_seed0/fulllinear_quadtree_dpTrue_meta10000_dim32_32_32_128_btch0_cldepth_1000_trTrue_coFalse_mulkeyquery
 # /data/results/chengdu/10000/200_30_bin30_seed0/fulllinear_quadtree_dpTrue_meta10000_dim100_64_64_256_btch0_cldepth_1000_trTrue_coFalse_mulkey
 
 # MTNet/run.sh

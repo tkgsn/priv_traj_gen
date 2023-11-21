@@ -196,25 +196,25 @@ def make_distance_data(training_data_dir, n_bins, gps, logger):
         logger.info("distance_matrix already exists")
     send(training_data_dir.parent.parent / f"distance_matrix_bin{n_bins}.npy")
 
-def make_db(dataset, lat_range, lon_range, n_bins, logger):
+def make_db(dataset, lat_range, lon_range, n_bins, truncate, logger):
 
     original_dataset = get_original_dataset_name(dataset)
 
-    db_save_dir = get_datadir() / original_dataset / "pair_to_route" / f"{n_bins}"
+    db_save_dir = get_datadir() / original_dataset / "pair_to_route" / f"{n_bins}_tr{truncate}"
     db_save_dir.mkdir(exist_ok=True, parents=True)
     if not (db_save_dir / "paths.db").exists():
     # if True:
         graph_data_dir = get_datadir() / dataset / "raw"
         get(get_datadir() / dataset / "raw", parent=True)
         logger.info(f"make pair_to_route to {db_save_dir}")
-        make_pair_to_route.run(n_bins, graph_data_dir, lat_range, lon_range, db_save_dir)
+        make_pair_to_route.run(n_bins, graph_data_dir, lat_range, lon_range, truncate, db_save_dir)
     else:
         logger.info(f"pair_to_route already exists in {db_save_dir / 'paths.db'}")
     
     send(db_save_dir / "paths.db")
 
 
-def run(dataset_name, training_data_dir, lat_range, lon_range, n_bins, time_threshold, location_threshold, size, seed, logger):
+def run(dataset_name, training_data_dir, lat_range, lon_range, n_bins, time_threshold, location_threshold, size, seed, truncate, logger):
     """
     training_data is POI_id (aka state) trajectory
     state is made by grid of n_bins, which means there are (n_bins+2)*(n_bins+2) states in lat_range and lon_range
@@ -269,7 +269,7 @@ def run(dataset_name, training_data_dir, lat_range, lon_range, n_bins, time_thre
 
     gps = make_gps_data(training_data_dir, lat_range, lon_range, n_bins)
     make_distance_data(training_data_dir, n_bins, gps, logger)
-    make_db(dataset_name, lat_range, lon_range, n_bins, logger)
+    make_db(dataset_name, lat_range, lon_range, n_bins, truncate, logger)
 
 if __name__ == "__main__":
     
@@ -281,14 +281,10 @@ if __name__ == "__main__":
     parser.add_argument('--n_bins', type=int)
     parser.add_argument('--time_threshold', type=int)
     parser.add_argument('--location_threshold', type=int)
+    parser.add_argument('--truncate', type=int)
     parser.add_argument('--save_name', type=str)
     args = parser.parse_args()
     
-    # with open(pathlib.Path("./") / "config.json", "r") as f:
-    #     latlon_configs = json.load(f)["latlon"][args.dataset]
-    
-    # lat_range = latlon_configs["lat_range"]
-    # lon_range = latlon_configs["lon_range"]
     lat_range, lon_range = load_latlon_range(args.dataset)
     n_bins = args.n_bins
     training_data_dir = get_datadir() / args.dataset / args.data_name / args.save_name
@@ -296,4 +292,4 @@ if __name__ == "__main__":
 
     logger = set_logger(__name__, "./log.log")
 
-    run(args.dataset, training_data_dir, lat_range, lon_range, args.n_bins, args.time_threshold, args.location_threshold, args.max_size, args.seed, logger)
+    run(args.dataset, training_data_dir, lat_range, lon_range, args.n_bins, args.time_threshold, args.location_threshold, args.max_size, args.seed, args.truncate, logger)

@@ -242,7 +242,7 @@ def process_state_i_(i, states, db_path, latlon_to_state, DG):
             c.execute("INSERT INTO state_edge_to_route VALUES (?, ?, ?)", (i, j, str(state_routes)))
     return n_inserted
 
-def process_state_i(i, states, db_path, latlon_to_state, DG):
+def process_state_i(i, states, db_path, latlon_to_state, DG, truncate):
     with sqlite3.connect(db_path) as conn:
         c = conn.cursor()
 
@@ -283,7 +283,9 @@ def process_state_i(i, states, db_path, latlon_to_state, DG):
             # print(latlon_routes)
             # state_routes = []
             # for latlon_route in latlon_routes:
-            if shortest_path is not None:
+            # if len(shortest_path) > truncate:
+                # print(shortest_path)
+            if (shortest_path is not None) and (len(shortest_path) < truncate):
                 state_route = latlon_route_to_state_route(shortest_path, latlon_to_state)
                 assert state_route[0] == i, f"different start point {i} {j} -> {state_route}"
                 assert state_route[-1] == j, f"different end point {i} {j} -> {state_route}"
@@ -294,12 +296,14 @@ def process_state_i(i, states, db_path, latlon_to_state, DG):
                 # state_routess[j] = state_routes
 
                 # save with pickle
+                print("a", state_route)
                 with open(f"temp/state_routes_from_{i}_to_{j}.pkl", "wb") as f:
                     pickle.dump(state_route, f)
 
                 # c.execute("INSERT INTO state_edge_to_route VALUES (?, ?, ?)", (i, j, str(state_routes)))
 
-def make_state_pair_to_state_route(n_states, db_path, latlon_to_state, DG):
+def make_state_pair_to_state_route(n_states, db_path, latlon_to_state, DG, truncate):
+
     states = list(range(n_states))
     with sqlite3.connect(db_path) as conn:
         c = conn.cursor()
@@ -313,7 +317,7 @@ def make_state_pair_to_state_route(n_states, db_path, latlon_to_state, DG):
                 continue
             start_states.append(i)
 
-    partial_process_state_i = functools.partial(process_state_i, states=states, db_path=db_path, latlon_to_state=latlon_to_state, DG=DG)
+    partial_process_state_i = functools.partial(process_state_i, states=states, db_path=db_path, latlon_to_state=latlon_to_state, DG=DG, truncate=truncate)
     # for i in tqdm.tqdm(start_states):
         # partial_process_state_i(i)
     
@@ -338,7 +342,9 @@ def make_state_pair_to_state_route(n_states, db_path, latlon_to_state, DG):
 
 
 
-def run(n_bins, data_dir, lat_range, lon_range, save_dir):
+def run(n_bins, data_dir, lat_range, lon_range, truncate, save_dir):
+    if truncate == 0:
+        truncate = float("inf")
 
     db_path = pathlib.Path(save_dir) / "paths.db"
 
@@ -355,4 +361,4 @@ def run(n_bins, data_dir, lat_range, lon_range, save_dir):
     make_node_to_state(DG, n_states, grid.latlon_to_state, db_path)
 
     print("make state_pair_to_state_route to", db_path)
-    make_state_pair_to_state_route(n_states, db_path, grid.latlon_to_state, DG)
+    make_state_pair_to_state_route(n_states, db_path, grid.latlon_to_state, DG, truncate)

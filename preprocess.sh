@@ -16,6 +16,7 @@ max_size=$MAX_SIZE
 n_bins=$N_BINS
 time_threshold=$T_THRESH
 location_threshold=$L_THRESH
+truncate=$TRUNCATE
 #
 # VARIABLES END
 #
