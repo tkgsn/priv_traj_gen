@@ -296,7 +296,6 @@ def process_state_i(i, states, db_path, latlon_to_state, DG, truncate):
                 # state_routess[j] = state_routes
 
                 # save with pickle
-                print("a", state_route)
                 with open(f"temp/state_routes_from_{i}_to_{j}.pkl", "wb") as f:
                     pickle.dump(state_route, f)
 

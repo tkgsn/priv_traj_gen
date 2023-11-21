@@ -23,7 +23,7 @@ def run(generator, dataset, args):
     if args.compensation:
         original_dataset_name = get_original_dataset_name(dataset)
         print(type(original_dataset_name), original_dataset_name)
-        route_db_path = get_datadir() / original_dataset_name / "pair_to_route"/ f"{n_bins}" / "paths.db"
+        route_db_path = get_datadir() / original_dataset_name / "pair_to_route"/ f"{n_bins}_tr{args.truncate}" / "paths.db"
         print("compensating trajectories by", route_db_path)
     else:
         print("not compensating trajectories")
@@ -79,7 +79,7 @@ def run(generator, dataset, args):
                     generated_route_trajs = generated_trajs
                     generated_stay_trajs = get_stay_point(generated_trajs, generated_time_trajs, args.time_threshold)
                 else:
-                    generated_route_trajs, valid_ids = compensate_trajs(generated_trajs, route_db_path, args.truncate)
+                    generated_route_trajs, valid_ids = compensate_trajs(generated_trajs, route_db_path)
                     # generated_stay_trajs = np.array(generated_trajs)[valid_ids].tolist()
                     generated_stay_trajs = [traj for i, traj in enumerate(generated_trajs) if i in valid_ids]
                     n_invalid += len(generated_trajs) - len(generated_route_trajs)
@@ -197,7 +197,7 @@ def get_stay_point(generated_route_trajs, generated_time_trajs, time_threshold):
             
     return stay_trajs
 
-def compensate_trajs(trajs, db_path, truncate=False):
+def compensate_trajs(trajs, db_path):
     valid_ids = []
     new_trajs = []
     counter = 0
@@ -211,8 +211,6 @@ def compensate_trajs(trajs, db_path, truncate=False):
             for i in range(len(traj)-1):
                 edges = compensate_edge_by_map(traj[i], traj[i+1], db_path)
                 invalid_path = invalid_path or (len(edges) == 0)
-                if truncate:
-                    invalid_path = invalid_path or (len(edges) >= 20)
                 new_traj.extend(edges[1:])
             if not invalid_path:
                 valid_ids.append(id)
@@ -947,7 +945,7 @@ def set_args():
     args.batch_size = 100
     args.route_generator = False
     args.time_threshold = 10
-    args.truncate = True
+    args.truncate = 21
     args.eval_interval = 10
 
     return args
@@ -1021,11 +1019,11 @@ if __name__ == "__main__":
     args.dataset = dataset_name
     args.time_threshold = run_args.time_threshold
     args.route_generator = (training_setting["network_type"] == "MTNet")
-    if (training_setting["dataset"] == "chengdu") and (not args.route_generator) and args.truncate:
-        print("WARNING: traj is truncated")
+    # if (training_setting["dataset"] == "chengdu") and (not args.route_generator) and args.truncate:
+        # print("WARNING: traj is truncated")
         # this is fair comparison to MTNet which truncates the traj by 20
-    else:
-        args.truncate = False
+    # else:
+        # args.truncate = False
 
     if run_args.location_threshold == 0 and run_args.time_threshold == 0:
         args.compensation = False
