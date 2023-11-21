@@ -38,7 +38,7 @@
 # export COEF_TIME=1
 
 # evaluate.sh
-# docker run -it -e L_THRESH=200 -e T_THRESH=30 -e N_BINS=30 -e SEED=0 -e MODEL_DIR=/data/results/chengdu/10000/200_30_bin30_seed0/fulllinear_quadtree_dpTrue_meta10000_dim32_32_32_128_btch0_cldepth_1000_trTrue_coFalse_mulkeyquery kyotohiemrnet.azurecr.io/hiemrnet /bin/bash -c "./evaluate.sh"
+# docker run --gpus all -it -e L_THRESH=200 -e T_THRESH=30 -e N_BINS=30 -e SEED=0 -e MODEL_DIR=/data/results/chengdu/10000/200_30_bin30_seed0/fulllinear_quadtree_dpTrue_meta10000_dim32_32_32_128_btch0_cldepth_1000_trTrue_coFalse_mulkeyquery kyotohiemrnet.azurecr.io/hiemrnet_cu117 /bin/bash -c "./evaluate.sh"
 export L_THRESH=200
 export T_THRESH=30
 export N_BINS=30

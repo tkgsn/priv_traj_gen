@@ -24,6 +24,7 @@ def run(generator, dataset, args):
         original_dataset_name = get_original_dataset_name(dataset)
         print(type(original_dataset_name), original_dataset_name)
         route_db_path = get_datadir() / original_dataset_name / "pair_to_route"/ f"{n_bins}_tr{args.truncate}" / "paths.db"
+        get(route_db_path)
         print("compensating trajectories by", route_db_path)
     else:
         print("not compensating trajectories")
@@ -1007,7 +1008,6 @@ if __name__ == "__main__":
 
     if run_args.server:
         # get(route_data_path, parent=True)
-        get(get_datadir() / get_original_dataset_name(training_setting["dataset"]) / "pair_to_route" / str(n_bins) / "paths.db")
         get(get_datadir() / training_setting["dataset"] / f"distance_matrix_bin{n_bins}.npy")
         if training_setting["network_type"] == "MTNet":
             get(get_datadir() / dataset_name / "raw", parent=True)
