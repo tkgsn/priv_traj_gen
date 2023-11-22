@@ -616,13 +616,13 @@ def get(path, parent=False):
     if parent:
         print('scp', "-r", source_file_path, destination_file_path)
         # first compose the directory by tar
-        result = subprocess.run(['ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"tar -czf {path}.tar.gz {path}"])
+        result = subprocess.run(['ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"tar -czf data.tar.gz {path}"])
         # then download the tar file
         result = subprocess.run(['scp', '-o', 'StrictHostKeyChecking=no', source_file_path+".tar.gz", destination_file_path])
         # then decompress the tar file to the destination
-        result = subprocess.run(['ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"tar -xzf {path}.tar.gz -C {destination_file_path}"])
+        result = subprocess.run(['ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"tar -xzf data.tar.gz -C {destination_file_path}"])
         # then remove the tar file
-        result = subprocess.run(['rm', destination_file_path / f"{path}.tar.gz"])
+        result = subprocess.run(['rm', destination_file_path / f"data.tar.gz"])
         # result = subprocess.run(['scp', '-r', '-o', 'StrictHostKeyChecking=no', source_file_path, destination_file_path])
     else:
         print('scp', source_file_path, destination_file_path)
