@@ -622,8 +622,7 @@ def get(path, parent=False):
         # then download the tar file data.tar.gz in the evaluation-server
         result = subprocess.run(['scp', '-o', 'StrictHostKeyChecking=no', source_file_path + ".tar.gz", destination_file_path])
         # then decompress the tar file to the destination
-        result = subprocess.run(['tar', '-xzf', destination_file_path / f"{directory_name}.tar.gz", '-C', destination_file_path])
-        # result = subprocess.run(['scp', '-r', '-o', 'StrictHostKeyChecking=no', source_file_path, destination_file_path])
+        result = subprocess.run(['tar', '-xzf', destination_file_path / (directory_name + ".tar.gz"), "/"])
     else:
         print('scp', source_file_path, destination_file_path)
         result = subprocess.run(['scp', '-o', 'StrictHostKeyChecking=no', source_file_path, destination_file_path])
