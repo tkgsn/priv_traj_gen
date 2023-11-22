@@ -614,6 +614,7 @@ def get(path, parent=False):
     destination_file_path.mkdir(parents=True, exist_ok=True)
 
     if parent:
+        directory_name = pathlib.Path(path).name
         print('scp', "-r", source_file_path, destination_file_path)
         # first compose the directory by tar
         # result = subprocess.run(['ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"tar -czf data.tar.gz {path}"])
@@ -621,9 +622,7 @@ def get(path, parent=False):
         # then download the tar file data.tar.gz in the evaluation-server
         result = subprocess.run(['scp', '-o', 'StrictHostKeyChecking=no', source_file_path + ".tar.gz", destination_file_path])
         # then decompress the tar file to the destination
-        result = subprocess.run(['tar', '-xzf', destination_file_path / f"data.tar.gz", '-C', destination_file_path])
-        # then remove the tar file
-        result = subprocess.run(['rm', destination_file_path / f"data.tar.gz"])
+        result = subprocess.run(['tar', '-xzf', destination_file_path / f"{directory_name}.tar.gz", '-C', destination_file_path])
         # result = subprocess.run(['scp', '-r', '-o', 'StrictHostKeyChecking=no', source_file_path, destination_file_path])
     else:
         print('scp', source_file_path, destination_file_path)
