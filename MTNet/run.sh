@@ -56,7 +56,7 @@ training_data_dir=/data/${dataset}/${max_size}/${alg_name}
 # stay_point_data_dir=/data/${dataset}/${max_size}/${training_data_name}
 save_path=/data/results/${dataset}/${max_size}/${name}
 # setting_path=/data/${dataset}/${max_size}/0_0_bin${n_bins}_seed0/params.json
-cuda_number=3
+cuda_number=0
 python3 make_training_data.py $original_data_dir $training_data_dir $dataset $indice_path
 python3 train.py $training_data_dir $save_path $epoch $cuda_number $dp $length $p_batch
 # python3 convert_to_original_format.py $training_data_dir $save_path

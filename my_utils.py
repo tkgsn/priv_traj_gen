@@ -617,13 +617,13 @@ def get(path, parent=False):
         directory_name = pathlib.Path(path).stem
         # first compose the directory by tar
         print('ssh', 'evaluation-server', f"tar -cvf {directory_name}.tar {path}")
-        result = subprocess.run(['ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"tar -cvf data.tar {path}"])
+        result = subprocess.run(['ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"tar -cvf {directory_name}.tar {path}"])
         # then download the tar file
         print('scp', source_file_path, destination_file_path)
-        result = subprocess.run(['scp', '-o', 'StrictHostKeyChecking=no', "evaluation-server:~/data.tar", destination_file_path])
+        result = subprocess.run(['scp', '-o', 'StrictHostKeyChecking=no', f"evaluation-server:~/{directory_name}.tar", destination_file_path])
         # then decompress the tar file
-        print('tar', '-xvf', f'{destination_file_path}/data.tar', '-C', "/")
-        result = subprocess.run(['tar', '-xvf', f'{destination_file_path}/data.tar', "-C", "/"])
+        print('tar', '-xvf', f'{destination_file_path}/{directory_name}.tar', '-C', "/")
+        result = subprocess.run(['tar', '-xvf', f'{destination_file_path}/{directory_name}.tar', "-C", "/"])
     else:
         print('scp', source_file_path, destination_file_path)
         result = subprocess.run(['scp', '-o', 'StrictHostKeyChecking=no', source_file_path, destination_file_path])
