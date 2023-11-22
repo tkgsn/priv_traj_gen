@@ -615,13 +615,15 @@ def get(path, parent=False):
 
     if parent:
         directory_name = pathlib.Path(path).stem
-        print('scp', "-r", source_file_path, destination_file_path)
         # first compose the directory by tar
+        print('ssh', 'evaluation-server', f"tar -cvf {directory_name}.tar {path}")
         result = subprocess.run(['ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"tar -cvf {directory_name}.tar {path}"])
-        # then download the directory
-        result = subprocess.run(['scp', '-r', '-o', 'StrictHostKeyChecking=no', source_file_path, destination_file_path])
-        # then decompose the directory
-        result = subprocess.run(['ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"tar -xvf {directory_name}.tar"])
+        # then download the tar file
+        print('scp', source_file_path, destination_file_path)
+        result = subprocess.run(['scp', '-o', 'StrictHostKeyChecking=no', source_file_path, destination_file_path])
+        # then decompress the tar file
+        print('tar', '-xvf', f'{destination_file_path}/{directory_name}.tar', '-C', destination_file_path)
+        result = subprocess.run(['tar', '-xvf', f'{destination_file_path}/{directory_name}.tar', '-C', destination_file_path])
     else:
         print('scp', source_file_path, destination_file_path)
         result = subprocess.run(['scp', '-o', 'StrictHostKeyChecking=no', source_file_path, destination_file_path])
