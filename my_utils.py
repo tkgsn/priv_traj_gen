@@ -614,7 +614,7 @@ def get(path, parent=False):
     destination_file_path.mkdir(parents=True, exist_ok=True)
 
     if parent:
-        directory_name = pathlib.Path(path).name
+        directory_name = pathlib.Path(path).stem
         print('scp', "-r", source_file_path, destination_file_path)
         # first compose the directory by tar
         # result = subprocess.run(['ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"tar -czf data.tar.gz {path}"])
