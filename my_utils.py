@@ -623,7 +623,7 @@ def get(path, parent=False):
         result = subprocess.run(['scp', '-o', 'StrictHostKeyChecking=no', "evaluation-server:~/data.tar", destination_file_path])
         # then decompress the tar file
         print('tar', '-xvf', f'{destination_file_path}/{directory_name}.tar', '-C', destination_file_path)
-        result = subprocess.run(['tar', '-xvf', f'{destination_file_path}/data.tar', '-C', "/"])
+        result = subprocess.run(['tar', '-xvf', f'{destination_file_path}/data.tar'])
     else:
         print('scp', source_file_path, destination_file_path)
         result = subprocess.run(['scp', '-o', 'StrictHostKeyChecking=no', source_file_path, destination_file_path])
