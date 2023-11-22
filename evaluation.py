@@ -946,7 +946,7 @@ def set_args():
     args.batch_size = 100
     args.route_generator = False
     args.time_threshold = 10
-    args.truncate = 21
+    args.truncate = 22
     args.eval_interval = 10
 
     return args
