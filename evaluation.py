@@ -124,7 +124,7 @@ def run(generator, dataset, args):
         
                 # evaluate the same number of generated data as the ten times of that of original data
                 n_gene_traj += len(generated_route_trajs)
-                condition = n_gene_traj < len(dataset.references)
+                condition = n_gene_traj < len(dataset.references)*10
 
                 # gene_trajs.extend(generated_stay_trajs)
 
