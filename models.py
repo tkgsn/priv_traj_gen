@@ -80,6 +80,7 @@ class BaseReferenceGenerator(nn.Module):
         for i in range(int(n_samples / batch_size)):
             reference = references[i*batch_size:(i+1)*batch_size]
             outputs, seq_len = self.make_initial_input(reference)
+            print(outputs)
             reference_input = torch.tensor([list(ref) + [i for i in range(len(ref), seq_len)] for ref in reference])
             sampled = [outputs]
             for j in range(seq_len):
@@ -90,7 +91,6 @@ class BaseReferenceGenerator(nn.Module):
             sampled = sampled[1:]
 
             samples = self.concat(sampled, samples, reference)
-        
         return samples
 
     def remove_location(self, location, remove_locationss, log_prob=True):
@@ -207,6 +207,11 @@ class GRUNet(BaseTimeReferenceGenerator):
         state = self.init_hidden(references)
         locations = x[0]
         times = x[1]
+
+
+        print(state)
+        print(locations[:,0])
+        print(times[:,0])
 
         seq_len = locations.shape[1]
 

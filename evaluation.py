@@ -942,7 +942,7 @@ def set_args():
     args.evaluate_first_next_location = True
     args.evaluate_second_next_location = False
     args.evaluate_second_order_next_location = False
-    args.compensation = False
+    args.compensation = True
     args.eval_initial = True
     args.n_test_locations = 30
     args.n_split = 5
