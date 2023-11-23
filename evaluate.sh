@@ -4,7 +4,10 @@
 # pip install opencv-python
 
 pip install pyemd
+
+# for evaluation of MTNet
 pip install shapely
+pip install geopy
 
 # source ./enviornment
 #
