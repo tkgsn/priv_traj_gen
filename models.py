@@ -167,7 +167,7 @@ class BaseTimeReferenceGenerator(BaseReferenceGenerator):
         log_location_probs, log_time_probs = output
         locations = super().post_process(log_location_probs, [v[0] for v in sampled], reference)
         if len(sampled) == 1:
-            times = torch.ones_like(locations)
+            times = torch.zeros_like(locations)
         else:
             # choose a time that is larger than the previous time
             previous_times = sampled[-1][1]
