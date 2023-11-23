@@ -939,7 +939,7 @@ def set_args():
     args.evaluate_distance = True
     args.evaluate_emp_next = True
     args.evaluate_second_emp_next = True
-    args.evaluate_first_next_location = False
+    args.evaluate_first_next_location = True
     args.evaluate_second_next_location = False
     args.evaluate_second_order_next_location = False
     args.compensation = False
