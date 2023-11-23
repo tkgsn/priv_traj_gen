@@ -1037,7 +1037,7 @@ if __name__ == "__main__":
 
     args.save_dir = model_dir
     (args.save_dir / f"imgs_trun{args.truncate}").mkdir(exist_ok=True, parents=True)
-    # make_first_order_test_data_loader(dataset, args.n_test_locations)
+    make_first_order_test_data_loader(dataset, args.n_test_locations)
     # make_second_order_test_data_loader(dataset, args.n_test_locations)
         
     # sort according to i
