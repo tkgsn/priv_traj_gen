@@ -21,6 +21,7 @@ location_embedding_dim=$LOC_DIM
 memory_dim=$MEM_DIM
 memory_hidden_dim=$MEM_HIDDEN_DIM
 coef_time=$COEF_TIME
+network_type=$NETWORK_TYPE
 # 
 # VARIABLES END
 #
@@ -55,8 +56,8 @@ meta_dist=dirichlet
 clustering=depth
 
 
-# network_type=meta_network
-network_type=fulllinear_quadtree
+
+# network_type=fulllinear_quadtree
 # network_type=markov1
 
 activate=relu

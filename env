@@ -16,37 +16,38 @@
 
 # train.sh
 # docker run -it --gpus all -e DATASET=chengdu -e SEED=0 -e TRAINING_SEED=0 -e META_N_ITER=10000 -e MAX_SIZE=10000 -e SEED=0 -e EPOCH=100 -e N_BINS=30 -e L_THRESH=200 -e T_THRESH=30 -e P_BATCH=100 -e N_TEST=30 -e DP=False -e MULTI_TASK=True -e CONSISTENT=False -e MULTILAYER=False -e HIDDEN_DIM=64 -e LOC_DIM=64 -e MEM_DIM=64 -e MEM_HIDDEN_DIM=64 -e COEF_TIME=1 kyotohiemrnet.azurecr.io/hiemrnet_cu117 /bin/bash -c "./train.sh"
-# export DATASET=chengdu
-# export MAX_SIZE=10000
-# export SEED=0
-# export TRAINING_SEED=0
-# export META_N_ITER=10
-# export EPOCH=100
-# export N_BINS=30
-# export L_THRESH=200
-# export T_THRESH=30
-# export P_BATCH=100
-# export N_TEST=30
-# export DP=True
-# export MULTI_TASK=True
-# export CONSISTENT=False
-# export MULTILAYER=False
-# export HIDDEN_DIM=64
-# export LOC_DIM=64
-# export MEM_DIM=64
-# export MEM_HIDDEN_DIM=64
-# export COEF_TIME=1
+export DATASET=chengdu
+export MAX_SIZE=10000
+export SEED=0
+export TRAINING_SEED=0
+export META_N_ITER=10
+export EPOCH=50
+export N_BINS=30
+export L_THRESH=200
+export T_THRESH=30
+export P_BATCH=100
+export N_TEST=30
+export DP=True
+export MULTI_TASK=True
+export CONSISTENT=False
+export MULTILAYER=False
+export HIDDEN_DIM=64
+export LOC_DIM=64
+export MEM_DIM=64
+export MEM_HIDDEN_DIM=64
+export COEF_TIME=1
+export NETWORK_TYPE=meta_network
 
 # fulllinear_quadtree_dpFalse_meta10000_dim64_64_64_64_btch0_cldepth_1000_trTrue_coFalse_mulkeyquery
 # evaluate.sh
 # docker run --gpus all -it -e L_THRESH=200 -e T_THRESH=30 -e N_BINS=30 -e SEED=0 -e TRUNCATE=0 -e MODEL_DIR=/data/results/chengdu/10000/200_30_bin30_seed0/fulllinear_quadtree_dpTrue_meta10000_dim32_32_32_128_btch0_cldepth_1000_trTrue_coFalse_mulkeyquery kyotohiemrnet.azurecr.io/hiemrnet_cu117 /bin/bash -c "./evaluate.sh"
 # docker run --gpus all -it -e L_THRESH=200 -e T_THRESH=30 -e N_BINS=30 -e SEED=0 -e TRUNCATE=0 -e MODEL_DIR=/data/results/chengdu/10000/MTNET_DPTrue/ kyotohiemrnet.azurecr.io/hiemrnet_cu117 /bin/bash -c "./evaluate.sh"
-export L_THRESH=200
-export T_THRESH=30
-export N_BINS=30
-export SEED=0
-export TRUNCATE=0
-export MODEL_DIR=/data/results/chengdu/10000/200_30_bin30_seed0/fulllinear_quadtree_dpTrue_meta10000_dim32_32_32_128_btch0_cldepth_1000_trTrue_coFalse_mulkeyquery
+# export L_THRESH=200
+# export T_THRESH=30
+# export N_BINS=30
+# export SEED=0
+# export TRUNCATE=0
+# export MODEL_DIR=/data/results/chengdu/10000/200_30_bin30_seed0/fulllinear_quadtree_dpTrue_meta10000_dim32_32_32_128_btch0_cldepth_1000_trTrue_coFalse_mulkeyquery
 # /data/results/chengdu/10000/200_30_bin30_seed0/fulllinear_quadtree_dpTrue_meta10000_dim100_64_64_256_btch0_cldepth_1000_trTrue_coFalse_mulkey
 # fulllinear_quadtree_dpTrue_meta10000_dim32_32_32_128_btch0_cldepth_1000_trTrue_coFalse_mulkeyquery
 
