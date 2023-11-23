@@ -132,7 +132,7 @@ def run(generator, dataset, args):
             # compute js
             real_counters = dataset.real_counters
             n_trajs = dataset.n_trajs
-            img_dir = pathlib.Path(args.save_dir) / "imgs" / args.name
+            img_dir = pathlib.Path(args.save_dir) / f"imgs_{args.truncate}" / args.name
             img_dir.mkdir(exist_ok=True)
             for key, counter in counters.items():
                 print(key)
@@ -584,7 +584,7 @@ def compute_global_counts_from_time_label(trajs, time_label_trajs, time_label):
 
 def compute_auxiliary_information(dataset, save_dir, logger):
     save_dir = pathlib.Path(save_dir)
-    img_dir = save_dir.parent / "imgs"
+    img_dir = save_dir.parent / f"imgs"
     img_dir.mkdir(exist_ok=True)
 
     # compute top_base_locations
@@ -630,7 +630,7 @@ def compute_auxiliary_information(dataset, save_dir, logger):
         if sum(real_global_count) == 0:
             logger.info(f"no location at time {time}")
             continue
-        plot_density(real_global_count, dataset.n_locations, save_dir.parent / "imgs" / f"real_global_distribution_{int(time)}.png")
+        plot_density(real_global_count, dataset.n_locations, save_dir.parent / f"imgs" / f"real_global_distribution_{int(time)}.png")
 
     # global_counts_path = save_dir.parent / f"global_count.json"
     # # save the global counts
