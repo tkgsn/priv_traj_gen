@@ -764,6 +764,8 @@ def make_first_order_test_data_loader(dataset, n_test_locations):
         trajs.extend(trajs_for_the_first_location)
         time_trajs.extend(time_trajs_for_the_first_location)
     
+    print(trajs)
+    
     print(f"number of test trajectories: {len(trajs)}")
     print(f"number of test trajectories that start with: {counters}")
 
