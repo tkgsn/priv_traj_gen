@@ -65,6 +65,7 @@ def run(generator, dataset, args):
                 mini_batch_size =  min([1000, len(dataset.references)])
                 # sample mini_batch_size references from dataset.references
                 references = random.sample(dataset.references, mini_batch_size)
+                print(references)
                 generated = generator.make_sample(references, mini_batch_size)
 
                 if len(generated) == 2:
