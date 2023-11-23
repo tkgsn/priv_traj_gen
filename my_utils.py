@@ -609,6 +609,9 @@ def send(path, parent=False):
         # then decompress
         print('ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"tar -xvf {path.parent}/{path.stem}.tar -C /")
         result = subprocess.run(['ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"tar -xvf {path.parent}/{path.stem}.tar -C /"])
+        # remove the tar file
+        print('ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"rm {path.parent}/{path.stem}.tar")
+        result = subprocess.run(['ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"rm {path.parent}/{path.stem}.tar"])
 
         # print('scp', "-r", source_file_path, destination_file_path)
         # result = subprocess.run(['ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"mkdir -p {path.parent}"])
@@ -635,6 +638,9 @@ def get(path, parent=False):
         # then decompress the tar file
         print('tar', '-xvf', f'{destination_file_path}/{directory_name}.tar', '-C', "/")
         result = subprocess.run(['tar', '-xvf', f'{destination_file_path}/{directory_name}.tar', "-C", "/"])
+        # remove the tar file
+        print('rm', f'{destination_file_path}/{directory_name}.tar')
+        result = subprocess.run(['rm', f'{destination_file_path}/{directory_name}.tar'])
     else:
         print('scp', source_file_path, destination_file_path)
         result = subprocess.run(['scp', '-o', 'StrictHostKeyChecking=no', source_file_path, destination_file_path])

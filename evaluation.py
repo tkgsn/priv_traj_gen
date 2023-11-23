@@ -962,6 +962,7 @@ if __name__ == "__main__":
     parser.add_argument('--time_threshold', type=int)
     parser.add_argument('--n_bins', type=int)
     parser.add_argument('--seed', type=int)
+    parser.add_argument('--truncate', type=int)
 
     parser.add_argument('--server', action="store_true")
     run_args = parser.parse_args()
@@ -1019,6 +1020,7 @@ if __name__ == "__main__":
     args.dataset = dataset_name
     args.time_threshold = run_args.time_threshold
     args.route_generator = (training_setting["network_type"] == "MTNet")
+    args.truncate = run_args.truncate
     # if (training_setting["dataset"] == "chengdu") and (not args.route_generator) and args.truncate:
         # print("WARNING: traj is truncated")
         # this is fair comparison to MTNet which truncates the traj by 20
@@ -1030,7 +1032,7 @@ if __name__ == "__main__":
         args.route_generator = True
 
     args.save_dir = model_dir
-    (args.save_dir / "imgs").mkdir(exist_ok=True, parents=True)
+    (args.save_dir / f"imgs_trun{args.truncate}").mkdir(exist_ok=True, parents=True)
     # make_first_order_test_data_loader(dataset, args.n_test_locations)
     # make_second_order_test_data_loader(dataset, args.n_test_locations)
         
@@ -1053,9 +1055,9 @@ if __name__ == "__main__":
         
         args.name = model_path.stem
         results = run(generator, dataset, args)
-        with open(args.save_dir / f"evaluated_{model_path.stem}.json", "w") as f:
+        with open(args.save_dir / f"evaluated_{model_path.stem}_trun{args.truncate}.json", "w") as f:
             json.dump(results, f)
         if run_args.server:
-            send(args.save_dir / f"evaluated_{model_path.stem}.json")
-            send(args.save_dir / "imgs" / args.name, parent=True)
+            send(args.save_dir / f"evaluated_{model_path.stem}_trun{args.truncate}.json")
+            send(args.save_dir / f"imgs_trun{args.truncate}" / args.name, parent=True)
         print(results)
