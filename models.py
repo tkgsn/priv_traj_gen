@@ -28,28 +28,40 @@ class BaseReferenceGenerator(nn.Module):
         # if the output is a list, this is the distributions for all layers
         output = output[-1] if type(output) == list else output
         assert len(reference) == output.shape[0], "the length of the reference should be {}, but it is {}".format(output.shape[0], len(reference))
+
+        if True:
+            # test!
+            pointer = len(sampled)
+            if pointer == 1:
+                if reference[0][0] != -1:
+                    locations = torch.tensor([v[0] for v in reference]).view(-1, 1).to(output.device)
+            else:
+                location_probs = torch.exp(output).view(output.shape[0], -1)
+                locations = location_probs.multinomial(1)
+            return locations
+
         log_location_probs = output
 
-        pointer = len(sampled)
-        if pointer == 1:
-            if reference[0][0] != -1:
-                locations = torch.tensor([v[0] for v in reference]).view(-1, 1).to(output.device)
-            elif torch.allclose(reference[:, 0], -1*torch.ones_like(reference[:, 0])):
-                location_probs = torch.exp(log_location_probs).view(log_location_probs.shape[0], -1)
-                locations = location_probs.multinomial(1)
-            else:
-                raise NotImplementedError("the first element of the reference should be -1, but it is {}".format(reference[0][0]))
-        else:
-            passed_locations = torch.concatenate([v for v in sampled[1:]], dim=1).view(-1, len(sampled)-1)
-            log_location_probs = self.remove_location(log_location_probs, passed_locations)
-            location_probs = torch.exp(log_location_probs).view(log_location_probs.shape[0], -1)
-            # if all locations are removed, then we just sample from the first location
-            indice = location_probs.sum(dim=-1) == 0
-            location_probs[indice,0] = 1
-            # sample
-            locations = location_probs.multinomial(1)
-            # replace by the reference
-            locations = torch.concat([passed_locations, locations], dim=-1)[range(len(reference)), reference[:, pointer-1]].view(-1, 1)
+        # pointer = len(sampled)
+        # if pointer == 1:
+        #     if reference[0][0] != -1:
+        #         locations = torch.tensor([v[0] for v in reference]).view(-1, 1).to(output.device)
+        #     elif torch.allclose(reference[:, 0], -1*torch.ones_like(reference[:, 0])):
+        #         location_probs = torch.exp(log_location_probs).view(log_location_probs.shape[0], -1)
+        #         locations = location_probs.multinomial(1)
+        #     else:
+        #         raise NotImplementedError("the first element of the reference should be -1, but it is {}".format(reference[0][0]))
+        # else:
+        #     passed_locations = torch.concatenate([v for v in sampled[1:]], dim=1).view(-1, len(sampled)-1)
+        #     log_location_probs = self.remove_location(log_location_probs, passed_locations)
+        #     location_probs = torch.exp(log_location_probs).view(log_location_probs.shape[0], -1)
+        #     # if all locations are removed, then we just sample from the first location
+        #     indice = location_probs.sum(dim=-1) == 0
+        #     location_probs[indice,0] = 1
+        #     # sample
+        #     locations = location_probs.multinomial(1)
+        #     # replace by the reference
+        #     locations = torch.concat([passed_locations, locations], dim=-1)[range(len(reference)), reference[:, pointer-1]].view(-1, 1)
 
         return locations
     
@@ -80,7 +92,6 @@ class BaseReferenceGenerator(nn.Module):
         for i in range(int(n_samples / batch_size)):
             reference = references[i*batch_size:(i+1)*batch_size]
             outputs, seq_len = self.make_initial_input(reference)
-            print(outputs)
             reference_input = torch.tensor([list(ref) + [i for i in range(len(ref), seq_len)] for ref in reference])
             sampled = [outputs]
             for j in range(seq_len):
@@ -207,11 +218,6 @@ class GRUNet(BaseTimeReferenceGenerator):
         state = self.init_hidden(references)
         locations = x[0]
         times = x[1]
-
-
-        print(state)
-        print(locations[:,0])
-        print(times[:,0])
 
         seq_len = locations.shape[1]
 
