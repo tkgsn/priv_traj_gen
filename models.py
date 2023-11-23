@@ -102,7 +102,6 @@ class BaseReferenceGenerator(nn.Module):
             sampled = sampled[1:]
 
             samples = self.concat(sampled, samples, reference)
-            break
         return samples
 
     def remove_location(self, location, remove_locationss, log_prob=True):
