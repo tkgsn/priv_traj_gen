@@ -457,8 +457,8 @@ def count_first_next_locations(trajs, source_location):
     # count the appearance of locations
     first_next_locations = []
     for traj in trajs:
-        if traj[0] == source_location:
-            first_next_locations.append(traj[1])
+        # if traj[0] == source_location:
+        first_next_locations.append(traj[1])
     return Counter(first_next_locations)
 
 def count_second_order_first_next_locations(trajs, source_location):
@@ -752,6 +752,7 @@ def make_first_order_test_data_loader(dataset, n_test_locations):
     trajs = []
     time_trajs = []
     first_locations = top_base_locations
+    print("top", top_base_locations)
     for first_location in first_locations:
         trajs_for_the_first_location = []
         time_trajs_for_the_first_location = []
