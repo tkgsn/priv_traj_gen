@@ -4,6 +4,7 @@
 # pip install opencv-python
 
 pip install pyemd
+pip install shapely
 
 # source ./enviornment
 #

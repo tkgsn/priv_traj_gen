@@ -5,7 +5,7 @@
 # export DATASET=geolife_test
 
 # preprocess.sh
-# docker run -it -e DATASET=chengdu -e SEED=0 -e MAX_SIZE=10000 -e N_BINS=30 -e T_THRESH=30 -e L_THRESH=200 -e TRUNCATE=22 kyotohiemrnet.azurecr.io/hiemrnet /bin/bash -c "./preprocess.sh"
+# docker run -it -e DATASET=chengdu -e SEED=0 -e MAX_SIZE=10000 -e N_BINS=30 -e T_THRESH=30 -e L_THRESH=200 -e TRUNCATE=0 kyotohiemrnet.azurecr.io/hiemrnet /bin/bash -c "./preprocess.sh"
 # export DATASET=chengdu
 # export MAX_SIZE=10000
 # export SEED=0
@@ -40,6 +40,7 @@
 # fulllinear_quadtree_dpFalse_meta10000_dim64_64_64_64_btch0_cldepth_1000_trTrue_coFalse_mulkeyquery
 # evaluate.sh
 # docker run --gpus all -it -e L_THRESH=200 -e T_THRESH=30 -e N_BINS=30 -e SEED=0 -e TRUNCATE=0 -e MODEL_DIR=/data/results/chengdu/10000/200_30_bin30_seed0/fulllinear_quadtree_dpFalse_meta10000_dim64_64_64_64_btch0_cldepth_1000_trTrue_coFalse_mulkeyquery kyotohiemrnet.azurecr.io/hiemrnet_cu117 /bin/bash -c "./evaluate.sh"
+# docker run --gpus all -it -e L_THRESH=200 -e T_THRESH=30 -e N_BINS=30 -e SEED=0 -e TRUNCATE=0 -e MODEL_DIR=/data/results/chengdu/10000/MTNET_DPTrue/ kyotohiemrnet.azurecr.io/hiemrnet_cu117 /bin/bash -c "./evaluate.sh"
 export L_THRESH=200
 export T_THRESH=30
 export N_BINS=30
