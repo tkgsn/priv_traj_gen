@@ -124,7 +124,7 @@ def run(generator, dataset, args):
         
                 # evaluate the same number of generated data as the ten times of that of original data
                 n_gene_traj += len(generated_route_trajs)
-                condition = n_gene_traj < len(dataset.references)*10
+                condition = n_gene_traj < len(dataset.references)
 
                 # gene_trajs.extend(generated_stay_trajs)
 
@@ -752,7 +752,6 @@ def make_first_order_test_data_loader(dataset, n_test_locations):
     trajs = []
     time_trajs = []
     first_locations = top_base_locations
-    print("top", top_base_locations)
     for first_location in first_locations:
         trajs_for_the_first_location = []
         time_trajs_for_the_first_location = []
@@ -763,8 +762,6 @@ def make_first_order_test_data_loader(dataset, n_test_locations):
         counters[first_location] = len(trajs_for_the_first_location)
         trajs.extend(trajs_for_the_first_location)
         time_trajs.extend(time_trajs_for_the_first_location)
-    
-    print(trajs)
     
     print(f"number of test trajectories: {len(trajs)}")
     print(f"number of test trajectories that start with: {counters}")
