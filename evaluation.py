@@ -132,7 +132,7 @@ def run(generator, dataset, args):
             # compute js
             real_counters = dataset.real_counters
             n_trajs = dataset.n_trajs
-            img_dir = pathlib.Path(args.save_dir) / f"imgs_{args.truncate}" / args.name
+            img_dir = pathlib.Path(args.save_dir) / f"imgs_trun{args.truncate}" / args.name
             img_dir.mkdir(exist_ok=True)
             for key, counter in counters.items():
                 print(key)
