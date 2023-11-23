@@ -39,7 +39,7 @@
 
 # fulllinear_quadtree_dpFalse_meta10000_dim64_64_64_64_btch0_cldepth_1000_trTrue_coFalse_mulkeyquery
 # evaluate.sh
-# docker run --gpus all -it -e L_THRESH=200 -e T_THRESH=30 -e N_BINS=30 -e SEED=0 -e TRUNCATE=0 -e MODEL_DIR=/data/results/chengdu/10000/200_30_bin30_seed0/fulllinear_quadtree_dpFalse_meta10000_dim64_64_64_64_btch0_cldepth_1000_trTrue_coFalse_mulkeyquery kyotohiemrnet.azurecr.io/hiemrnet_cu117 /bin/bash -c "./evaluate.sh"
+# docker run --gpus all -it -e L_THRESH=200 -e T_THRESH=30 -e N_BINS=30 -e SEED=0 -e TRUNCATE=0 -e MODEL_DIR=/data/results/chengdu/10000/200_30_bin30_seed0/fulllinear_quadtree_dpTrue_meta10000_dim32_32_32_128_btch0_cldepth_1000_trTrue_coFalse_mulkeyquery kyotohiemrnet.azurecr.io/hiemrnet_cu117 /bin/bash -c "./evaluate.sh"
 # docker run --gpus all -it -e L_THRESH=200 -e T_THRESH=30 -e N_BINS=30 -e SEED=0 -e TRUNCATE=0 -e MODEL_DIR=/data/results/chengdu/10000/MTNET_DPTrue/ kyotohiemrnet.azurecr.io/hiemrnet_cu117 /bin/bash -c "./evaluate.sh"
 export L_THRESH=200
 export T_THRESH=30
@@ -48,6 +48,7 @@ export SEED=0
 export TRUNCATE=0
 export MODEL_DIR=/data/results/chengdu/10000/200_30_bin30_seed0/fulllinear_quadtree_dpTrue_meta10000_dim32_32_32_128_btch0_cldepth_1000_trTrue_coFalse_mulkeyquery
 # /data/results/chengdu/10000/200_30_bin30_seed0/fulllinear_quadtree_dpTrue_meta10000_dim100_64_64_256_btch0_cldepth_1000_trTrue_coFalse_mulkey
+# fulllinear_quadtree_dpTrue_meta10000_dim32_32_32_128_btch0_cldepth_1000_trTrue_coFalse_mulkeyquery
 
 # MTNet/run.sh
 # docker run -it -e DATASET=chengdu -e SEED=0 -e MAX_SIZE=10000 -e DP=True -e EPOCH=100 -e MAX_LENGTH=100 -e P_BATCH=100 -e INDICE_PATH=/data/chengdu/10000/200_30_bin30_seed0/indice.json kyotohiemrnet.azurecr.io/hiemrnet_cu117 /bin/bash -c "cd MTNet && ./run.sh"

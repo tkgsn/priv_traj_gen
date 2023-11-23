@@ -65,7 +65,6 @@ def run(generator, dataset, args):
                 mini_batch_size =  min([1000, len(dataset.references)])
                 # sample mini_batch_size references from dataset.references
                 references = random.sample(dataset.references, mini_batch_size)
-                print(references)
                 generated = generator.make_sample(references, mini_batch_size)
 
                 if len(generated) == 2:
@@ -81,10 +80,14 @@ def run(generator, dataset, args):
                     generated_route_trajs = generated_trajs
                     generated_stay_trajs = get_stay_point(generated_trajs, generated_time_trajs, args.time_threshold)
                 else:
-                    generated_route_trajs, valid_ids = compensate_trajs(generated_trajs, route_db_path)
-                    # generated_stay_trajs = np.array(generated_trajs)[valid_ids].tolist()
-                    generated_stay_trajs = [traj for i, traj in enumerate(generated_trajs) if i in valid_ids]
-                    n_invalid += len(generated_trajs) - len(generated_route_trajs)
+                    if not args.compensation:
+                        generated_route_trajs = generated_trajs
+                        generated_stay_trajs = generated_trajs
+                    else:
+                        generated_route_trajs, valid_ids = compensate_trajs(generated_trajs, route_db_path)
+                        # generated_stay_trajs = np.array(generated_trajs)[valid_ids].tolist()
+                        generated_stay_trajs = [traj for i, traj in enumerate(generated_trajs) if i in valid_ids]
+                        n_invalid += len(generated_trajs) - len(generated_route_trajs)
 
                 first_locations = [traj[0] for traj in generated_stay_trajs if len(traj) > 1]
                 counters["first_location"] += Counter(first_locations)
@@ -939,7 +942,7 @@ def set_args():
     args.evaluate_first_next_location = False
     args.evaluate_second_next_location = False
     args.evaluate_second_order_next_location = False
-    args.compensation = True
+    args.compensation = False
     args.eval_initial = True
     args.n_test_locations = 30
     args.n_split = 5
