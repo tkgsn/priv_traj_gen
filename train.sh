@@ -105,6 +105,7 @@ declare -A arguments=(
     ["clustering"]=$clustering
     ["dp_delta"]=$dp_delta
     ["transition_type"]=$transition_type
+    ["multilayer"]=$multilayer
 )
 
 declare -A options=(
@@ -128,6 +129,6 @@ for key in "${!options[@]}"; do
 done
 
 
-save_name=${network_type}_dp${is_dp}_meta${meta_n_iter}_dim${memory_dim}_${memory_hidden_dim}_${location_embedding_dim}_${hidden_dim}_btch${batch_size}_cl${clustering}_${epsilon}_tr${train_all_layers}_co${consistent}_mulkeyquery
+save_name=${network_type}_dp${is_dp}_meta${meta_n_iter}_dim${memory_dim}_${memory_hidden_dim}_${location_embedding_dim}_${hidden_dim}_btch${batch_size}_cl${clustering}_${epsilon}_tr${train_all_layers}_co${consistent}_mul${multilayer}
 # save_name=test
 python3 run.py --save_name $save_name $option
