@@ -931,14 +931,14 @@ def set_args():
 
     args = Namespace()
     args.evaluate_global = False
-    args.evaluate_passing = True
-    args.evaluate_source = True
-    args.evaluate_target = True
-    args.evaluate_route = True
-    args.evaluate_destination = True
-    args.evaluate_distance = True
-    args.evaluate_emp_next = True
-    args.evaluate_second_emp_next = True
+    args.evaluate_passing = False
+    args.evaluate_source = False
+    args.evaluate_target = False
+    args.evaluate_route = False
+    args.evaluate_destination = False
+    args.evaluate_distance = False
+    args.evaluate_emp_next = False
+    args.evaluate_second_emp_next = False
     args.evaluate_first_next_location = True
     args.evaluate_second_next_location = False
     args.evaluate_second_order_next_location = False
