@@ -535,6 +535,44 @@ class BaseQuadTreeNetwork(nn.Module):
         del self.class_to_query
 
 
+class ResidualQuadTreeNetwork(BaseQuadTreeNetwork):
+    def __init__(self, n_locations, memory_dim, hidden_dim, n_classes, activate, multilayer=False, is_consistent=False):
+        super().__init__(n_locations, memory_dim, hidden_dim, n_classes, activate, is_consistent)
+        if multilayer:
+            # self.linears = nn.ModuleList([nn.Sequential(nn.Linear(self.memory_dim, 8*self.memory_dim), self.activate, nn.Linear(8*self.memory_dim, 4*self.memory_dim)) for _ in range(self.tree.max_depth)])
+            self.linears = nn.ModuleList([nn.Sequential(nn.Linear(self.memory_dim, 4*self.memory_dim), self.activate) for _ in range(self.tree.max_depth)])
+        else:
+            # self.linears = nn.ModuleList([nn.Linear(self.memory_dim, 4*self.memory_dim) for _ in range(self.tree.max_depth)])
+            self.linears = nn.ModuleList([nn.Embedding(4, self.memory_dim) for _ in range(self.tree.max_depth)])
+        self.input_dim = hidden_dim
+        # state_to_key is the standard MLP
+        # self.state_to_key = nn.Sequential(nn.Linear(self.memory_dim, self.memory_dim), self.activate, nn.Linear(self.memory_dim, self.memory_dim))
+        # self.state_to_key = nn.Linear(self.memory_dim, self.memory_dim)
+        self.state_to_key = nn.ModuleList([nn.Linear(self.memory_dim, self.memory_dim) for _ in range(self.tree.max_depth)])
+        # self.state_to_key = nn.ModuleList([nn.Sequential(nn.Linear(self.memory_dim, self.memory_dim), nn.Linear(self.memory_dim, self.memory_dim)) for _ in range(self.tree.max_depth)])
+        self.root_value = nn.Embedding(1, self.memory_dim)
+
+    def make_states(self, shape):
+        '''
+        root_state: batch_size * seq_len * memory_dim
+        output: batch_size * seq_len * (4^depth+4^depth-1+...+4) * memory_dim
+        From the root_state, recursively apply the linear operation to the state until it reaches the maximum depth
+        because the linear layer is (memory_dim, 4*memory_dim), each layer has 4 times parameters (nodes) than the previous layer
+        '''
+        # print(shape)
+        device = self.root_value.weight.device
+        states = []
+        input = torch.tensor([0,1,2,3], device=device).repeat(shape[0], shape[1], 1)
+        vectors = [linear(input) for linear in self.linears]
+        ith_state = self.root_value(torch.zeros(*shape[:-1], device=device).long())
+        root_state = ith_state
+        for i, vector in enumerate(vectors):
+            ith_state = ith_state.repeat_interleave(4, dim=-2).view(*shape[:-1], -1, self.memory_dim) + vector.repeat(*[1]*len(shape[:-1]),4**(i),1).view(*shape[:-1], -1, self.memory_dim)
+            # print(i, ith_state[0][0])
+            states.append(ith_state)
+        states = torch.concat(states, dim=-2)
+
+        return states
 
 class LinearQuadTreeNetwork(BaseQuadTreeNetwork):
     def __init__(self, n_locations, memory_dim, hidden_dim, n_classes, activate, multilayer=False, is_consistent=False):
@@ -574,7 +612,8 @@ class LinearQuadTreeNetwork(BaseQuadTreeNetwork):
 
 # in this class, location embedding comes from the tconvs with input of the self.root_value(1)
 # this class requires privtree
-class FullLinearQuadTreeNetwork(LinearQuadTreeNetwork):
+# class FullLinearQuadTreeNetwork(LinearQuadTreeNetwork):
+class FullLinearQuadTreeNetwork(ResidualQuadTreeNetwork):
     def __init__(self, n_locations, memory_dim, hidden_dim, location_embedding_dim, privtree, activate, multilayer, is_consistent):
         # n_classes = len(privtree.get_leafs())
         self.location_embedding_dim = location_embedding_dim
