@@ -22,6 +22,7 @@ memory_dim=$MEM_DIM
 memory_hidden_dim=$MEM_HIDDEN_DIM
 coef_time=$COEF_TIME
 network_type=$NETWORK_TYPE
+multilayer=$MULTILAYER
 # 
 # VARIABLES END
 #
