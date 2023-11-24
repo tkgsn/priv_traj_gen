@@ -535,44 +535,43 @@ class BaseQuadTreeNetwork(nn.Module):
         del self.class_to_query
 
 
-class ResidualQuadTreeNetwork(BaseQuadTreeNetwork):
-    def __init__(self, n_locations, memory_dim, hidden_dim, n_classes, activate, multilayer=False, is_consistent=False):
-        super().__init__(n_locations, memory_dim, hidden_dim, n_classes, activate, is_consistent)
-        if multilayer:
-            # self.linears = nn.ModuleList([nn.Sequential(nn.Linear(self.memory_dim, 8*self.memory_dim), self.activate, nn.Linear(8*self.memory_dim, 4*self.memory_dim)) for _ in range(self.tree.max_depth)])
-            self.linears = nn.ModuleList([nn.Sequential(nn.Linear(self.memory_dim, 4*self.memory_dim), self.activate) for _ in range(self.tree.max_depth)])
-        else:
-            # self.linears = nn.ModuleList([nn.Linear(self.memory_dim, 4*self.memory_dim) for _ in range(self.tree.max_depth)])
-            self.linears = nn.ModuleList([nn.Embedding(4, self.memory_dim) for _ in range(self.tree.max_depth)])
-        self.input_dim = hidden_dim
-        # state_to_key is the standard MLP
-        # self.state_to_key = nn.Sequential(nn.Linear(self.memory_dim, self.memory_dim), self.activate, nn.Linear(self.memory_dim, self.memory_dim))
-        # self.state_to_key = nn.Linear(self.memory_dim, self.memory_dim)
-        self.state_to_key = nn.ModuleList([nn.Linear(self.memory_dim, self.memory_dim) for _ in range(self.tree.max_depth)])
-        # self.state_to_key = nn.ModuleList([nn.Sequential(nn.Linear(self.memory_dim, self.memory_dim), nn.Linear(self.memory_dim, self.memory_dim)) for _ in range(self.tree.max_depth)])
-        self.root_value = nn.Embedding(1, self.memory_dim)
+# class ResidualQuadTreeNetwork(BaseQuadTreeNetwork):
+#     def __init__(self, n_locations, memory_dim, hidden_dim, n_classes, activate, multilayer=False, is_consistent=False):
+#         super().__init__(n_locations, memory_dim, hidden_dim, n_classes, activate, is_consistent)
+#         if multilayer:
+#             # self.linears = nn.ModuleList([nn.Sequential(nn.Linear(self.memory_dim, 8*self.memory_dim), self.activate, nn.Linear(8*self.memory_dim, 4*self.memory_dim)) for _ in range(self.tree.max_depth)])
+#             self.linears = nn.ModuleList([nn.Sequential(nn.Linear(self.memory_dim, 4*self.memory_dim), self.activate) for _ in range(self.tree.max_depth)])
+#         else:
+#             # self.linears = nn.ModuleList([nn.Linear(self.memory_dim, 4*self.memory_dim) for _ in range(self.tree.max_depth)])
+#             self.linears = nn.ModuleList([nn.Embedding(4, self.memory_dim) for _ in range(self.tree.max_depth)])
+#         self.input_dim = hidden_dim
+#         # state_to_key is the standard MLP
+#         # self.state_to_key = nn.Sequential(nn.Linear(self.memory_dim, self.memory_dim), self.activate, nn.Linear(self.memory_dim, self.memory_dim))
+#         # self.state_to_key = nn.Linear(self.memory_dim, self.memory_dim)
+#         self.state_to_key = nn.ModuleList([nn.Linear(self.memory_dim, self.memory_dim) for _ in range(self.tree.max_depth)])
+#         # self.state_to_key = nn.ModuleList([nn.Sequential(nn.Linear(self.memory_dim, self.memory_dim), nn.Linear(self.memory_dim, self.memory_dim)) for _ in range(self.tree.max_depth)])
+#         self.root_value = nn.Embedding(1, self.memory_dim)
 
-    def make_states(self, shape):
-        '''
-        root_state: batch_size * seq_len * memory_dim
-        output: batch_size * seq_len * (4^depth+4^depth-1+...+4) * memory_dim
-        From the root_state, recursively apply the linear operation to the state until it reaches the maximum depth
-        because the linear layer is (memory_dim, 4*memory_dim), each layer has 4 times parameters (nodes) than the previous layer
-        '''
-        # print(shape)
-        device = self.root_value.weight.device
-        states = []
-        input = torch.tensor([0,1,2,3], device=device).repeat(shape[0], shape[1], 1)
-        vectors = [linear(input) for linear in self.linears]
-        ith_state = self.root_value(torch.zeros(*shape[:-1], device=device).long())
-        root_state = ith_state
-        for i, vector in enumerate(vectors):
-            ith_state = ith_state.repeat_interleave(4, dim=-2).view(*shape[:-1], -1, self.memory_dim) + vector.repeat(*[1]*len(shape[:-1]),4**(i),1).view(*shape[:-1], -1, self.memory_dim)
-            # print(i, ith_state[0][0])
-            states.append(ith_state)
-        states = torch.concat(states, dim=-2)
-
-        return states
+#     def make_states(self, shape):
+#         '''
+#         root_state: batch_size * seq_len * memory_dim
+#         output: batch_size * seq_len * (4^depth+4^depth-1+...+4) * memory_dim
+#         From the root_state, recursively apply the linear operation to the state until it reaches the maximum depth
+#         because the linear layer is (memory_dim, 4*memory_dim), each layer has 4 times parameters (nodes) than the previous layer
+#         '''
+#         # print(shape)
+#         device = self.root_value.weight.device
+#         states = []
+#         input = torch.tensor([0,1,2,3], device=device).repeat(shape[0], shape[1], 1)
+#         vectors = [linear(input) for linear in self.linears]
+#         ith_state = self.root_value(torch.zeros(*shape[:-1], device=device).long())
+#         root_state = ith_state
+#         for i, vector in enumerate(vectors):
+#             ith_state = ith_state.repeat_interleave(4, dim=-2).view(*shape[:-1], -1, self.memory_dim) + vector.repeat(*[1]*len(shape[:-1]),4**(i),1).view(*shape[:-1], -1, self.memory_dim)
+#             # print(i, ith_state[0][0])
+#             states.append(ith_state)
+#         states = torch.concat(states, dim=-2)
+#         return states
 
 class LinearQuadTreeNetwork(BaseQuadTreeNetwork):
     def __init__(self, n_locations, memory_dim, hidden_dim, n_classes, activate, multilayer=False, is_consistent=False):
@@ -601,10 +600,10 @@ class LinearQuadTreeNetwork(BaseQuadTreeNetwork):
         device = self.root_value.weight.device
         states = []
         ith_state = self.root_value(torch.zeros(*shape[:-1], device=device).long())
-        root_state = ith_state
         for i, linear in enumerate(self.linears):
-            residual = root_state.repeat_interleave(4**(i+1), dim=-2).view(*shape[:-1], -1, self.memory_dim)
-            ith_state = linear(ith_state).view(ith_state.shape[0], ith_state.shape[1], -1, self.memory_dim) + residual
+            # residual = root_state.repeat_interleave(4**(i+1), dim=-2).view(*shape[:-1], -1, self.memory_dim)
+            # residual = ith_state.repeat(*[1]*len(shape[:-1]), 4, 1).view(*shape[:-1], -1, self.memory_dim)
+            ith_state = linear(ith_state).view(ith_state.shape[0], ith_state.shape[1], -1, self.memory_dim)
             states.append(ith_state)
         states = torch.concat(states, dim=-2)
 
@@ -612,8 +611,8 @@ class LinearQuadTreeNetwork(BaseQuadTreeNetwork):
 
 # in this class, location embedding comes from the tconvs with input of the self.root_value(1)
 # this class requires privtree
-# class FullLinearQuadTreeNetwork(LinearQuadTreeNetwork):
-class FullLinearQuadTreeNetwork(ResidualQuadTreeNetwork):
+class FullLinearQuadTreeNetwork(LinearQuadTreeNetwork):
+# class FullLinearQuadTreeNetwork(ResidualQuadTreeNetwork):
     def __init__(self, n_locations, memory_dim, hidden_dim, location_embedding_dim, privtree, activate, multilayer, is_consistent):
         # n_classes = len(privtree.get_leafs())
         self.location_embedding_dim = location_embedding_dim
@@ -621,8 +620,8 @@ class FullLinearQuadTreeNetwork(ResidualQuadTreeNetwork):
         self.n_locations = n_locations
         super().__init__(n_locations, memory_dim, hidden_dim, n_classes, activate, multilayer, is_consistent)
         self.privtree = privtree
-        self.root_value = nn.Embedding(3, self.memory_dim)
-        # 0 -> states, 1 -> start value, 2 -> ignore value
+        self.root_value = nn.Embedding(4, self.memory_dim)
+        # 0 -> states, 1 -> start value, 2 -> ignore value, 3 -> location embedding
         self.leaf_ids = self.privtree.get_leaf_ids_in_tree(self.tree)
         # self.hidden_ids = torch.tensor([self.tree.node_id_to_hidden_id[node_id] for node_id in self.leaf_ids])
         self.node_ids = torch.tensor(self.privtree.get_leaf_ids_in_tree(self.tree))
@@ -635,6 +634,8 @@ class FullLinearQuadTreeNetwork(ResidualQuadTreeNetwork):
 
         self.hidden_to_query_ = nn.ModuleList([nn.Linear(hidden_dim, self.memory_dim) for _ in range(self.tree.max_depth)])
         # self.hidden_to_query_ = nn.ModuleList([nn.Sequential(nn.Linear(hidden_dim, self.memory_dim), nn.Linear(self.memory_dim, self.memory_dim)) for _ in range(self.tree.max_depth)])
+
+        self.location_linears = nn.ModuleList([nn.Linear(self.memory_dim, 4*self.memory_dim) for _ in range(self.tree.max_depth)])
 
     def compute_scores(self, querys):
         '''
@@ -682,7 +683,7 @@ class FullLinearQuadTreeNetwork(ResidualQuadTreeNetwork):
         batch_size = location.shape[0]
         start_value = self.root_value(torch.ones(batch_size, device=location.device).long()).view(batch_size, -1, 1, self.memory_dim)
         ignore_value = self.root_value(torch.ones(batch_size, device=location.device).long()*2).view(batch_size, -1, 1, self.memory_dim)
-        states = self.make_states([batch_size, 1, 1])
+        states = self.make_states_for_location([batch_size, 1, 1])
 
         location_embeddings = []
         curosor = 0
@@ -734,6 +735,26 @@ class FullLinearQuadTreeNetwork(ResidualQuadTreeNetwork):
             cursor += 4**i
 
         return keys
+
+    def make_states_for_location(self, shape):
+        '''
+        root_state: batch_size * seq_len * memory_dim
+        output: batch_size * seq_len * (4^depth+4^depth-1+...+4) * memory_dim
+        From the root_state, recursively apply the linear operation to the state until it reaches the maximum depth
+        because the linear layer is (memory_dim, 4*memory_dim), each layer has 4 times parameters (nodes) than the previous layer
+        '''
+        # print(shape)
+        device = self.root_value.weight.device
+        states = []
+        ith_state = self.root_value(3*torch.ones(*shape[:-1], device=device).long())
+        for i, linear in enumerate(self.location_linears):
+            # residual = root_state.repeat_interleave(4**(i+1), dim=-2).view(*shape[:-1], -1, self.memory_dim)
+            # residual = ith_state.repeat(*[1]*len(shape[:-1]), 4, 1).view(*shape[:-1], -1, self.memory_dim)
+            ith_state = linear(ith_state).view(ith_state.shape[0], ith_state.shape[1], -1, self.memory_dim)
+            states.append(ith_state)
+        states = torch.concat(states, dim=-2)
+
+        return states
     
 
 
