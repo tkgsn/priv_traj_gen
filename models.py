@@ -753,7 +753,8 @@ class FullLinearQuadTreeNetwork(LinearQuadTreeNetwork):
         for i, linear in enumerate(self.location_linears):
             # residual = root_state.repeat_interleave(4**(i+1), dim=-2).view(*shape[:-1], -1, self.memory_dim)
             # residual = ith_state.repeat(*[1]*len(shape[:-1]), 4, 1).view(*shape[:-1], -1, self.memory_dim)
-            ith_state = linear(ith_state).view(ith_state.shape[0], ith_state.shape[1], -1, self.memory_dim)
+            residual = ith_state.repeat_interleave(4, dim=-2).view(*shape[:-1], -1, self.memory_dim)
+            ith_state = linear(ith_state).view(ith_state.shape[0], ith_state.shape[1], -1, self.memory_dim) + residual
             states.append(ith_state)
         states = torch.concat(states, dim=-2)
 
