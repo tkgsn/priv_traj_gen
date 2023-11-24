@@ -563,8 +563,9 @@ class LinearQuadTreeNetwork(BaseQuadTreeNetwork):
         device = self.root_value.weight.device
         states = []
         ith_state = self.root_value(torch.zeros(*shape[:-1], device=device).long())
-        for linear in self.linears:
-            residual = ith_state.repeat_interleave(4, dim=-2).view(*shape[:-1], -1, self.memory_dim)
+        root_state = ith_state
+        for i, linear in enumerate(self.linears):
+            residual = root_state.repeat_interleave(4**(i+1), dim=-2).view(*shape[:-1], -1, self.memory_dim)
             ith_state = linear(ith_state).view(ith_state.shape[0], ith_state.shape[1], -1, self.memory_dim) + residual
             states.append(ith_state)
         states = torch.concat(states, dim=-2)
