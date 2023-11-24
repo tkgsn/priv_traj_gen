@@ -106,7 +106,6 @@ declare -A arguments=(
     ["clustering"]=$clustering
     ["dp_delta"]=$dp_delta
     ["transition_type"]=$transition_type
-    ["multilayer"]=$multilayer
 )
 
 declare -A options=(
@@ -116,6 +115,7 @@ declare -A options=(
     ["train_all_layers"]=$train_all_layers
     ["consistent"]=$consistent
     ["server"]=$server
+    ["multilayer"]=$multilayer
 )
 
 # make the option parameter
