@@ -539,10 +539,11 @@ class BaseQuadTreeNetwork(nn.Module):
 class LinearQuadTreeNetwork(BaseQuadTreeNetwork):
     def __init__(self, n_locations, memory_dim, hidden_dim, n_classes, activate, multilayer=False, is_consistent=False):
         super().__init__(n_locations, memory_dim, hidden_dim, n_classes, activate, is_consistent)
-        # if multilayer:
+        if multilayer:
             # self.linears = nn.ModuleList([nn.Sequential(nn.Linear(self.memory_dim, self.memory_dim), self.activate, nn.Linear(self.memory_dim, 4*self.memory_dim)) for _ in range(self.tree.max_depth)])
-        # else:
-        self.linears = nn.ModuleList([nn.Linear(self.memory_dim, 4*self.memory_dim) for _ in range(self.tree.max_depth)])
+            self.linears = nn.ModuleList([nn.Sequential(nn.Linear(self.memory_dim, 4*self.memory_dim), self.activate) for _ in range(self.tree.max_depth)])
+        else:
+            self.linears = nn.ModuleList([nn.Linear(self.memory_dim, 4*self.memory_dim) for _ in range(self.tree.max_depth)])
         self.input_dim = hidden_dim
         # state_to_key is the standard MLP
         # self.state_to_key = nn.Sequential(nn.Linear(self.memory_dim, self.memory_dim), self.activate, nn.Linear(self.memory_dim, self.memory_dim))
