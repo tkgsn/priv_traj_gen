@@ -650,7 +650,10 @@ class FullLinearQuadTreeNetwork(LinearQuadTreeNetwork):
             # matmal key and field
             query = query.view(original_shape[0] * original_shape[1], -1, self.memory_dim)
             key = key.view(original_shape[0] * original_shape[1], -1, self.memory_dim)
-            scores.append(torch.bmm(key, query.transpose(-2,-1)).view(*original_shape[:-1], -1, 4))
+            # normaize query and key
+            # query = F.normalize(query, p=2, dim=-1)
+            # key = F.normalize(key, p=2, dim=-1)
+            scores.append(torch.bmm(key, query.transpose(-2,-1)).view(*original_shape[:-1], -1, 4)/np.sqrt(self.memory_dim))
         
         scores = torch.cat(scores, dim=-2)
         return scores
