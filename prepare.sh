@@ -53,7 +53,7 @@ python3 make_raw_data.py --dataset ${dataset}
 
 
 data_dir=$(jq -r '.data_dir' config.json)
-if [ $dataset = "geolife" -o $dataset = "geolife_test" ]; then
+if [ $dataset = "geolife" -o $dataset = "geolife_test" -o $dataset = "peopleflow" -o $dataset = "peopleflow_test" ]; then
     original_data_path=${data_dir}/${dataset}/raw_data.csv
     graph_data_dir=${data_dir}/${dataset}_mm/raw
     python3 prepare_graph.py $dataset $original_data_path $graph_data_dir
