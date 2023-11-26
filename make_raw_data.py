@@ -656,8 +656,12 @@ def make_raw_data(dataset, logger):
         elif dataset == "peopleflow_mm":
             convert_mr_to_training(dataset)
             trajs = make_raw_data_from_map_matched_data(get_datadir() / dataset / "raw")
+        else:
+            print("skip make_raw_data", dataset)
+            trajs = None
 
-        save(save_path, trajs)
+        if trajs is not None:
+            save(save_path, trajs)
     #     if original_data_name == 'taxi':
     #         trajs = make_raw_data_taxi()
     #     elif original_data_name == 'peopleflow':
