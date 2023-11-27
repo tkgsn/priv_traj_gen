@@ -136,7 +136,7 @@ def run(generator, dataset, args):
                 if args.need_downsampling:
                     original_length = len(generated_trajs)
                     generated_trajs, indice = downsample_trajs(generated_trajs, args.downsampling_dict)
-                    print(f"downsampled {original_length} trajectories to {len(generated_trajs)} trajectories")
+                    # print(f"downsampled {original_length} trajectories to {len(generated_trajs)} trajectories")
                     generated_time_trajs = [generated_time_trajs[i] for i in indice]
 
                 # handling time is not implemented yet
@@ -200,7 +200,7 @@ def run(generator, dataset, args):
             # compute js
             real_counters = dataset.real_counters
             n_trajs = dataset.n_trajs
-            img_dir = pathlib.Path(args.save_dir) / f"imgs_trun{args.truncate}" / args.name
+            img_dir = pathlib.Path(args.save_dir) / f"imgs_trun{args.truncate}_{args.to_bin}" / args.name
             img_dir.mkdir(exist_ok=True)
             for key, counter in counters.items():
                 print(key)
@@ -1110,7 +1110,7 @@ if __name__ == "__main__":
         args.downsampling_dict = make_downsampling_dict(args.from_bin, args.to_bin)
 
     args.save_dir = model_dir
-    (args.save_dir / f"imgs_trun{args.truncate}").mkdir(exist_ok=True, parents=True)
+    (args.save_dir / f"imgs_trun{args.truncate}_{args.to_bin}").mkdir(exist_ok=True, parents=True)
     make_first_order_test_data_loader(dataset, args.n_test_locations)
     # make_second_order_test_data_loader(dataset, args.n_test_locations)
         
@@ -1142,6 +1142,6 @@ if __name__ == "__main__":
         with open(args.save_dir / f"evaluated_{args.name}_trun{args.truncate}_{args.to_bin}.json", "w") as f:
             json.dump(results, f)
         if run_args.server:
-            send(args.save_dir / f"evaluated_{args.name}_trun{args.truncate}.json")
-            send(args.save_dir / f"imgs_trun{args.truncate}" / args.name, parent=True)
+            send(args.save_dir / f"evaluated_{args.name}_trun{args.truncate}_{args.to_bin}.json")
+            send(args.save_dir / f"imgs_trun{args.truncate}_{args.to_bin}" / args.name, parent=True)
         print(results)
