@@ -1099,7 +1099,7 @@ if __name__ == "__main__":
     compute_auxiliary_information(dataset, model_dir, logger)
 
     args = set_args(run_args)
-    args.referencecs = construct_dataset(training_data_path, None, 5, training_setting["dataset"]).references
+    args.references = construct_dataset(training_data_path, None, 5, training_setting["dataset"]).references
     args.from_bin = n_bins
     args.need_downsampling = (args.from_bin != args.to_bin)
     if args.need_downsampling:
