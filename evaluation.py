@@ -134,8 +134,9 @@ def run(generator, dataset, args):
                     generated_time_trajs = dataset.time_label_trajs
 
                 if args.need_downsampling:
+                    original_length = len(generated_trajs)
                     generated_trajs, indice = downsample_trajs(generated_trajs, args.downsampling_dict)
-                    print(len(generated_time_trajs)-len(indice), "trajectories removed")
+                    print(f"downsampled {original_length} trajectories to {len(generated_trajs)} trajectories")
                     generated_time_trajs = [generated_time_trajs[i] for i in indice]
 
                 # handling time is not implemented yet
