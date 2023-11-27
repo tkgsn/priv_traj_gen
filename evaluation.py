@@ -70,9 +70,9 @@ def downsample_trajs(trajs, downsampling_dict):
             downsampled_state = downsampling_dict[traj[i+1]]
             if downsampled_state != new_traj[-1]:
                 new_traj.append(downsampled_state)
-        if len(new_traj) > 1:
-            new_trajs.append(new_traj)
-            indice.append(id)
+        # if len(new_traj) > 1:
+        new_trajs.append(new_traj)
+        indice.append(id)
     return new_trajs, indice
 
 def run(generator, dataset, args):
@@ -121,9 +121,9 @@ def run(generator, dataset, args):
             print("generating...")
             n_invalid = 0
             while condition:
-                mini_batch_size =  min([1000, len(dataset.references)])
+                mini_batch_size =  min([1000, len(args.references)])
                 # sample mini_batch_size references from dataset.references
-                references = random.sample(dataset.references, mini_batch_size)
+                references = random.sample(args.references, mini_batch_size)
                 generated = generator.make_sample(references, mini_batch_size)
 
                 if len(generated) == 2:
@@ -187,7 +187,7 @@ def run(generator, dataset, args):
         
                 # evaluate the same number of generated data as the ten times of that of original data
                 n_gene_traj += len(generated_route_trajs)
-                condition = n_gene_traj < len(dataset.references)
+                condition = n_gene_traj < len(args.references)
 
                 # gene_trajs.extend(generated_stay_trajs)
 
@@ -1066,10 +1066,11 @@ if __name__ == "__main__":
     data_name = training_setting["data_name"]
     dataset_name = training_setting["dataset"]
 
-    if "training_data_name" in training_setting:
-        data_path = get_datadir() / training_setting["dataset"] / training_setting["data_name"] / training_setting["training_data_name"]
-    else:
-        data_path = get_datadir() / training_setting["dataset"] / training_setting["data_name"] / f"{run_args.location_threshold}_{run_args.time_threshold}_bin{run_args.n_bins}_seed{run_args.seed}"
+    # if "training_data_name" in training_setting:
+        # data_path = get_datadir() / training_setting["dataset"] / training_setting["data_name"] / training_setting["training_data_name"]
+    # else:
+
+    data_path = get_datadir() / training_setting["dataset"] / training_setting["data_name"] / f"{run_args.location_threshold}_{run_args.time_threshold}_bin{run_args.n_bins}_seed{run_args.seed}"
     if run_args.server:
         get(data_path, parent=True)
 
@@ -1089,10 +1090,15 @@ if __name__ == "__main__":
         if training_setting["network_type"] == "MTNet":
             get(get_datadir() / dataset_name / "raw", parent=True)
     
+    training_data_path = data_path.parent / f"{run_args.location_threshold}_{run_args.time_threshold}_bin{n_bins}_seed{run_args.seed}"
+    if run_args.server:
+        get(training_data_path, parent=True)
+
     dataset = construct_dataset(data_path, route_data_path, 5, training_setting["dataset"])
     compute_auxiliary_information(dataset, model_dir, logger)
 
     args = set_args(run_args)
+    args.referencecs = construct_dataset(data_path, None, 5, training_setting["dataset"]).references
     args.from_bin = n_bins
     args.need_downsampling = (args.from_bin != args.to_bin)
     if args.need_downsampling:
