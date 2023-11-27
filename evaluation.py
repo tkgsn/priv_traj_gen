@@ -1100,6 +1100,7 @@ if __name__ == "__main__":
 
     args = set_args(run_args)
     args.references = construct_dataset(training_data_path, None, 5, training_setting["dataset"]).references
+    print(args.references)
     args.from_bin = n_bins
     args.need_downsampling = (args.from_bin != args.to_bin)
     if args.need_downsampling:
