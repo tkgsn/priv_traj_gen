@@ -959,7 +959,7 @@ def set_args(run_args):
     args.batch_size = 100
     args.route_generator = False
     args.time_threshold = 10
-    args.eval_interval = 10
+    args.eval_interval = 1
 
     args.dataset = dataset_name
     args.time_threshold = run_args.time_threshold
