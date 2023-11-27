@@ -8,6 +8,7 @@ pip3 install pyemd
 # for evaluation of MTNet
 pip3 install shapely
 pip3 install geopy
+pip3 install cvxpy
 
 # source ./enviornment
 #
