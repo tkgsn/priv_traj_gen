@@ -135,6 +135,7 @@ def run(generator, dataset, args):
 
                 if args.need_downsampling:
                     generated_trajs, indice = downsample_trajs(generated_trajs, args.downsampling_dict)
+                    print(len(generated_time_trajs)-len(indice), "trajectories removed")
                     generated_time_trajs = [generated_time_trajs[i] for i in indice]
 
                 # handling time is not implemented yet
@@ -1095,6 +1096,7 @@ if __name__ == "__main__":
     args.from_bin = n_bins
     args.need_downsampling = (args.from_bin != args.to_bin)
     if args.need_downsampling:
+        print("downsampling from", args.from_bin, "to", args.to_bin)
         args.downsampling_dict = make_downsampling_dict(args.from_bin, args.to_bin)
 
     args.save_dir = model_dir
@@ -1127,7 +1129,7 @@ if __name__ == "__main__":
         
         args.name = model_path.name
         results = run(generator, dataset, args)
-        with open(args.save_dir / f"evaluated_{args.name}_trun{args.truncate}.json", "w") as f:
+        with open(args.save_dir / f"evaluated_{args.name}_trun{args.truncate}_{args.to_bin}.json", "w") as f:
             json.dump(results, f)
         if run_args.server:
             send(args.save_dir / f"evaluated_{args.name}_trun{args.truncate}.json")
