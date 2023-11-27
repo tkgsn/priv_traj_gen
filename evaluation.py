@@ -1065,6 +1065,7 @@ if __name__ == "__main__":
     (model_dir / "imgs").mkdir(exist_ok=True)
     data_name = training_setting["data_name"]
     dataset_name = training_setting["dataset"]
+    n_bins = training_setting["n_bins"]
 
     # if "training_data_name" in training_setting:
         # data_path = get_datadir() / training_setting["dataset"] / training_setting["data_name"] / training_setting["training_data_name"]
@@ -1083,9 +1084,9 @@ if __name__ == "__main__":
 
     route_data_path = data_path / "route_training_data.csv"
         
-    with open(data_path / "params.json", "r") as f:
-        data_setting = json.load(f)
-    n_bins = int(np.sqrt(data_setting["n_locations"]) -2)
+    # with open(data_path / "params.json", "r") as f:
+        # data_setting = json.load(f)
+    # n_bins = int(np.sqrt(data_setting["n_locations"]) -2)
     # assert n_bins == run_args.n_bins, "n_bins should be equal to the n_bins in the data"
 
     # route_data_name = f"0_0_bin{n_bins}_seed{data_setting['seed']}"
@@ -1099,8 +1100,8 @@ if __name__ == "__main__":
     compute_auxiliary_information(dataset, model_dir, logger)
 
     args = set_args(run_args)
-    args.references = construct_dataset(training_data_path, None, 5, training_setting["dataset"]).references
-    print(args.references)
+    training_dataset = construct_dataset(training_data_path, None, 5, training_setting["dataset"])
+    args.references = training_dataset.references
     args.from_bin = n_bins
     args.need_downsampling = (args.from_bin != args.to_bin)
     if args.need_downsampling:
