@@ -1067,7 +1067,6 @@ if __name__ == "__main__":
     data_name = training_setting["data_name"]
     dataset_name = training_setting["dataset"]
     n_bins = int(training_setting["training_data_name"].split("_")[2].split("bin")[1])
-    print("!!", n_bins)
 
     # if "training_data_name" in training_setting:
         # data_path = get_datadir() / training_setting["dataset"] / training_setting["data_name"] / training_setting["training_data_name"]
@@ -1131,10 +1130,10 @@ if __name__ == "__main__":
             with open(model_path / f"generator.pickle", "rb") as f:
                 generator = pickle.load(f)
         else:
-            meta_network, _ = construct_meta_network(training_setting["clustering"], training_setting["network_type"], dataset.n_locations, training_setting["memory_dim"], training_setting["memory_hidden_dim"], training_setting["location_embedding_dim"], training_setting["multilayer"], training_setting["consistent"], logger)
+            meta_network, _ = construct_meta_network(training_setting["clustering"], training_setting["network_type"], training_dataset.n_locations, training_setting["memory_dim"], training_setting["memory_hidden_dim"], training_setting["location_embedding_dim"], training_setting["multilayer"], training_setting["consistent"], logger)
             if hasattr(meta_network, "remove_class_to_query"):
                 meta_network.remove_class_to_query()
-            generator, _ = construct_generator(dataset.n_locations, meta_network, training_setting["network_type"], training_setting["location_embedding_dim"], training_setting["n_split"], len(dataset.label_to_reference), training_setting["hidden_dim"], dataset.reference_to_label, logger)
+            generator, _ = construct_generator(training_dataset.n_locations, meta_network, training_setting["network_type"], training_setting["location_embedding_dim"], training_setting["n_split"], len(training_dataset.label_to_reference), training_setting["hidden_dim"], training_dataset.reference_to_label, logger)
             logger.info(f"evaluate {model_path}")
             generator.load_state_dict(torch.load(model_path, map_location=device))
         
