@@ -1067,6 +1067,7 @@ if __name__ == "__main__":
     data_name = training_setting["data_name"]
     dataset_name = training_setting["dataset"]
     n_bins = int(training_setting["training_data_name"].split("_")[2].split("bin")[1])
+    print("!!", n_bins)
 
     # if "training_data_name" in training_setting:
         # data_path = get_datadir() / training_setting["dataset"] / training_setting["data_name"] / training_setting["training_data_name"]
