@@ -25,6 +25,56 @@ sys.path.append("./competitors/clustering")
 from competitors.clustering.clustering_generator import ClusteringGenerator
 
 
+def make_downsampling_dict(from_bin, to_bin):
+    assert from_bin > to_bin, "from_bin must be larger than to_bin"
+
+    from grid import Grid
+    # lat_range, lon_range do not affect
+    lat_range = [30, 40]
+    lon_range = [110, 120]
+    ranges = Grid.make_ranges_from_latlon_range_and_nbins(lat_range, lon_range, from_bin)
+    from_grid = Grid(ranges)
+
+    ranges = Grid.make_ranges_from_latlon_range_and_nbins(lat_range, lon_range, to_bin)
+    to_grid = Grid(ranges)
+
+    downsample_dict = {}
+    for to_state, border in to_grid.grids.items():
+        lon_range, lat_range = border
+        lon_min, lon_max = lon_range
+        lat_min, lat_max = lat_range
+
+        lon_min -= 1e-5
+        lon_max += 1e-5
+        lat_min -= 1e-5
+        lat_max += 1e-5
+
+        # find the states that are completely in the border
+        for from_state, state_border in from_grid.grids.items():
+            lon_range, lat_range = state_border
+            left_lon, right_lon = lon_range
+            bottom_lat, top_lat = lat_range
+
+            if left_lon >= lon_min and right_lon <= lon_max and top_lat <= lat_max and bottom_lat >= lat_min:
+                downsample_dict[from_state] = to_state
+    
+    return downsample_dict
+
+def downsample_trajs(trajs, downsampling_dict):
+    new_trajs = []
+    indice = []
+    for id, traj in enumerate(trajs):
+
+        new_traj = [downsampling_dict[traj[0]]]
+        for i in range(len(traj)-1):
+            downsampled_state = downsampling_dict[traj[i+1]]
+            if downsampled_state != new_traj[-1]:
+                new_traj.append(downsampled_state)
+        if len(new_traj) > 1:
+            new_trajs.append(new_traj)
+            indice.append(id)
+    return new_trajs, indice
+
 def run(generator, dataset, args):
 
     n_bins = int(np.sqrt(dataset.n_locations)-2)
@@ -77,12 +127,15 @@ def run(generator, dataset, args):
                 generated = generator.make_sample(references, mini_batch_size)
 
                 if len(generated) == 2:
-                    # when n_data == 2 it causes bug
                     generated_trajs, generated_time_trajs = generated
                     # generated_time_trajs = dataset.convert_time_label_trajs_to_time_trajs(generated_time_trajs)
                 else:
                     generated_trajs = generated
                     generated_time_trajs = dataset.time_label_trajs
+
+                if args.need_downsampling:
+                    generated_trajs, indice = downsample_trajs(generated_trajs, args.downsampling_dict)
+                    generated_time_trajs = [generated_time_trajs[i] for i in indice]
 
                 # handling time is not implemented yet
                 if args.route_generator:
@@ -968,7 +1021,8 @@ def set_args(run_args):
     if run_args.location_threshold == 0 and run_args.time_threshold == 0:
         args.compensation = False
         args.route_generator = True
-
+    
+    args.to_bin = run_args.n_bins
 
     return args
 
@@ -1023,7 +1077,7 @@ if __name__ == "__main__":
     with open(data_path / "params.json", "r") as f:
         data_setting = json.load(f)
     n_bins = int(np.sqrt(data_setting["n_locations"]) -2)
-    assert n_bins == run_args.n_bins, "n_bins should be equal to the n_bins in the data"
+    # assert n_bins == run_args.n_bins, "n_bins should be equal to the n_bins in the data"
 
     # route_data_name = f"0_0_bin{n_bins}_seed{data_setting['seed']}"
     # route_data_path = get_datadir() / training_setting["dataset"] / training_setting["data_name"] / route_data_name
@@ -1038,6 +1092,10 @@ if __name__ == "__main__":
     compute_auxiliary_information(dataset, model_dir, logger)
 
     args = set_args(run_args)
+    args.from_bin = n_bins
+    args.need_downsampling = (args.from_bin != args.to_bin)
+    if args.need_downsampling:
+        args.downsampling_dict = make_downsampling_dict(args.from_bin, args.to_bin)
 
     args.save_dir = model_dir
     (args.save_dir / f"imgs_trun{args.truncate}").mkdir(exist_ok=True, parents=True)
@@ -1067,11 +1125,11 @@ if __name__ == "__main__":
             logger.info(f"evaluate {model_path}")
             generator.load_state_dict(torch.load(model_path, map_location=device))
         
-        args.name = model_path.stem
+        args.name = model_path.name
         results = run(generator, dataset, args)
-        with open(args.save_dir / f"evaluated_{model_path.stem}_trun{args.truncate}.json", "w") as f:
+        with open(args.save_dir / f"evaluated_{args.name}_trun{args.truncate}.json", "w") as f:
             json.dump(results, f)
         if run_args.server:
-            send(args.save_dir / f"evaluated_{model_path.stem}_trun{args.truncate}.json")
+            send(args.save_dir / f"evaluated_{args.name}_trun{args.truncate}.json")
             send(args.save_dir / f"imgs_trun{args.truncate}" / args.name, parent=True)
         print(results)

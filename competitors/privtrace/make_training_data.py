@@ -29,12 +29,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset', type=str)
     parser.add_argument('--data_name', type=str)
-    parser.add_argument('--save_name', type=str)
+    parser.add_argument('--training_data_name', type=str)
     parser.add_argument('--dataset_seed', type=int)
     parser.add_argument('--dataset_config_path', type=str)
     args = parser.parse_args()
 
-    path = pathlib.Path(f"/data/{args.dataset}/{args.data_name}/{args.save_name}")
+    path = pathlib.Path(f"/data/{args.dataset}/{args.data_name}/{args.training_data_name}")
     # if path.exists():
     #     print(f"file {path} already exists")
     #     exit(0)
@@ -45,7 +45,7 @@ if __name__ == "__main__":
 
     dataset_name = get_original_dataset_name(args.dataset)
     # original_data_path = pathlib.Path(f"/data/{args.dataset}/{args.data_name}/raw_data_seed{args.dataset_seed}.csv")
-    original_data_path = pathlib.Path(f"/data/{args.dataset}/{args.data_name}/{args.save_name}/training_data.csv")
+    original_data_path = pathlib.Path(f"/data/{args.dataset}/{args.data_name}/{args.training_data_name}/training_data.csv")
     print("loading data from", original_data_path)
     data = load(original_data_path)
 
@@ -62,8 +62,8 @@ if __name__ == "__main__":
     # trajs = [[point[1:] for point in traj] for traj in raw_trajs]
 
     # write data to the file
-    save_path = pathlib.Path(f"/data/{args.dataset}/{args.data_name}/{args.save_name}/privtrace_training_data.dat")
-    # save_path.parent.mkdir(parents=True, exist_ok=True)
+    save_path = pathlib.Path(f"/data/{args.dataset}/{args.data_name}/{args.training_data_name}//privtrace_training_data.dat")
+    save_path.parent.mkdir(parents=True, exist_ok=True)
 
     print("writings to", save_path)
 

@@ -58,7 +58,7 @@ if __name__ == "__main__":
     k = args.k
     epsilon = args.epsilon
 
-    save_dir = save_dir / "model_{}_{}".format(epsilon,k)
+    save_dir = save_dir / "model_{}_{}".format(epsilon, k)
     save_dir.mkdir(parents=True, exist_ok=True)
     (save_dir / "imgs").mkdir(parents=True, exist_ok=True)
 
@@ -86,9 +86,9 @@ if __name__ == "__main__":
     generator = ClusteringGenerator(noisy_traj_distribution, id_to_traj, state_to_centroid_id)
 
     # save generator
-    with open(save_dir / "generator.pickle", "wb") as f:
+    with open(save_dir / f"generator.pickle", "wb") as f:
         pickle.dump(generator, f)
-        print("save generator to", save_dir / "generator.pickle")
+        print("save generator to", save_dir / f"generator.pickle")
 
     with open(save_dir.parent / "params.json", "w") as f:
         json.dump(vars(args), f)

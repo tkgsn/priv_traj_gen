@@ -17,10 +17,17 @@
 
 pip3 install cvxpy
 
-dataset=geolife_mm
-max_size=0
+# dataset=geolife_mm
+# max_size=0
+# data_name=${max_size}
+# total_epsilon=0
+dataset=$DATASET
+max_size=$MAX_SIZE
+total_epsilon=$TOTAL_EPSILON
+
+
+
 data_name=${max_size}
-latlon_config=geolife_mm.json
 location_threshold=200
 time_threshold=30
 n_bins=30
@@ -38,16 +45,15 @@ training_data_name=${location_threshold}_${time_threshold}_bin${n_bins}_seed${se
 
 # cd ../privtrace
 
-total_epsilon=1
-# save_name=privtrace_seed${seed_for_dataset}_eps$total_epsilon
-save_name=200_30_bin30_seed0
+save_name=privtrace
+# save_name=
 dataset_config_path=../../config.json
-python3 make_training_data.py --dataset $dataset --data_name $data_name --save_name $save_name --dataset_config $dataset_config_path --dataset_seed $seed_for_dataset
-n_bins=30
-python3 privtrace_generator.py --dataset $dataset --data_name $data_name --training_data_name $save_name --dataset_config_path $dataset_config_path --n_bins $n_bins --total_epsilon $total_epsilon
+# python3 make_training_data.py --dataset $dataset --data_name $data_name --training_data_name $training_data_name --dataset_config $dataset_config_path --dataset_seed $seed_for_dataset
+# n_bins=30
+python3 privtrace_generator.py --dataset $dataset --data_name $data_name --training_data_name $training_data_name --save_name $save_name --dataset_config_path $dataset_config_path --n_bins $n_bins --total_epsilon $total_epsilon
 
 evaluate_stay_traj_dir=/data/$dataset/$data_name/$training_data_name
 evaluate_route_traj_dir=/data/$dataset/$data_name/$route_data_name
-save_dir=/data/results/$dataset/$data_name/$save_name
+save_dir=/data/results/$dataset/$data_name/$training_data_name/$save_name
 
-python3 evaluate.py $evaluate_stay_traj_dir $evaluate_route_traj_dir $save_dir
+python3 evaluate.py $evaluate_stay_traj_dir $evaluate_route_traj_dir $save_dir $total_epsilon

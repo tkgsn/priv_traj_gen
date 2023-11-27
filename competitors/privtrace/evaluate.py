@@ -51,6 +51,7 @@ if __name__ == "__main__":
     training_data_dir = pathlib.Path(sys.argv[1])
     route_data_dir = pathlib.Path(sys.argv[2])
     save_dir = pathlib.Path(sys.argv[3])
+    epsilon = float(sys.argv[4])
     # k = int(sys.argv[4])
     # epsilon = float(sys.argv[5])
 
@@ -65,8 +66,8 @@ if __name__ == "__main__":
     route_data = load(training_data_dir / "route_training_data.csv")
     gps = pd.read_csv(training_data_dir / "gps.csv", header=None).values
 
-    print("load from", save_dir / f"privtrace_generator.pickle")
-    with open(save_dir / f"privtrace_generator.pickle", "rb") as f:
+    print("load from", save_dir / f"model_{epsilon}" / f"privtrace_generator.pickle")
+    with open(save_dir / f"model_{epsilon}" / f"privtrace_generator.pickle", "rb") as f:
         generator = pickle.load(f)
 
     # load setting file
