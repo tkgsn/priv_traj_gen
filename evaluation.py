@@ -4,6 +4,7 @@ from scipy.spatial.distance import jensenshannon
 import matplotlib.pyplot as plt
 import seaborn as sns
 import argparse
+import pickle
 
 from my_utils import construct_default_quadtree, noise_normalize, save, plot_density, get_datadir, set_logger, get, send, get_original_dataset_name
 from collections import Counter
@@ -15,6 +16,14 @@ import sqlite3
 import tqdm
 import json
 import pyemd
+
+import sys
+sys.path.append("./competitors/privtrace")
+from competitors.privtrace.privtrace_generator import PrivTraceGenerator
+
+sys.path.append("./competitors/clustering")
+from competitors.clustering.clustering_generator import ClusteringGenerator
+
 
 def run(generator, dataset, args):
 
@@ -38,7 +47,7 @@ def run(generator, dataset, args):
     with torch.no_grad():
         results = {}
 
-        if args.evaluate_first_next_location and not args.route_generator:
+        if args.evaluate_first_next_location:
             print("DEPRECATED: evaluate_first_next_location")
             jss = evaluate_next_location_on_test_dataset(dataset.first_next_location_counts, dataset.first_order_test_data_loader, dataset.first_counters, generator, 1)
             results["first_next_location_js"] = jss
@@ -47,7 +56,7 @@ def run(generator, dataset, args):
         #     jss = evaluate_next_location_on_test_dataset(dataset.second_next_location_counts, dataset.second_order_test_data_loader, dataset.second_counters, generator, 2)
         #     results["second_next_location_js"] = jss
 
-        if args.evaluate_second_order_next_location and (dataset.seq_len > 2) and not args.route_generator:
+        if args.evaluate_second_order_next_location and (dataset.seq_len > 2):
             print("DEPRECATED: evaluate_second_order_next_location")
             jss = evaluate_next_location_on_test_dataset(dataset.second_order_next_location_counts, dataset.second_order_test_data_loader, dataset.second_counters, generator, 2)
             results["second_order_next_location_js"] = jss
@@ -927,7 +936,7 @@ class MTNetGeneratorMock():
 class Namespace():
     pass
 
-def set_args():
+def set_args(run_args):
 
     args = Namespace()
     args.evaluate_global = False
@@ -939,10 +948,10 @@ def set_args():
     args.evaluate_distance = True
     args.evaluate_emp_next = True
     args.evaluate_second_emp_next = True
-    args.evaluate_first_next_location = True
-    args.evaluate_second_next_location = False
-    args.evaluate_second_order_next_location = False
-    args.compensation = True
+    args.evaluate_first_next_location = True and (training_setting["network_type"] == "fulllinear_quadtree")
+    args.evaluate_second_next_location = False and (training_setting["network_type"] == "fulllinear_quadtree")
+    args.evaluate_second_order_next_location = False and (training_setting["network_type"] == "fulllinear_quadtree")
+    args.compensation = False
     args.eval_initial = True
     args.n_test_locations = 30
     args.n_split = 5
@@ -950,8 +959,16 @@ def set_args():
     args.batch_size = 100
     args.route_generator = False
     args.time_threshold = 10
-    args.truncate = 22
     args.eval_interval = 10
+
+    args.dataset = dataset_name
+    args.time_threshold = run_args.time_threshold
+    args.route_generator = (training_setting["network_type"] == "MTNet")
+    args.truncate = run_args.truncate
+    if run_args.location_threshold == 0 and run_args.time_threshold == 0:
+        args.compensation = False
+        args.route_generator = True
+
 
     return args
 
@@ -1020,20 +1037,7 @@ if __name__ == "__main__":
     dataset = construct_dataset(data_path, route_data_path, 5, training_setting["dataset"])
     compute_auxiliary_information(dataset, model_dir, logger)
 
-    args = set_args()
-    args.dataset = dataset_name
-    args.time_threshold = run_args.time_threshold
-    args.route_generator = (training_setting["network_type"] == "MTNet")
-    args.truncate = run_args.truncate
-    # if (training_setting["dataset"] == "chengdu") and (not args.route_generator) and args.truncate:
-        # print("WARNING: traj is truncated")
-        # this is fair comparison to MTNet which truncates the traj by 20
-    # else:
-        # args.truncate = False
-
-    if run_args.location_threshold == 0 and run_args.time_threshold == 0:
-        args.compensation = False
-        args.route_generator = True
+    args = set_args(run_args)
 
     args.save_dir = model_dir
     (args.save_dir / f"imgs_trun{args.truncate}").mkdir(exist_ok=True, parents=True)
@@ -1049,6 +1053,12 @@ if __name__ == "__main__":
 
         if training_setting["network_type"] == "MTNet":
             generator = MTNetGeneratorMock(model_path / "samples.txt", model_path / "samples_time.txt", training_setting["dataset"], n_bins)
+        elif training_setting["network_type"] == "privtrace":
+            with open(model_path / f"privtrace_generator.pickle", "rb") as f:
+                generator = pickle.load(f)
+        elif training_setting["network_type"] == "clustering":
+            with open(model_path / f"generator.pickle", "rb") as f:
+                generator = pickle.load(f)
         else:
             meta_network, _ = construct_meta_network(training_setting["clustering"], training_setting["network_type"], dataset.n_locations, training_setting["memory_dim"], training_setting["memory_hidden_dim"], training_setting["location_embedding_dim"], training_setting["multilayer"], training_setting["consistent"], logger)
             if hasattr(meta_network, "remove_class_to_query"):
