@@ -1071,8 +1071,15 @@ if __name__ == "__main__":
     # else:
 
     data_path = get_datadir() / training_setting["dataset"] / training_setting["data_name"] / f"{run_args.location_threshold}_{run_args.time_threshold}_bin{run_args.n_bins}_seed{run_args.seed}"
+    print("!!", data_path)
     if run_args.server:
         get(data_path, parent=True)
+
+    if run_args.server:
+        # get(route_data_path, parent=True)
+        get(get_datadir() / training_setting["dataset"] / f"distance_matrix_bin{run_args.n_bins}.npy")
+        if training_setting["network_type"] == "MTNet":
+            get(get_datadir() / dataset_name / "raw", parent=True)
 
     route_data_path = data_path / "route_training_data.csv"
         
@@ -1083,12 +1090,6 @@ if __name__ == "__main__":
 
     # route_data_name = f"0_0_bin{n_bins}_seed{data_setting['seed']}"
     # route_data_path = get_datadir() / training_setting["dataset"] / training_setting["data_name"] / route_data_name
-
-    if run_args.server:
-        # get(route_data_path, parent=True)
-        get(get_datadir() / training_setting["dataset"] / f"distance_matrix_bin{n_bins}.npy")
-        if training_setting["network_type"] == "MTNet":
-            get(get_datadir() / dataset_name / "raw", parent=True)
     
     training_data_path = data_path.parent / f"{run_args.location_threshold}_{run_args.time_threshold}_bin{n_bins}_seed{run_args.seed}"
     if run_args.server:
@@ -1098,7 +1099,7 @@ if __name__ == "__main__":
     compute_auxiliary_information(dataset, model_dir, logger)
 
     args = set_args(run_args)
-    args.referencecs = construct_dataset(data_path, None, 5, training_setting["dataset"]).references
+    args.referencecs = construct_dataset(training_data_path, None, 5, training_setting["dataset"]).references
     args.from_bin = n_bins
     args.need_downsampling = (args.from_bin != args.to_bin)
     if args.need_downsampling:
