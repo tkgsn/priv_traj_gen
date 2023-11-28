@@ -5,8 +5,7 @@ pip3 install cvxpy
 #
 # VARIABLES
 # 
-dataset=$DATASET
-max_size=$MAX_SIZE
+training_data_dir=$TRAINING_DATA_DIR
 seed=$SEED
 meta_n_iter=$META_N_ITER
 n_epoch=$EPOCH
@@ -31,13 +30,13 @@ multilayer=$MULTILAYER
 
 
 data_name=$max_size
-training_data_name=${location_threshold}_${time_threshold}_bin${n_bins}_seed${seed}
+# training_data_name=${location_threshold}_${time_threshold}_bin${n_bins}_seed${seed}
 
 # get data_directory from config.json
 data_dir=$(jq -r '.data_dir' config.json)
 
-mkdir -p ${data_dir}/${dataset}/${data_name}
-scp -r -o StrictHostKeyChecking=no evaluation-server:${data_dir}/${dataset}/${data_name}/${training_data_name} ${data_dir}/${dataset}/${data_name}
+# mkdir -p ${data_dir}/${dataset}/${data_name}
+# scp -r -o StrictHostKeyChecking=no evaluation-server:${data_dir}/${dataset}/${data_name}/${training_data_name} ${data_dir}/${dataset}/${data_name}
 
 
 cuda_number=0
@@ -75,9 +74,7 @@ remove_duplicate=False
 server=True
 
 declare -A arguments=(
-    ["dataset"]=$dataset
-    ["data_name"]=$data_name
-    ["training_data_name"]=$training_data_name
+    ["training_data_dir"]=$training_data_dir
     ["seed"]=$seed
     ["cuda_number"]=$cuda_number
     ["patience"]=$patience

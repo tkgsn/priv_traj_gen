@@ -591,7 +591,7 @@ def load(save_path, size=0, seed=0):
     return trajectories
     
 def send(path, parent=False):
-
+    print("SEND!")
     path = pathlib.Path(path)
 
     source_file_path = path
@@ -622,7 +622,7 @@ def send(path, parent=False):
         result = subprocess.run(['scp', '-o', 'StrictHostKeyChecking=no', source_file_path, destination_file_path])
 
 def get(path, parent=False):
-
+    print("!")
     source_file_path = f'evaluation-server:{path}'
     destination_file_path = pathlib.Path(path).parent
     destination_file_path.mkdir(parents=True, exist_ok=True)

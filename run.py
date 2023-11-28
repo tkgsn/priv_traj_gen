@@ -110,8 +110,8 @@ def train_meta_network(meta_network, next_location_counts, n_iter, early_stoppin
             early_stopping(loss.item(), meta_network)
 
             if early_stopping.early_stop:
-                meta_network.load_state_dict(torch.load(save_path / "meta_network.pt"))
-                logger.info(f"load meta network from {save_path / 'meta_network.pt'}")
+                meta_network.load_state_dict(torch.load(save_dir / "meta_network.pt"))
+                logger.info(f"load meta network from {save_dir / 'meta_network.pt'}")
                 break
 
     logger.info(f"best loss of meta training at {epoch}: {early_stopping.best_score}")
@@ -222,7 +222,7 @@ def train_epoch(data_loader, generator, optimizer):
 def clustering(clustering_type, n_locations):
     n_bins = int(np.sqrt(n_locations)) -2
     if clustering_type == "distance":
-        distance_matrix = np.load(data_path.parent.parent / f"distance_matrix_bin{n_bins}.npy")
+        distance_matrix = np.load(training_data_dir.parent.parent / f"distance_matrix_bin{n_bins}.npy")
         location_to_class = evaluation.clustering(dataset.global_counts[0], distance_matrix, args.n_classes)
         privtree = None
     elif clustering_type == "privtree":
@@ -252,9 +252,9 @@ def construct_meta_network(clustering_type, network_type, n_locations, memory_di
         args.n_epochs = 0
     else:
 
-        if network_type == "meta_network":
+        if network_type == "baseline":
             meta_network = meta_network_class(memory_hidden_dim, memory_dim, n_locations, n_classes, "relu")
-        elif network_type == "fulllinear_quadtree":
+        elif network_type == "hiemrnet":
             meta_network = meta_network_class(n_locations, memory_dim, memory_hidden_dim, location_embedding_dim, privtree, "relu", multilayer=multilayer, is_consistent=consistent)
         compute_num_params(meta_network, logger)
         
@@ -289,9 +289,9 @@ def pre_training_meta_network(meta_network, dataset, location_to_class, transiti
     device = next(meta_network.parameters()).device
     target_counts = torch.stack(target_counts).to(device)
     if args.meta_network_load_path == "None":
-        early_stopping = EarlyStopping(patience=args.meta_patience, path=save_path / "meta_network.pt", delta=1e-6)
+        early_stopping = EarlyStopping(patience=args.meta_patience, path=save_dir / "meta_network.pt", delta=1e-6)
         train_meta_network(meta_network, target_counts, args.meta_n_iter, early_stopping, args.meta_dist)
-        args.meta_network_load_path = str(save_path / "meta_network.pt")
+        args.meta_network_load_path = str(save_dir / "meta_network.pt")
     else:
         meta_network.load_state_dict(torch.load(args.meta_network_load_path))
         logger.info(f"load meta network from {args.meta_network_load_path}")
@@ -310,12 +310,13 @@ def construct_generator(n_locations, meta_network, network_type, location_embedd
     
     return generator, compute_loss_meta_gru_net
 
-def construct_dataset(training_data_dir, route_data_path, n_time_split, dataset_name):
+def construct_dataset(training_data_dir, route_data_path, n_time_split):
 
     # load dataset config    
     with open(training_data_dir / "params.json", "r") as f:
         param = json.load(f)
     n_locations = param["n_locations"]
+    dataset_name = param["dataset"]
 
     trajectories = load(training_data_dir / "training_data.csv")
     if route_data_path is not None:
@@ -332,10 +333,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--cuda_number', type=int)
     parser.add_argument('--eval_interval', type=int)
-    parser.add_argument('--dataset', type=str)
-    parser.add_argument('--data_name', type=str)
-    parser.add_argument('--route_data_name', type=str)
-    parser.add_argument('--training_data_name', type=str)
+    # parser.add_argument('--dataset', type=str)
+    # parser.add_argument('--data_name', type=str)
+    # parser.add_argument('--route_data_name', type=str)
+    # parser.add_argument('--training_data_name', type=str)
+    parser.add_argument('--training_data_dir', type=str)
     parser.add_argument('--network_type', type=str)
     parser.add_argument('--seed', type=int)
     parser.add_argument('--batch_size', type=int)
@@ -385,28 +387,31 @@ if __name__ == "__main__":
     torch.use_deterministic_algorithms = True
     torch.backends.cudnn.deterministic = True
     
-    data_dir = get_datadir()
-    data_path = data_dir / args.dataset / args.data_name / args.training_data_name
+
+    # data_dir = get_datadir() / args.dataset / args.data_name / args.training_data_name
+    training_data_dir = pathlib.Path(args.training_data_dir)
     route_data_path = None
-    save_path = data_dir / "results" / args.dataset / args.data_name / args.training_data_name / args.save_name
-    save_path.mkdir(exist_ok=True, parents=True)
-    (save_path / "imgs").mkdir(exist_ok=True, parents=True)
-    args.save_path = str(save_path)
+    save_dir = training_data_dir / args.save_name
+    (save_dir / "imgs").mkdir(exist_ok=True, parents=True)
+    # save_path.mkdir(exist_ok=True, parents=True)
+    # (save_path / "imgs").mkdir(exist_ok=True, parents=True)
+    # args.save_path = str(save_path)
 
     # set logger
-    logger = set_logger(__name__, save_path / "log.log")
-    logger.info('log is saved to {}'.format(save_path / "log.log"))
+    logger = set_logger(__name__, save_dir / "log.log")
+    logger.info('log is saved to {}'.format(save_dir / "log.log"))
     logger.info(f'used parameters {vars(args)}')
 
-    if args.consistent and not args.train_all_layers:
-        args.consistent = False
-        logger.info("!!!!!! consistent is set as False because train_all_layers is False")
-    if args.network_type != "fulllinear_quadtree":
+    args.consistent = args.consistent and args.train_all_layers
+    # if args.consistent and not args.train_all_layers:
+        # args.consistent = False
+        # logger.info("!!!!!! consistent is set as False because train_all_layers is False")
+    if args.network_type != "hiemrnet":
         args.train_all_layers = False
 
-    logger.info(f"load training data from {data_path / 'training_data.csv'}")
-    logger.info(f"load time data from {data_path / 'training_data_time.csv'}")
-    dataset = construct_dataset(data_path, route_data_path, args.n_split, args.dataset)
+    logger.info(f"load training data from {training_data_dir / 'training_data.csv'}")
+    logger.info(f"load time data from {training_data_dir / 'training_data_time.csv'}")
+    dataset = construct_dataset(training_data_dir, route_data_path, args.n_split)
 
     device = torch.device(f"cuda:{args.cuda_number}" if torch.cuda.is_available() else "cpu")
 
@@ -442,23 +447,23 @@ if __name__ == "__main__":
         logger.info("not privating the model")
         eval_generator = generator
 
-    early_stopping = EarlyStopping(patience=args.patience, verbose=True, path=save_path / "checkpoint.pt", trace_func=logger.info)
-    logger.info(f"early stopping patience: {args.patience}, save path: {save_path / 'checkpoint.pt'}")
+    early_stopping = EarlyStopping(patience=args.patience, verbose=True, path=save_dir / "checkpoint.pt", trace_func=logger.info)
+    logger.info(f"early stopping patience: {args.patience}, save path: {save_dir / 'checkpoint.pt'}")
 
 
-    logger.info(f"save param to {save_path / 'params.json'}")
-    with open(save_path / "params.json", "w") as f:
+    logger.info(f"save param to {save_dir / 'params.json'}")
+    with open(save_dir / "params.json", "w") as f:
         json.dump(vars(args), f)
     # if args.server:
-        # send(save_path / "params.json")
+        # send(save_dir / "params.json")
 
     # traning
     epsilon = 0
     for epoch in tqdm.tqdm(range(args.n_epochs)):
 
         # try:
-        logger.info(f"save model to {save_path / f'model_{epoch}.pt'}")
-        torch.save(eval_generator.state_dict(), save_path / f"model_{epoch}.pt")
+        logger.info(f"save model to {save_dir / f'model_{epoch}.pt'}")
+        torch.save(eval_generator.state_dict(), save_dir / f"model_{epoch}.pt")
         # if args.server:
             # send(save_path / f"model_{epoch}.pt")
         # except:

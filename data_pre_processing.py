@@ -293,7 +293,7 @@ def run(dataset_name, lat_range, lon_range, n_bins, time_threshold, location_thr
 
         logger.info(f"saving setting to {training_data_dir}/params.json")
         with open(training_data_dir / "params.json", "w") as f:
-            json.dump({"n_locations": (n_bins+2)**2, "n_bins": n_bins, "seed": args.seed}, f)
+            json.dump({"dataset": dataset_name, "n_locations": (n_bins+2)**2, "n_bins": n_bins, "seed": args.seed}, f)
 
     else:
         logger.info(f"training data already exists in {training_data_dir}")
