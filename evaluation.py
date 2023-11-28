@@ -663,7 +663,7 @@ def compute_auxiliary_information(dataset, save_dir, logger):
     dataset.second_order_first_locations = [tuple(trajectory[:2]) for trajectory in dataset.data if len(trajectory) > 2]
     dataset.second_order_first_locations_counts = Counter(dataset.second_order_first_locations)
     # find locations whose count is larger than test_thresh and sort them
-    test_thresh = 100
+    test_thresh = args.test_thresh
     test_locations = {location:count for location, count in dataset.first_location_counts.items() if count > test_thresh}
     if len(test_locations) == 0:
         logger.info("WARNING no test location is found")
@@ -1019,6 +1019,7 @@ def set_args(run_args):
     args.route_generator = False
     args.time_threshold = 10
     args.eval_interval = 1
+    args.test_thresh = run_args.test_thresh
 
     args.dataset = dataset_name
     # args.time_threshold = run_args.time_threshold
@@ -1045,6 +1046,7 @@ if __name__ == "__main__":
     parser.add_argument('--eval_data_dir', type=str)
     parser.add_argument('--seed', type=int)
     parser.add_argument('--truncate', type=int)
+    parser.add_argument('--test_thresh', type=int)
 
     # parser.add_argument('--server', action="store_true")
     parser.add_argument('--ablation', action="store_true")
@@ -1104,13 +1106,13 @@ if __name__ == "__main__":
     # training_data_path = data_path
     # if run_args.server:
         # get(training_data_path, parent=True)
-        
+    args = set_args(run_args)
+            
     eval_data_path = pathlib.Path(run_args.eval_data_dir) / "training_data.csv"
     eval_route_data_path = pathlib.Path(run_args.eval_data_dir) / "route_training_data.csv"
     dataset = construct_dataset(eval_data_path, eval_route_data_path, 5)
     compute_auxiliary_information(dataset, model_dir, logger)
 
-    args = set_args(run_args)
     training_dataset = construct_dataset(training_data_dir / "training_data.csv", None, 5)
     args.references = training_dataset.references
     args.from_bin = training_dataset.n_bins
@@ -1150,6 +1152,7 @@ if __name__ == "__main__":
         
         args.name = model_path.name
         results = run(generator, dataset, args)
+        print("save result to", args.save_dir / f"evaluated_{args.name}_trun{args.truncate}_{args.to_bin}.json")
         with open(args.save_dir / f"evaluated_{args.name}_trun{args.truncate}_{args.to_bin}.json", "w") as f:
             json.dump(results, f)
         # if run_args.server:

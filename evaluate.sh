@@ -19,6 +19,7 @@ seed=$SEED
 truncate=$TRUNCATE
 ablation=$ABLATION
 eval_data_dir=$EVAL_DATA_DIR
+test_thresh=$TEST_THRESH
 # 
 # VARIABLES END
 #
@@ -34,4 +35,4 @@ for key in "${!options[@]}"; do
 done
 
 echo "hello"
-python3 evaluation.py --model_dir $model_dir --eval_data_dir $eval_data_dir --seed $seed --truncate $truncate $option
+python3 evaluation.py --model_dir $model_dir --eval_data_dir $eval_data_dir --seed $seed --truncate $truncate --test_thresh $test_thresh $option
