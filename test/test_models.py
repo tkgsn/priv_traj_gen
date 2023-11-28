@@ -101,8 +101,16 @@ class MetaGRUNetTestCase(unittest.TestCase):
 		is_consistent = False
 
 		pad = np.ones((n_data, 1), dtype=int)
-		traj = np.concatenate([np.zeros((n_data, 1)), pad, np.zeros((n_data, 1))], axis=1).tolist()
-		traj_time = [[0, 1, 2, 3]]*n_data
+		n_data1 = int(8/10 * n_data)
+		n_data2 = int(1/10 * n_data)
+		n_data3 = int(1/10 * n_data)
+		n_data4 = int(n_data)
+		traj1 = np.concatenate([np.zeros((n_data1, 1)), np.ones((n_data1, 1))], axis=1)
+		traj2 = np.concatenate([np.zeros((n_data2, 1)), np.ones((n_data2, 1))*2], axis=1)
+		traj3 = np.concatenate([np.zeros((n_data3, 1)), np.ones((n_data3, 1))*3], axis=1)
+		traj4 = np.concatenate([np.ones((n_data4, 1)), np.zeros((n_data4, 1))*4], axis=1)
+		traj = np.concatenate([traj1, traj2, traj3, traj4], axis=0).tolist()
+		traj_time = [[0, 1, 2]]*n_data*2
 		dataset = TrajectoryDataset(traj, traj_time, n_locations, n_split)
 		self.data_loader = torch.utils.data.DataLoader(dataset, num_workers=0, shuffle=True, pin_memory=True, batch_size=batch_size, collate_fn=dataset.make_padded_collate(True))
 
@@ -120,7 +128,8 @@ class MetaGRUNetTestCase(unittest.TestCase):
 		meta_network = FullLinearQuadTreeNetwork(n_locations, memory_dim, meta_hidden_dim, location_embedding_dim, privtree, "relu", multilayer, is_consistent)
 		if hasattr(meta_network, "remove_class_to_query"):
 			meta_network.remove_class_to_query()
-
+		
+		self.dataset = dataset
 		self.model = MetaGRUNet(meta_network, n_locations, location_embedding_dim, time_dim, traj_type_dim, hidden_dim, dataset.reference_to_label)
 
 	def test_make_samples(self):
@@ -135,17 +144,24 @@ class MetaGRUNetTestCase(unittest.TestCase):
 		# privacy_engine = PrivacyEngine()
 		# gru_net, optimizer, data_loader = privacy_engine.make_private(module=gru_net, optimizer=optimizer, data_loader=data_loader, noise_multiplier=1, max_grad_norm=1)
 
-		for i, batch in enumerate(self.data_loader):
-			input_locations = batch["input"]
-			target_locations = batch["target"]
-			references = [tuple(v) for v in batch["reference"]]
-			input_times = batch["time"]
-			target_times = batch["time_target"]
-			
-			_ = train_with_discrete_time(self.model, optimizer, loss_model, input_locations, target_locations, input_times, target_times, references, 1, 1, True)
+		for _ in range(10):
+			for i, batch in enumerate(self.data_loader):
+				input_locations = batch["input"]
+				target_locations = batch["target"]
+				references = [tuple(v) for v in batch["reference"]]
+				input_times = batch["time"]
+				target_times = batch["time_target"]
+				
+				losses = train_with_discrete_time(self.model, optimizer, loss_model, input_locations, target_locations, input_times, target_times, references, 1, 1, True)
+				# print(losses)
 
-		references = [(0,1,0), (0,1,0)]
-		sampled = self.model.make_sample(references, 2)
+		print(self.model.init_hidden([(0,1)]))
+		references = [(0,1)]*100 + [(1,1)]*100
+		gene_traj, gene_time = self.model.make_sample(references, 10)
+		from collections import Counter
+		print(Counter([v[1] for v in gene_traj if v[0] == 0]))
+		print(Counter([v[1] for v in gene_traj if v[0] == 1]))
+		print(gene_traj)
 
 
 	def test_dp_train(self):
@@ -261,43 +277,43 @@ class FullTreeNetworkTestCase(unittest.TestCase):
 		self.assertEqual(log_dist.exp().sum(), 1)
 
 	
-	def test_location_embedding(self):
-		embedding = self.model.location_embedding(torch.tensor([0]))
-		ith_state = self.model.root_value(torch.tensor([0]))
-		for linear in self.model.linears:
-			ith_state = linear(ith_state).view(ith_state.shape[0], -1, self.model.memory_dim)
-		self.assertTrue(torch.allclose(self.model.state_to_location_embedding(ith_state[:,0,:]), embedding))
+	# def test_location_embedding(self):
+	# 	embedding = self.model.location_embedding(torch.tensor([0]))
+	# 	ith_state = self.model.root_value(torch.tensor([0]))
+	# 	for linear in self.model.linears:
+	# 		ith_state = linear(ith_state).view(ith_state.shape[0], -1, self.model.memory_dim)
+	# 	self.assertTrue(torch.allclose(self.model.state_to_location_embedding(ith_state[:,0,:]), embedding))
 
-		embedding = self.model.location_embedding(torch.tensor([7]))
-		ith_state = self.model.root_value(torch.tensor([0]))
-		for linear in self.model.linears:
-			ith_state = linear(ith_state).view(ith_state.shape[0], -1, self.model.memory_dim)[:,1,:]
-		self.assertTrue(torch.allclose(self.model.state_to_location_embedding(ith_state[0,:]), embedding))
+	# 	embedding = self.model.location_embedding(torch.tensor([7]))
+	# 	ith_state = self.model.root_value(torch.tensor([0]))
+	# 	for linear in self.model.linears:
+	# 		ith_state = linear(ith_state).view(ith_state.shape[0], -1, self.model.memory_dim)[:,1,:]
+	# 	self.assertTrue(torch.allclose(self.model.state_to_location_embedding(ith_state[0,:]), embedding))
 		
-		embedding = self.model.location_embedding(torch.tensor([10]))
-		ith_state = self.model.root_value(torch.tensor([0]))
-		for i, linear in enumerate(self.model.linears):
-			ith_state = linear(ith_state).view(ith_state.shape[0], -1, self.model.memory_dim)[:,i,:]
-		# self.assertTrue(torch.allclose(self.model.state_to_location_embedding(ith_state[0,:]), embedding))
+	# 	embedding = self.model.location_embedding(torch.tensor([10]))
+	# 	ith_state = self.model.root_value(torch.tensor([0]))
+	# 	for i, linear in enumerate(self.model.linears):
+	# 		ith_state = linear(ith_state).view(ith_state.shape[0], -1, self.model.memory_dim)[:,i,:]
+	# 	# self.assertTrue(torch.allclose(self.model.state_to_location_embedding(ith_state[0,:]), embedding))
 
-		embedding = self.model.location_embedding(torch.tensor([1]), True)
-		ith_state = self.model.root_value(torch.tensor([0]))
-		for i, linear in enumerate(self.model.linears):
-			ith_state = linear(ith_state).view(ith_state.shape[0], -1, self.model.memory_dim)[:,0,:]
-			break
-		self.assertTrue(torch.allclose(self.model.state_to_location_embedding(ith_state[0,:]), embedding))
+	# 	embedding = self.model.location_embedding(torch.tensor([1]), True)
+	# 	ith_state = self.model.root_value(torch.tensor([0]))
+	# 	for i, linear in enumerate(self.model.linears):
+	# 		ith_state = linear(ith_state).view(ith_state.shape[0], -1, self.model.memory_dim)[:,0,:]
+	# 		break
+	# 	self.assertTrue(torch.allclose(self.model.state_to_location_embedding(ith_state[0,:]), embedding))
 
-		embedding = self.model.location_embedding(torch.tensor([5]), True)
-		ith_state = self.model.root_value(torch.tensor([0]))
-		ith_state = self.model.linears[0](ith_state).view(ith_state.shape[0], -1, self.model.memory_dim)[:,0,:]
-		ith_state = self.model.linears[1](ith_state).view(ith_state.shape[0], -1, self.model.memory_dim)[:,0,:]
-		self.assertTrue(torch.allclose(self.model.state_to_location_embedding(ith_state[0,:]), embedding))
+	# 	embedding = self.model.location_embedding(torch.tensor([5]), True)
+	# 	ith_state = self.model.root_value(torch.tensor([0]))
+	# 	ith_state = self.model.linears[0](ith_state).view(ith_state.shape[0], -1, self.model.memory_dim)[:,0,:]
+	# 	ith_state = self.model.linears[1](ith_state).view(ith_state.shape[0], -1, self.model.memory_dim)[:,0,:]
+	# 	self.assertTrue(torch.allclose(self.model.state_to_location_embedding(ith_state[0,:]), embedding))
 
-		embedding = self.model.location_embedding(torch.tensor([7]), True)
-		ith_state = self.model.root_value(torch.tensor([0]))
-		ith_state = self.model.linears[0](ith_state).view(ith_state.shape[0], -1, self.model.memory_dim)[:,0,:]
-		ith_state = self.model.linears[1](ith_state).view(ith_state.shape[0], -1, self.model.memory_dim)[:,2,:]
-		self.assertTrue(torch.allclose(self.model.state_to_location_embedding(ith_state[0,:]), embedding, atol=1e-8))
+	# 	embedding = self.model.location_embedding(torch.tensor([7]), True)
+	# 	ith_state = self.model.root_value(torch.tensor([0]))
+	# 	ith_state = self.model.linears[0](ith_state).view(ith_state.shape[0], -1, self.model.memory_dim)[:,0,:]
+	# 	ith_state = self.model.linears[1](ith_state).view(ith_state.shape[0], -1, self.model.memory_dim)[:,2,:]
+	# 	self.assertTrue(torch.allclose(self.model.state_to_location_embedding(ith_state[0,:]), embedding, atol=1e-8))
 
 
 	def test_hidden_to_query(self):

@@ -59,6 +59,76 @@ def make_args():
     args.evaluate_distance = True
     args.compensation = True
     return args
+    
+
+
+class CompensateTrajsTestCase(unittest.TestCase):
+    def setUp(self):
+        pass
+
+    def test_compensate_trajs(self):
+        dataset = "chengdu"
+        n_bins = 30
+
+        latlon_config_path = f"./config.json"
+        with open(latlon_config_path, "r") as f:
+            config = json.load(f)["latlon"][dataset]
+        lat_range = config["lat_range"]
+        lon_range = config["lon_range"]
+        ranges = Grid.make_ranges_from_latlon_range_and_nbins(lat_range, lon_range, n_bins)
+        grid = Grid(ranges)
+
+        training_data_path = "/data/chengdu/10000/200_30_bin30_seed0/training_data.csv"
+        training_data = load(training_data_path)
+        route_training_data_path = "/data/chengdu/10000/200_30_bin30_seed0/route_training_data.csv"
+        route_training_data = load(route_training_data_path)
+
+        truncation = 23
+        route_db_path = f"/data/{dataset}/pair_to_route/{n_bins}_tr{truncation}/paths.db"
+
+        compensated, ids = evaluation.compensate_trajs(training_data, route_db_path)
+        print(len(compensated)-len(ids))
+
+        target = 14
+        stay_traj = training_data[ids[target]]
+        route_traj = route_training_data[ids[target]]
+
+        latlons = [grid.state_to_center_latlon(state) for state in compensated[target]]
+        route_latlons = [grid.state_to_center_latlon(state) for state in route_traj]
+        m = folium.Map(location=[latlons[0][0], latlons[0][1]], zoom_start=13)
+        # line
+        folium.PolyLine(locations=latlons, color='red').add_to(m)
+        folium.PolyLine(locations=route_latlons, color='blue').add_to(m)
+        # save by png
+        m.save(f"./test/data/compensated_traj.html")
+
+
+        # with sqlite3.connect(route_db_path) as conn:
+        #     # count the number of row in state_edge_to_route
+        #     cursor = conn.cursor()
+        #     cursor.execute("SELECT * FROM state_edge_to_route WHERE start_state=203")
+        #     n_rows = cursor.fetchall()
+        #     # for line in n_rows:
+        #         # print(eval(line[2]))
+
+
+        # trajs = load(f"/data/{dataset}/100/200_10_bin14_seed0/training_data.csv")
+        # print(trajs)
+        # compensated_trajs = evaluation.compensate_trajs(trajs, route_db_path)
+        # print(compensated_trajs)
+        # # self.assertEqual(len(compensated_trajs), len(trajs))
+        # # for traj, compensated_traj in zip(trajs, compensated_trajs):
+        #     # self.assertEqual(traj[0], compensated_traj[0])
+        #     # self.assertEqual(traj[-1], compensated_traj[-1])
+        
+        # latlon_traj = [grid.state_to_center_latlon(state) for state in compensated_trajs[0]]
+        # print(latlon_traj)
+        # # plot by folium with anotation
+        # m = folium.Map(location=[latlon_traj[0][0], latlon_traj[0][1]], zoom_start=13)
+        # for latlon, state in zip(latlon_traj, compensated_trajs[0]):
+        #     m.add_child(folium.Marker(location=latlon, icon=folium.Icon(color='red'), popup=str(state)))
+        # m.save(f"./test/data/compensated_traj.html")
+
 
 class EvaluationMTNetTestCase(unittest.TestCase):
     def setUp(self):
@@ -257,6 +327,24 @@ class EvaluationTestCase(unittest.TestCase):
 
         self.top_base_locations = [location for location, _ in self.base_location_counts.most_common(30)]
         self.top_route_base_locations = [location for location, _ in self.route_base_location_counts.most_common(30)]
+
+    def test_make_downsample_dict(self):
+        to_bin = 14
+        from_bin = 30
+        downsample_dict = evaluation.make_downsampling_dict(from_bin=from_bin, to_bin=to_bin)
+        from collections import Counter
+
+        trajs_14 = load("/data/geolife_mm/0/200_30_bin14_seed0/training_data.csv")
+        trajs_30 = load("/data/geolife_mm/0/200_30_bin30_seed0/training_data.csv")
+
+        downsampled_trajs, indice = evaluation.downsample_trajs(trajs_30, downsample_dict)
+        print(len(trajs_30)-len(indice), "trajectories removed")
+
+        print(downsampled_trajs)
+
+        # for traj1, traj2 in zip(trajs_14, downsampled_trajs):
+            # print("orig", traj1)
+            # print("down", traj2)
 
     def test_compensate_trajs(self):
         dataset = "chengdu"

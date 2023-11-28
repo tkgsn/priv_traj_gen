@@ -27,17 +27,18 @@ class TestDatabase(unittest.TestCase):
 class TestPreProcessGeolifeTest(unittest.TestCase):
 
     def setUp(self):
-        self.dataset = "geolife_test"
+        self.dataset = "geolife_test_mm"
         self.lat_range, self.lon_range = my_utils.load_latlon_range(self.dataset)
 
     def test_run(self):
         n_bins = 2
+        truncate = 20
         data_dir = f"/data/{self.dataset}/raw"
         save_dir = f"./test/pair_to_route/{self.dataset}"
         # make dir of save_dir
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
-        make_pair_to_route.run(n_bins, data_dir, self.lat_range, self.lon_range, save_dir)
+        make_pair_to_route.run(n_bins, data_dir, self.lat_range, self.lon_range, truncate, save_dir)
 
     def test_dataset(self):
         n_bins = 2
