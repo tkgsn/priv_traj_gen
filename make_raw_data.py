@@ -1,7 +1,6 @@
 import argparse
 from my_utils import get_datadir, save, load, construct_default_quadtree, set_logger, send
 import pandas as pd
-from data_pre_processing import compute_distance_matrix
 import numpy as np
 import glob
 import tqdm
@@ -272,9 +271,9 @@ def make_raw_data_rotation(seed, max_size, n_bins):
     data_dir = get_datadir() / "rotation" / str(max_size) / f"bin{n_bins}_seed{seed}"
     save_path = data_dir / "training_data.csv"
 
-    if save_path.exists():
-        print("already exists")
-        return
+    # if save_path.exists():
+        # print("already exists")
+        # return
     
     depth = 2
     assert n_bins >= 6
@@ -313,6 +312,8 @@ def make_raw_data_rotation(seed, max_size, n_bins):
     times = [[0,1,2]]*len(trajs)
     print("save to", time_save_path)
     save(time_save_path, times)
+
+    return trajs, times
 
 
 def make_raw_data_random(seed, max_size, n_bins):

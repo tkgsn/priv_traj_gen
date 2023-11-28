@@ -449,8 +449,8 @@ if __name__ == "__main__":
     logger.info(f"save param to {save_path / 'params.json'}")
     with open(save_path / "params.json", "w") as f:
         json.dump(vars(args), f)
-    if args.server:
-        send(save_path / "params.json")
+    # if args.server:
+        # send(save_path / "params.json")
 
     # traning
     epsilon = 0
@@ -459,8 +459,8 @@ if __name__ == "__main__":
         # try:
         logger.info(f"save model to {save_path / f'model_{epoch}.pt'}")
         torch.save(eval_generator.state_dict(), save_path / f"model_{epoch}.pt")
-        if args.server:
-            send(save_path / f"model_{epoch}.pt")
+        # if args.server:
+            # send(save_path / f"model_{epoch}.pt")
         # except:
         # logger.info("failed to save model because it is Markov1?")
 
@@ -478,4 +478,4 @@ if __name__ == "__main__":
         if early_stopping.early_stop:
             break
     
-    send(save_path / f"log.log")
+    # send(save_path / f"log.log")

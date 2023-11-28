@@ -9,16 +9,16 @@
 
 # preprocess.sh
 # docker run -it -e DATASET=geolife -e SEED=0 -e MAX_SIZE=0 -e N_BINS=14 -e T_THRESH=30 -e L_THRESH=200 -e TRUNCATE=23 kyotohiemrnet.azurecr.io/hiemrnet /bin/bash -c "./preprocess.sh"
-# export DATASET=chengdu
-# export MAX_SIZE=10000
-# export SEED=0
-# export N_BINS=30
-# export L_THRESH=200
-# export T_THRESH=30
-# export TRUNCATE=0
+export DATASET=rotation
+export MAX_SIZE=10000
+export SEED=0
+export N_BINS=30
+export L_THRESH=200
+export T_THRESH=30
+export TRUNCATE=0
 
 # train.sh
-# docker run -it --gpus all -e DATASET=geolife_mm -e SEED=0 -e TRAINING_SEED=0 -e META_N_ITER=0 -e MAX_SIZE=0 -e SEED=0 -e EPOCH=100 -e N_BINS=30 -e L_THRESH=200 -e T_THRESH=30 -e P_BATCH=100 -e N_TEST=30 -e DP=True -e MULTI_TASK=True -e CONSISTENT=True -e MULTILAYER=False -e HIDDEN_DIM=64 -e LOC_DIM=64 -e MEM_DIM=64 -e MEM_HIDDEN_DIM=64 -e COEF_TIME=1 -e NETWORK_TYPE=meta_network kyotohiemrnet.azurecr.io/hiemrnet_cu117 /bin/bash -c "./train.sh"
+# docker run -it --gpus all -v /mnt/data:/data -e DATASET=rotation -e SEED=0 -e TRAINING_SEED=0 -e META_N_ITER=0 -e MAX_SIZE=10000 -e SEED=0 -e EPOCH=100 -e N_BINS=30 -e L_THRESH=200 -e T_THRESH=30 -e P_BATCH=100 -e N_TEST=30 -e DP=True -e MULTI_TASK=False -e CONSISTENT=False -e MULTILAYER=False -e HIDDEN_DIM=64 -e LOC_DIM=64 -e MEM_DIM=64 -e MEM_HIDDEN_DIM=64 -e COEF_TIME=1 -e NETWORK_TYPE=meta_network kyotohiemrnet.azurecr.io/hiemrnet_cu117 /bin/bash -c "./train.sh"
 # export DATASET=chengdu
 # export MAX_SIZE=10000
 # export SEED=0

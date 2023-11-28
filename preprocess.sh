@@ -2,6 +2,8 @@
 
 # source ./enviornment
 
+pip3 install geopy shapely
+
 #
 # VARIABLES
 #

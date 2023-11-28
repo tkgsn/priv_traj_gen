@@ -12,6 +12,7 @@ from geopy.distance import geodesic
 import make_pair_to_route
 import concurrent.futures
 import functools
+from make_raw_data import make_raw_data_random, make_raw_data_rotation
 
 
 def compute_distance_matrix(state_to_latlon, n_locations):
@@ -180,7 +181,7 @@ def make_gps_data(training_data_dir, lat_range, lon_range, n_bins):
         gps = make_gps(lat_range, lon_range, n_bins)
         gps.to_csv(training_data_dir / f"gps.csv", header=None, index=None)
     gps = pd.read_csv(training_data_dir / f"gps.csv", header=None).values
-    send(training_data_dir / f"gps.csv")
+    # send(training_data_dir / f"gps.csv")
     return gps
 
 def make_distance_data(training_data_dir, n_bins, gps, logger):
@@ -194,7 +195,7 @@ def make_distance_data(training_data_dir, n_bins, gps, logger):
         np.save(training_data_dir.parent.parent/f"distance_matrix_bin{n_bins}.npy",distance_matrix)
     else:
         logger.info("distance_matrix already exists")
-    send(training_data_dir.parent.parent / f"distance_matrix_bin{n_bins}.npy")
+    # send(training_data_dir.parent.parent / f"distance_matrix_bin{n_bins}.npy")
 
 def make_db(dataset, lat_range, lon_range, n_bins, truncate, logger):
 
@@ -205,16 +206,23 @@ def make_db(dataset, lat_range, lon_range, n_bins, truncate, logger):
     if not (db_save_dir / "paths.db").exists():
     # if True:
         graph_data_dir = get_datadir() / dataset / "raw"
-        get(get_datadir() / dataset / "raw", parent=True)
+        # get(get_datadir() / dataset / "raw", parent=True)
         logger.info(f"make pair_to_route to {db_save_dir}")
         make_pair_to_route.run(n_bins, graph_data_dir, lat_range, lon_range, truncate, db_save_dir)
     else:
         logger.info(f"pair_to_route already exists in {db_save_dir / 'paths.db'}")
     
-    send(db_save_dir / "paths.db")
+    # send(db_save_dir / "paths.db")
 
+def make_save_name(dataset_name, n_bins, time_threshold, location_threshold, seed):
 
-def run(dataset_name, training_data_dir, lat_range, lon_range, n_bins, time_threshold, location_threshold, size, seed, truncate, logger):
+    if dataset_name == "rotation":
+        save_name = f"bin{n_bins}_seed{seed}"
+    else:
+        save_name = f"{time_threshold}_{location_threshold}_bin{n_bins}_seed{seed}"
+    return save_name
+
+def run(dataset_name, lat_range, lon_range, n_bins, time_threshold, location_threshold, size, seed, truncate, logger):
     """
     training_data is POI_id (aka state) trajectory
     state is made by grid of n_bins, which means there are (n_bins+2)*(n_bins+2) states in lat_range and lon_range
@@ -222,54 +230,73 @@ def run(dataset_name, training_data_dir, lat_range, lon_range, n_bins, time_thre
     then, the sequential duplication is removed
     """
 
-    logger.info(f"saving setting to {training_data_dir}/params.json")
-    with open(training_data_dir / "params.json", "w") as f:
-        json.dump({"n_locations": (n_bins+2)**2, "n_bins": n_bins, "seed": args.seed}, f)
-    send(training_data_dir / "params.json")
+    save_name = make_save_name(dataset_name, n_bins, time_threshold, location_threshold, seed)
+    training_data_dir = get_datadir() / dataset_name / f"{size}" / save_name
+    training_data_dir.mkdir(exist_ok=True, parents=True)
+
+    if not (training_data_dir / "training_data.csv").exists():
+
+
+        if dataset_name == "rotation":
+            training_data_dir = get_datadir() / dataset_name / f"{size}" / f"bin{n_bins}_seed{seed}"
+            trajs, times = make_raw_data_rotation(seed, size, n_bins)
+
+        else:
+            training_data_dir = get_datadir() / dataset_name / f"{size}" / f"{n_bins}_tr{truncate}"
+
+            training_data_dir.mkdir(exist_ok=True, parents=True)
+
+            raw_data_path = training_data_dir.parent.parent / f"raw_data.csv"
+            logger.info(f"load raw data from {raw_data_path}")
+            raw_trajs = load(raw_data_path, size, seed)
+
+            logger.info(f"make grid lat {lat_range} lon {lon_range} n_bins {n_bins}")
+            ranges = Grid.make_ranges_from_latlon_range_and_nbins(lat_range, lon_range, n_bins)
+            grid = Grid(ranges)
+            logger.info(f"check in range")
+            raw_trajs = check_in_range(raw_trajs, grid)
+
+            logger.info(f"make stay trajectory by {time_threshold}min and {location_threshold}m")
+            time_trajs, trajs = make_stay_trajectory(raw_trajs, time_threshold, location_threshold)
+            route_time_trajs, route_trajs = make_stay_trajectory(raw_trajs, 0, 0)
+
+            logger.info("make complessed dataset by the grid")
+            trajs, times, indice = make_complessed_dataset(time_trajs, trajs, grid)
+            route_dataset, route_times, _ = make_complessed_dataset(route_time_trajs, route_trajs, grid, indice)
+            with open(training_data_dir / "indice.json", "w") as f:
+                json.dump(indice, f)
+            # send(training_data_dir / "indice.json")
+
+            times = [[time[0] for time in traj] for traj in times]
         
-    training_data_path = training_data_dir / "training_data.csv"
-    if not training_data_path.exists():
+            route_times = [[time[0] for time in traj] for traj in route_times]
+            time_save_path = training_data_dir / f"route_training_data_time.csv"
+            logger.info(f"save route time dataset to {time_save_path}")
+            save(time_save_path, route_times)
 
-        raw_data_path = training_data_dir.parent.parent / f"raw_data.csv"
-        logger.info(f"load raw data from {raw_data_path}")
-        raw_trajs = load(raw_data_path, size, seed)
+            save_path = training_data_dir / f"route_training_data.csv"
+            logger.info(f"save route complessed dataset to {save_path}")
+            save(save_path, route_dataset)
 
-        logger.info(f"make grid lat {lat_range} lon {lon_range} n_bins {n_bins}")
-        ranges = Grid.make_ranges_from_latlon_range_and_nbins(lat_range, lon_range, n_bins)
-        grid = Grid(ranges)
-        logger.info(f"check in range")
-        raw_trajs = check_in_range(raw_trajs, grid)
+            gps = make_gps_data(training_data_dir, lat_range, lon_range, n_bins)
+            make_distance_data(training_data_dir, n_bins, gps, logger)
+            make_db(dataset_name, lat_range, lon_range, n_bins, truncate, logger)
 
-        logger.info(f"make stay trajectory by {time_threshold}min and {location_threshold}m")
-        time_trajs, trajs = make_stay_trajectory(raw_trajs, time_threshold, location_threshold)
-        route_time_trajs, route_trajs = make_stay_trajectory(raw_trajs, 0, 0)
-
-        logger.info("make complessed dataset by the grid")
-        dataset, times, indice = make_complessed_dataset(time_trajs, trajs, grid)
-        route_dataset, route_times, _ = make_complessed_dataset(route_time_trajs, route_trajs, grid, indice)
-        with open(training_data_dir / "indice.json", "w") as f:
-            json.dump(indice, f)
-        send(training_data_dir / "indice.json")
 
         save_path = training_data_dir / f"training_data.csv"
         logger.info(f"save complessed dataset to {save_path}")
-        save(save_path, dataset)
-        save_path = training_data_dir / f"route_training_data.csv"
-        logger.info(f"save route complessed dataset to {save_path}")
-        save(save_path, route_dataset)
+        save(save_path, trajs)
         
-        times = [[time[0] for time in traj] for traj in times]
         time_save_path = training_data_dir / f"training_data_time.csv"
         logger.info(f"save time dataset to {time_save_path}")
         save(time_save_path, times)
-        route_times = [[time[0] for time in traj] for traj in route_times]
-        time_save_path = training_data_dir / f"route_training_data_time.csv"
-        logger.info(f"save route time dataset to {time_save_path}")
-        save(time_save_path, route_times)
 
-    gps = make_gps_data(training_data_dir, lat_range, lon_range, n_bins)
-    make_distance_data(training_data_dir, n_bins, gps, logger)
-    make_db(dataset_name, lat_range, lon_range, n_bins, truncate, logger)
+        logger.info(f"saving setting to {training_data_dir}/params.json")
+        with open(training_data_dir / "params.json", "w") as f:
+            json.dump({"n_locations": (n_bins+2)**2, "n_bins": n_bins, "seed": args.seed}, f)
+
+    else:
+        logger.info(f"training data already exists in {training_data_dir}")
 
 if __name__ == "__main__":
     
@@ -286,10 +313,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     lat_range, lon_range = load_latlon_range(args.dataset)
-    n_bins = args.n_bins
-    training_data_dir = get_datadir() / args.dataset / args.data_name / args.save_name
-    training_data_dir.mkdir(exist_ok=True, parents=True)
+    # n_bins = args.n_bins
+    # training_data_dir = get_datadir() / args.dataset / args.data_name / args.save_name
+    # training_data_dir.mkdir(exist_ok=True, parents=True)
 
     logger = set_logger(__name__, "./log.log")
 
-    run(args.dataset, training_data_dir, lat_range, lon_range, args.n_bins, args.time_threshold, args.location_threshold, args.max_size, args.seed, args.truncate, logger)
+    run(args.dataset, lat_range, lon_range, args.n_bins, args.time_threshold, args.location_threshold, args.max_size, args.seed, args.truncate, logger)

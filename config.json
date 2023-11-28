@@ -6,6 +6,7 @@
         "geolife": {"lat_range": [39.84766800000029, 40.11334835399971], "lon_range":[116.1956099999994, 116.4879933000006]},
         "geolife_test": {"lat_range": [39.98990600000001, 40.01567799999999], "lon_range": [116.31307699999996, 116.33376100000002]},
         "peopleflow_test": {"lat_range": [35.7, 35.8], "lon_range": [139.7, 139.8]},
-        "peopleflow": {"lat_range": [35.3, 36.0], "lon_range": [139.0, 140.5]}
+        "peopleflow": {"lat_range": [35.3, 36.0], "lon_range": [139.0, 140.5]},
+        "rotation": {"lat_range": [35.0, 36.0], "lon_range": [139.0, 140.0]}
         }
 }

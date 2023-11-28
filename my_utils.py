@@ -547,7 +547,7 @@ def save(save_path, trajectories, option="w"):
             # remove last ","
             f.seek(f.tell()-1)
             f.write("\n")
-    send(save_path)
+    # send(save_path)
 
 
 def compute_num_params(model, logger):
@@ -559,7 +559,7 @@ def compute_num_params(model, logger):
     return num_params
 
 def load(save_path, size=0, seed=0):
-    get(save_path)
+    # get(save_path)
     if size != 0:
         # set seed
         np.random.seed(seed)
