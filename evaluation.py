@@ -994,18 +994,19 @@ class Namespace():
 def set_args(run_args):
 
     args = Namespace()
-    args.evaluate_global = False
-    args.evaluate_passing = True
-    args.evaluate_source = False
-    args.evaluate_target = True
-    args.evaluate_route = True
-    args.evaluate_destination = True
-    args.evaluate_distance = True
-    args.evaluate_emp_next = True
-    args.evaluate_second_emp_next = True
-    args.evaluate_first_next_location = True and (training_setting["network_type"] == "fulllinear_quadtree")
-    args.evaluate_second_next_location = False and (training_setting["network_type"] == "fulllinear_quadtree")
-    args.evaluate_second_order_next_location = False and (training_setting["network_type"] == "fulllinear_quadtree")
+    args.ablation = run_args.ablation
+    args.evaluate_global = False and args.ablation
+    args.evaluate_passing = True and args.ablation
+    args.evaluate_source = False and args.ablation
+    args.evaluate_target = True and args.ablation
+    args.evaluate_route = True and args.ablation
+    args.evaluate_destination = True and args.ablation
+    args.evaluate_distance = True and args.ablation
+    args.evaluate_emp_next = True and args.ablation
+    args.evaluate_second_emp_next = True and args.ablation
+    args.evaluate_first_next_location = True and (training_setting["network_type"] in ["fulllinear_quadtree", "meta_network"])
+    args.evaluate_second_next_location = False and (training_setting["network_type"] in ["fulllinear_quadtree", "meta_network"])
+    args.evaluate_second_order_next_location = False and (training_setting["network_type"] in ["fulllinear_quadtree", "meta_network"])
     args.compensation = False
     args.eval_initial = True
     args.n_test_locations = 30
@@ -1042,6 +1043,7 @@ if __name__ == "__main__":
     parser.add_argument('--truncate', type=int)
 
     parser.add_argument('--server', action="store_true")
+    parser.add_argument('--ablation', action="store_true")
     run_args = parser.parse_args()
 
     logger = set_logger(__name__, "./log.log")
