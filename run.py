@@ -377,7 +377,6 @@ if __name__ == "__main__":
     parser.add_argument('--location_embedding_dim', type=int)
     parser.add_argument('--memory_dim', type=int)
     parser.add_argument('--memory_hidden_dim', type=int)
-    parser.add_argument('--n_test_locations', type=int)
     parser.add_argument('--meta_patience', type=int)
     parser.add_argument('--privtree_theta', type=float)
     parser.add_argument('--clustering', type=str)
