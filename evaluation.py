@@ -1008,8 +1008,8 @@ def set_args(run_args):
     args.evaluate_emp_next = True and (not args.ablation)
     args.evaluate_second_emp_next = True and (not args.ablation)
     args.evaluate_first_next_location = True and (training_setting["network_type"] in ["hiemrnet", "baseline"])
-    args.evaluate_second_next_location = False and (training_setting["network_type"] in ["hiemrnet", "baseline"])
-    args.evaluate_second_order_next_location = True and (training_setting["network_type"] in ["hiemrnet", "baseline"])
+    args.evaluate_second_next_location = True and (training_setting["network_type"] in ["hiemrnet", "baseline"])
+    args.evaluate_second_order_next_location = False and (training_setting["network_type"] in ["hiemrnet", "baseline"])
     args.compensation = False
     args.eval_initial = True
     args.n_test_locations = 30

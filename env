@@ -18,7 +18,7 @@ export T_THRESH=30
 export TRUNCATE=0
 
 # train.sh
-# docker run -it --gpus all -v /mnt/data:/data -e TRAINING_DATA_DIR=/data/rotation/10000/bin30_seed0 -e SEED=0 -e TRAINING_SEED=0 -e META_N_ITER=0 -e MAX_SIZE=10000 -e SEED=0 -e EPOCH=100 -e N_BINS=30 -e L_THRESH=200 -e T_THRESH=30 -e P_BATCH=100 -e N_TEST=30 -e DP=True -e MULTI_TASK=False -e CONSISTENT=False -e MULTILAYER=False -e HIDDEN_DIM=64 -e LOC_DIM=64 -e MEM_DIM=64 -e MEM_HIDDEN_DIM=64 -e COEF_TIME=1 -e NETWORK_TYPE=baseline kyotohiemrnet.azurecr.io/hiemrnet_cu117 /bin/bash -c "./train.sh"
+# docker run -it --gpus all -v /mnt/data:/data -e TRAINING_DATA_DIR=/data/rotation/10000/bin30_seed0 -e SEED=0 -e TRAINING_SEED=0 -e META_N_ITER=10000 -e MAX_SIZE=10000 -e SEED=0 -e EPOCH=100 -e N_BINS=30 -e L_THRESH=200 -e T_THRESH=30 -e P_BATCH=100 -e N_TEST=30 -e DP=True -e MULTI_TASK=False -e CONSISTENT=False -e MULTILAYER=False -e HIDDEN_DIM=64 -e LOC_DIM=64 -e MEM_DIM=64 -e MEM_HIDDEN_DIM=64 -e COEF_TIME=1 -e NETWORK_TYPE=baseline kyotohiemrnet.azurecr.io/hiemrnet_cu117 /bin/bash -c "./train.sh"
 export TRAINING_DATA_DIR=/data/${DATASET}/${MAX_SIZE}/bin${N_BINS}_seed${SEED}
 # export DATASET=chengdu
 # export MAX_SIZE=10000
@@ -44,10 +44,11 @@ export NETWORK_TYPE=hiemrnet
 
 # fulllinear_quadtree_dpFalse_meta10000_dim64_64_64_64_btch0_cldepth_1000_trTrue_coFalse_mulkeyquery
 # evaluate.sh
-# 
+# /data/rotation/10000/bin30_seed0/baseline_dpTrue_meta10000_dim64_64_64_64_btch0_cldepth_1000_trFalse_coFalse_mulFalse_test
 # docker run --gpus all -it -e L_THRESH=200 -e T_THRESH=30 -e N_BINS=30 -e SEED=0 -e TRUNCATE=0 -e MODEL_DIR=/data/results/chengdu/10000/200_30_bin30_seed0/fulllinear_quadtree_dpTrue_meta10000_dim64_64_64_64_btch0_cldepth_1000_trFalse_coFalse_mulFalse_test kyotohiemrnet.azurecr.io/hiemrnet_cu117 /bin/bash -c "./evaluate.sh"
 # docker run --gpus all -it -e L_THRESH=200 -e T_THRESH=30 -e N_BINS=14 -e SEED=0 -e TRUNCATE=0 -e MODEL_DIR=/data/results/geolife_mm/0/200_30_bin30_seed0/privtrace/model_2.0 kyotohiemrnet.azurecr.io/hiemrnet_cu117 /bin/bash -c "./evaluate.sh"
-# docker run -it -v /mnt/data:/data -e ABLATION=True -e L_THRESH=200 -e T_THRESH=30 -e N_BINS=30 -e SEED=0 -e TRUNCATE=0 -e MODEL_DIR=/data/rotation/10000/bin30_seed0/hiemrnet_dpTrue_meta0_dim64_64_64_64_btch0_cldepth_1000_trFalse_coFalse_mulFalse_test -e EVAL_DATA_DIR=/data/rotation/10000/bin30_seed0 kyotohiemrnet.azurecr.io/hiemrnet_cu117 /bin/bash -c "./evaluate.sh"
+# docker run -it --gpus all -v /mnt/data:/data -e TEST_THRESH=30 -e ABLATION=True -e L_THRESH=200 -e T_THRESH=30 -e N_BINS=30 -e SEED=0 -e TRUNCATE=0 -e MODEL_DIR=/data/rotation/10000/bin30_seed0/baseline_dpTrue_meta10000_dim64_64_64_64_btch0_cldepth_1000_trFalse_coFalse_mulFalse_test -e EVAL_DATA_DIR=/data/rotation/10000/bin30_seed0 kyotohiemrnet.azurecr.io/hiemrnet_cu117 /bin/bash -c "./evaluate.sh"
+# docker run -it --gpus all -v /mnt/data:/data -e TEST_THRESH=30 -e ABLATION=True -e L_THRESH=200 -e T_THRESH=30 -e N_BINS=30 -e SEED=0 -e TRUNCATE=0 -e MODEL_DIR=/data/rotation/10000/bin30_seed0/baseline_dpTrue_meta0_dim64_64_64_64_btch0_cldepth_1000_trFalse_coFalse_mulFalse_test -e EVAL_DATA_DIR=/data/rotation/10000/bin30_seed0 kyotohiemrnet.azurecr.io/hiemrnet_cu117 /bin/bash -c "./evaluate.sh"
 # export L_THRESH=200
 # export T_THRESH=30
 # export EVALUATE_N_BINS=30
@@ -63,7 +64,7 @@ export EVAL_DATA_DIR=/data/${DATASET}/${MAX_SIZE}/bin${N_BINS}_seed${SEED}
 # export MODEL_DIR=/data/results/geolife_mm/0/200_30_bin30_seed0/fulllinear_quadtree_dpTrue_meta10000_dim64_64_64_64_btch0_cldepth_1000_trTrue_coTrue_mulFalse_test/model_10.pt
 # /data/results/chengdu/10000/200_30_bin30_seed0/fulllinear_quadtree_dpTrue_meta10000_dim100_64_64_256_btch0_cldepth_1000_trTrue_coFalse_mulkey
 # fulllinear_quadtree_dpTrue_meta10000_dim32_32_32_128_btch0_cldepth_1000_trTrue_coFalse_mulkeyquery
-
+# /data/rotation/10000/bin30_seed0/baseline_dpTrue_meta0_dim64_64_64_64_btch0_cldepth_1000_trFalse_coFalse_mulFalse_test
 # MTNet/run.sh
 # docker run --gpus all -it -e DATASET=chengdu -e SEED=0 -e MAX_SIZE=100000 -e DP=True -e EPOCH=100 -e MAX_LENGTH=100 -e P_BATCH=100 -e INDICE_PATH=/data/chengdu/100000/200_30_bin30_seed0/indice.json kyotohiemrnet.azurecr.io/hiemrnet_cu117 /bin/bash -c "cd MTNet && ./run.sh"
 # export DATASET=chengdu
