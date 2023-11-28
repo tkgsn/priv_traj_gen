@@ -310,20 +310,24 @@ def construct_generator(n_locations, meta_network, network_type, location_embedd
     
     return generator, compute_loss_meta_gru_net
 
-def construct_dataset(training_data_dir, route_data_path, n_time_split):
+def construct_dataset(training_data_path, route_data_path, n_time_split):
 
     # load dataset config    
-    with open(training_data_dir / "params.json", "r") as f:
+    with open(training_data_path.parent / "params.json", "r") as f:
         param = json.load(f)
     n_locations = param["n_locations"]
     dataset_name = param["dataset"]
 
-    trajectories = load(training_data_dir / "training_data.csv")
+    trajectories = load(training_data_path)
     if route_data_path is not None:
-        route_trajectories = load(route_data_path)
+        try:
+            route_trajectories = load(route_data_path)
+        except:
+            print("failed to load route data", route_data_path)
+            route_trajectories = None        
     else:
         route_trajectories = None
-    time_trajectories = load(training_data_dir / "training_data_time.csv")
+    time_trajectories = load(training_data_path.parent / "training_data_time.csv")
 
     return TrajectoryDataset(trajectories, time_trajectories, n_locations, n_time_split, route_data=route_trajectories, dataset_name=dataset_name)
 
@@ -411,7 +415,7 @@ if __name__ == "__main__":
 
     logger.info(f"load training data from {training_data_dir / 'training_data.csv'}")
     logger.info(f"load time data from {training_data_dir / 'training_data_time.csv'}")
-    dataset = construct_dataset(training_data_dir, route_data_path, args.n_split)
+    dataset = construct_dataset(training_data_dir / "training_data.csv", route_data_path, args.n_split)
 
     device = torch.device(f"cuda:{args.cuda_number}" if torch.cuda.is_available() else "cpu")
 

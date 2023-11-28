@@ -1,5 +1,6 @@
 from torch.utils.data import Dataset
 import torch
+import numpy as np
 
 def make_format_to_label(traj_list):
     format_to_label = {}
@@ -111,6 +112,7 @@ class TrajectoryDataset(Dataset):
         self.seq_len = max([len(trajectory) for trajectory in data])
         self.time_data = time_data
         self.n_locations = n_locations
+        self.n_bins = int(np.sqrt(n_locations)-2)
         self.dataset_name = dataset_name
         self.format_to_label, self.label_to_format = make_label_info(data)
         self.labels = self._compute_dataset_labels()

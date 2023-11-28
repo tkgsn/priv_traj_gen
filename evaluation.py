@@ -83,7 +83,7 @@ def run(generator, dataset, args):
         original_dataset_name = get_original_dataset_name(dataset)
         print(type(original_dataset_name), original_dataset_name)
         route_db_path = get_datadir() / original_dataset_name / "pair_to_route"/ f"{n_bins}_tr{args.truncate}" / "paths.db"
-        get(route_db_path)
+        # get(route_db_path)
         print("compensating trajectories by", route_db_path)
     else:
         print("not compensating trajectories")
@@ -727,8 +727,11 @@ def compute_auxiliary_information(dataset, save_dir, logger):
     dataset.real_counters["emp_next"] = [count_first_next_locations(dataset.data, location) for location in dataset.top_base_locations]
     dataset.real_counters["second_emp_next"] = [count_second_order_first_next_locations(dataset.data, locations) for locations in dataset.top_2nd_order_base_locations]
     logger.info("load distance matrix from {}".format(get_datadir() / str(dataset)  / f"distance_matrix_bin{int(np.sqrt(dataset.n_locations)) -2}.npy"))
-    dataset.distance_matrix = np.load(get_datadir() / str(dataset)  / f"distance_matrix_bin{int(np.sqrt(dataset.n_locations)) -2}.npy")
-    dataset.real_counters["distance"] = count_distance(dataset.distance_matrix, dataset.data, dataset.n_bins_for_distance)
+    try:
+        dataset.distance_matrix = np.load(get_datadir() / str(dataset)  / f"distance_matrix_bin{int(np.sqrt(dataset.n_locations)) -2}.npy")
+        dataset.real_counters["distance"] = count_distance(dataset.distance_matrix, dataset.data, dataset.n_bins_for_distance)
+    except:
+        print("WARNING: distance matrix is not found", get_datadir() / str(dataset)  / f"distance_matrix_bin{int(np.sqrt(dataset.n_locations)) -2}.npy")
 
     # compute n_trajs
     dataset.n_trajs = {}
@@ -755,7 +758,7 @@ def compute_auxiliary_information(dataset, save_dir, logger):
     #     else:
     #         plot_density(counter, dataset.n_locations, img_dir / f"real_{key}_distribution.png")
     
-    send(img_dir, parent=True)
+    # send(img_dir, parent=True)
 
 
     # return locations, next_location_counts, first_next_location_counts, real_global_counts, label_count, time_distribution, reference_distribution
@@ -995,18 +998,18 @@ def set_args(run_args):
 
     args = Namespace()
     args.ablation = run_args.ablation
-    args.evaluate_global = False and args.ablation
-    args.evaluate_passing = True and args.ablation
-    args.evaluate_source = False and args.ablation
-    args.evaluate_target = True and args.ablation
-    args.evaluate_route = True and args.ablation
-    args.evaluate_destination = True and args.ablation
-    args.evaluate_distance = True and args.ablation
-    args.evaluate_emp_next = True and args.ablation
-    args.evaluate_second_emp_next = True and args.ablation
-    args.evaluate_first_next_location = True and (training_setting["network_type"] in ["fulllinear_quadtree", "meta_network"])
-    args.evaluate_second_next_location = False and (training_setting["network_type"] in ["fulllinear_quadtree", "meta_network"])
-    args.evaluate_second_order_next_location = False and (training_setting["network_type"] in ["fulllinear_quadtree", "meta_network"])
+    args.evaluate_global = False and (not args.ablation)
+    args.evaluate_passing = True and (not args.ablation)
+    args.evaluate_source = False and (not args.ablation)
+    args.evaluate_target = True and (not args.ablation)
+    args.evaluate_route = True and (not args.ablation)
+    args.evaluate_destination = True and (not args.ablation)
+    args.evaluate_distance = True and (not args.ablation)
+    args.evaluate_emp_next = True and (not args.ablation)
+    args.evaluate_second_emp_next = True and (not args.ablation)
+    args.evaluate_first_next_location = True and (training_setting["network_type"] in ["hiemrnet", "baseline"])
+    args.evaluate_second_next_location = False and (training_setting["network_type"] in ["hiemrnet", "baseline"])
+    args.evaluate_second_order_next_location = False and (training_setting["network_type"] in ["hiemrnet", "baseline"])
     args.compensation = False
     args.eval_initial = True
     args.n_test_locations = 30
@@ -1018,14 +1021,14 @@ def set_args(run_args):
     args.eval_interval = 1
 
     args.dataset = dataset_name
-    args.time_threshold = run_args.time_threshold
+    # args.time_threshold = run_args.time_threshold
     args.route_generator = (training_setting["network_type"] == "MTNet")
     args.truncate = run_args.truncate
-    if run_args.location_threshold == 0 and run_args.time_threshold == 0:
-        args.compensation = False
-        args.route_generator = True
+    # if run_args.location_threshold == 0 and run_args.time_threshold == 0:
+        # args.compensation = False
+        # args.route_generator = True
     
-    args.to_bin = run_args.n_bins
+    # args.to_bin = run_args.n_bins
 
     return args
 
@@ -1036,20 +1039,21 @@ if __name__ == "__main__":
     parser.add_argument('--model_dir', type=str)
 
     # for ground truth
-    parser.add_argument('--location_threshold', type=int)
-    parser.add_argument('--time_threshold', type=int)
-    parser.add_argument('--n_bins', type=int)
+    # parser.add_argument('--location_threshold', type=int)
+    # parser.add_argument('--time_threshold', type=int)
+    # parser.add_argument('--n_bins', type=int)
+    parser.add_argument('--eval_data_dir', type=str)
     parser.add_argument('--seed', type=int)
     parser.add_argument('--truncate', type=int)
 
-    parser.add_argument('--server', action="store_true")
+    # parser.add_argument('--server', action="store_true")
     parser.add_argument('--ablation', action="store_true")
     run_args = parser.parse_args()
 
     logger = set_logger(__name__, "./log.log")
 
-    if run_args.server:
-        get(run_args.model_dir, parent=True)
+    # if run_args.server:
+        # get(run_args.model_dir, parent=True)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -1062,30 +1066,32 @@ if __name__ == "__main__":
         # find the models whose name stats with model_i
         model_paths = model_dir.glob("model_*")
     
-    get(model_dir / "params.json")
+    # get(model_dir / "params.json")
     with open(model_dir / "params.json", "r") as f:
         training_setting = json.load(f)
     (model_dir / "imgs").mkdir(exist_ok=True)
-    data_name = training_setting["data_name"]
-    dataset_name = training_setting["dataset"]
-    n_bins = int(training_setting["training_data_name"].split("_")[2].split("bin")[1])
+    # data_name = training_setting["data_name"]
+    # n_bins = int(training_setting["training_data_name"].split("_")[2].split("bin")[1])
 
     # if "training_data_name" in training_setting:
         # data_path = get_datadir() / training_setting["dataset"] / training_setting["data_name"] / training_setting["training_data_name"]
     # else:
 
-    data_path = get_datadir() / training_setting["dataset"] / training_setting["data_name"] / f"{run_args.location_threshold}_{run_args.time_threshold}_bin{run_args.n_bins}_seed{run_args.seed}"
-    print("!!", data_path)
-    if run_args.server:
-        get(data_path, parent=True)
+    training_data_dir = pathlib.Path(training_setting["training_data_dir"])
+    with open(training_data_dir / "params.json", "r") as f:
+        data_setting = json.load(f)
+    n_bins = data_setting["n_bins"]
+    dataset_name = data_setting["dataset"]
+    # if run_args.server:
+        # get(data_path, parent=True)
 
-    if run_args.server:
+    # if run_args.server:
         # get(route_data_path, parent=True)
-        get(get_datadir() / training_setting["dataset"] / f"distance_matrix_bin{run_args.n_bins}.npy")
-        if training_setting["network_type"] == "MTNet":
-            get(get_datadir() / dataset_name / "raw", parent=True)
+        # get(get_datadir() / training_setting["dataset"] / f"distance_matrix_bin{run_args.n_bins}.npy")
+        # if training_setting["network_type"] == "MTNet":
+            # get(get_datadir() / dataset_name / "raw", parent=True)
 
-    route_data_path = data_path / "route_training_data.csv"
+    route_data_path = training_data_dir / "route_training_data.csv"
         
     # with open(data_path / "params.json", "r") as f:
         # data_setting = json.load(f)
@@ -1095,17 +1101,20 @@ if __name__ == "__main__":
     # route_data_name = f"0_0_bin{n_bins}_seed{data_setting['seed']}"
     # route_data_path = get_datadir() / training_setting["dataset"] / training_setting["data_name"] / route_data_name
     
-    training_data_path = data_path.parent / f"{run_args.location_threshold}_{run_args.time_threshold}_bin{n_bins}_seed{run_args.seed}"
-    if run_args.server:
-        get(training_data_path, parent=True)
-
-    dataset = construct_dataset(data_path, route_data_path, 5, training_setting["dataset"])
+    # training_data_path = data_path
+    # if run_args.server:
+        # get(training_data_path, parent=True)
+        
+    eval_data_path = pathlib.Path(run_args.eval_data_dir) / "training_data.csv"
+    eval_route_data_path = pathlib.Path(run_args.eval_data_dir) / "route_training_data.csv"
+    dataset = construct_dataset(eval_data_path, eval_route_data_path, 5)
     compute_auxiliary_information(dataset, model_dir, logger)
 
     args = set_args(run_args)
-    training_dataset = construct_dataset(training_data_path, None, 5, training_setting["dataset"])
+    training_dataset = construct_dataset(training_data_dir / "training_data.csv", None, 5)
     args.references = training_dataset.references
-    args.from_bin = n_bins
+    args.from_bin = training_dataset.n_bins
+    args.to_bin = dataset.n_bins
     args.need_downsampling = (args.from_bin != args.to_bin)
     if args.need_downsampling:
         print("downsampling from", args.from_bin, "to", args.to_bin)
@@ -1143,7 +1152,7 @@ if __name__ == "__main__":
         results = run(generator, dataset, args)
         with open(args.save_dir / f"evaluated_{args.name}_trun{args.truncate}_{args.to_bin}.json", "w") as f:
             json.dump(results, f)
-        if run_args.server:
-            send(args.save_dir / f"evaluated_{args.name}_trun{args.truncate}_{args.to_bin}.json")
-            send(args.save_dir / f"imgs_trun{args.truncate}_{args.to_bin}" / args.name, parent=True)
+        # if run_args.server:
+            # send(args.save_dir / f"evaluated_{args.name}_trun{args.truncate}_{args.to_bin}.json")
+            # send(args.save_dir / f"imgs_trun{args.truncate}_{args.to_bin}" / args.name, parent=True)
         print(results)

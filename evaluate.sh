@@ -3,24 +3,22 @@
 # apt-get install libgl1-mesa-glx
 # pip install opencv-python
 
-pip3 install pyemd
+pip3 install pyemd shapely geopy cvxpy
 
 # for evaluation of MTNet
-pip3 install shapely
-pip3 install geopy
-pip3 install cvxpy
 
 # source ./enviornment
 #
 # VARIABLE
 # 
 model_dir=$MODEL_DIR
-location_threshold=$L_THRESH
-time_threshold=$T_THRESH
-n_bins=$N_BINS
+# location_threshold=$L_THRESH
+# time_threshold=$T_THRESH
+# n_bins=$EVALUATE_N_BINS
 seed=$SEED
 truncate=$TRUNCATE
 ablation=$ABLATION
+eval_data_dir=$EVAL_DATA_DIR
 # 
 # VARIABLES END
 #
@@ -36,4 +34,4 @@ for key in "${!options[@]}"; do
 done
 
 echo "hello"
-python3 evaluation.py --model_dir $model_dir --location_threshold $location_threshold --time_threshold $time_threshold --n_bins $n_bins --seed $seed --truncate $truncate --server $option
+python3 evaluation.py --model_dir $model_dir --eval_data_dir $eval_data_dir --seed $seed --truncate $truncate $option
