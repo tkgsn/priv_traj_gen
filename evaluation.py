@@ -594,9 +594,9 @@ def make_next_location_count(dataset, target_index, order=1):
                     continue
                 if reference[2] != 2:
                     continue
-                if traj[1] not in next_location_counts:
-                    next_location_counts[traj[1]] = [0 for _ in range(dataset.n_locations)]
-                next_location_counts[traj[1]][traj[2]] += 1
+                if traj[0] not in next_location_counts:
+                    next_location_counts[traj[0]] = [0 for _ in range(dataset.n_locations)]
+                next_location_counts[traj[0]][traj[2]] += 1
 
     elif order == 2:
         print(f"compute {target_index} first second order next location count")
