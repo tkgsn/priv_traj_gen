@@ -102,9 +102,9 @@ def run(generator, dataset, args):
             jss = evaluate_next_location_on_test_dataset(dataset.first_next_location_counts, dataset.first_order_test_data_loader, dataset.first_counters, generator, 1)
             results["first_next_location_js"] = jss
 
-        # if args.evaluate_second_next_location and (dataset.seq_len > 2):
-        #     jss = evaluate_next_location_on_test_dataset(dataset.second_next_location_counts, dataset.second_order_test_data_loader, dataset.second_counters, generator, 2)
-        #     results["second_next_location_js"] = jss
+        if args.evaluate_second_next_location and (dataset.seq_len > 2):
+            jss = evaluate_next_location_on_test_dataset(dataset.second_next_location_counts, dataset.first_order_test_data_loader, dataset.first_counters, generator, 2)
+            results["second_next_location_js"] = jss
 
         if args.evaluate_second_order_next_location and (dataset.seq_len > 2):
             print("DEPRECATED: evaluate_second_order_next_location")
@@ -1009,7 +1009,7 @@ def set_args(run_args):
     args.evaluate_second_emp_next = True and (not args.ablation)
     args.evaluate_first_next_location = True and (training_setting["network_type"] in ["hiemrnet", "baseline"])
     args.evaluate_second_next_location = False and (training_setting["network_type"] in ["hiemrnet", "baseline"])
-    args.evaluate_second_order_next_location = False and (training_setting["network_type"] in ["hiemrnet", "baseline"])
+    args.evaluate_second_order_next_location = True and (training_setting["network_type"] in ["hiemrnet", "baseline"])
     args.compensation = False
     args.eval_initial = True
     args.n_test_locations = 30
@@ -1107,7 +1107,7 @@ if __name__ == "__main__":
     # if run_args.server:
         # get(training_data_path, parent=True)
     args = set_args(run_args)
-            
+
     eval_data_path = pathlib.Path(run_args.eval_data_dir) / "training_data.csv"
     eval_route_data_path = pathlib.Path(run_args.eval_data_dir) / "route_training_data.csv"
     dataset = construct_dataset(eval_data_path, eval_route_data_path, 5)
