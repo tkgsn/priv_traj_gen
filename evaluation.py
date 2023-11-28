@@ -1018,7 +1018,7 @@ def set_args(run_args):
     args.batch_size = 100
     args.route_generator = False
     args.time_threshold = 10
-    args.eval_interval = 1
+    args.eval_interval = run_args.eval_interval
     args.test_thresh = run_args.test_thresh
 
     args.dataset = dataset_name
@@ -1047,6 +1047,7 @@ if __name__ == "__main__":
     parser.add_argument('--seed', type=int)
     parser.add_argument('--truncate', type=int)
     parser.add_argument('--test_thresh', type=int)
+    parser.add_argument('--eval_interval', type=int)
 
     # parser.add_argument('--server', action="store_true")
     parser.add_argument('--ablation', action="store_true")
