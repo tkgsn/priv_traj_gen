@@ -1,5 +1,8 @@
 import os
 import concurrent.futures
+import sys
+
+sys.path.append("../")
 from my_utils import get_data_dir
 from data_pre_processing import make_save_name
 # n_binss=[6, 14, 30, 62]
