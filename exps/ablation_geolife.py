@@ -16,8 +16,6 @@ def make_save_name(dataset_name, n_bins, time_threshold, location_threshold, see
         save_name = f"{location_threshold}_{time_threshold}_bin{n_bins}_seed{seed}"
     return save_name
 
-
-
 n_epochs = 100
 
 n_bins = 30

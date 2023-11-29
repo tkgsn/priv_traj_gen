@@ -144,17 +144,17 @@ def make_complessed_dataset(time_trajectories, trajectories, grid, indice=None):
             state_trajectory.append(state)
 
 
-        if None in state_trajectory:
-            print("WARNING: FOUND OUT OF RANGE LOCATION, THE TRAJECTORY IS REMOVED")
-            print(ind, trajectory)
-            print(state_trajectory)
-            continue
+        # if None in state_trajectory:
+        #     print("WARNING: FOUND OUT OF RANGE LOCATION, THE TRAJECTORY IS REMOVED")
+        #     print(ind, trajectory)
+        #     print(state_trajectory)
+        #     continue
 
         state_trajectory, complessed_time_trajectory = compless(state_trajectory, time_trajectory)
 
         if len(state_trajectory) <= 1:
-            print("removed because of length")
-            print(state_trajectory)
+            # print("removed because of length")
+            # print(state_trajectory)
             continue
 
         dataset.append(state_trajectory)
@@ -255,21 +255,22 @@ def run(dataset_name, lat_range, lon_range, n_bins, time_threshold, location_thr
 
             logger.info("make complessed dataset by the grid")
             trajs, times, indice = make_complessed_dataset(time_trajs, trajs, grid)
-            route_dataset, route_times, _ = make_complessed_dataset(route_time_trajs, route_trajs, grid, indice)
+
             with open(training_data_dir / "indice.json", "w") as f:
                 json.dump(indice, f)
             # send(training_data_dir / "indice.json")
 
             times = [[time[0] for time in traj] for traj in times]
-        
-            route_times = [[time[0] for time in traj] for traj in route_times]
-            time_save_path = training_data_dir / f"route_training_data_time.csv"
-            logger.info(f"save route time dataset to {time_save_path}")
-            save(time_save_path, route_times)
 
-            save_path = training_data_dir / f"route_training_data.csv"
-            logger.info(f"save route complessed dataset to {save_path}")
-            save(save_path, route_dataset)
+            # route_dataset, route_times, _ = make_complessed_dataset(route_time_trajs, route_trajs, grid, indice)
+            # route_times = [[time[0] for time in traj] for traj in route_times]
+            # time_save_path = training_data_dir / f"route_training_data_time.csv"
+            # logger.info(f"save route time dataset to {time_save_path}")
+            # save(time_save_path, route_times)
+
+            # save_path = training_data_dir / f"route_training_data.csv"
+            # logger.info(f"save route complessed dataset to {save_path}")
+            # save(save_path, route_dataset)
 
             gps = make_gps_data(training_data_dir, lat_range, lon_range, n_bins)
             make_distance_data(training_data_dir, n_bins, gps, logger)
