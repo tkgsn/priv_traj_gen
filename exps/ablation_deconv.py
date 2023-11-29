@@ -3,8 +3,8 @@ import concurrent.futures
 import sys
 
 sys.path.append("../")
-from my_utils import get_data_dir
-from data_pre_processing import make_save_name
+from my_utils import get_data_dir, make_save_name
+# from data_pre_processing import make_save_name
 # n_binss=[6, 14, 30, 62]
 # dims=[8, 16, 32, 64]
 n_epochs = 100

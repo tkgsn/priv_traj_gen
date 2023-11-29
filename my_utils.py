@@ -549,6 +549,14 @@ def save(save_path, trajectories, option="w"):
             f.write("\n")
     # send(save_path)
 
+def make_save_name(dataset_name, n_bins, time_threshold, location_threshold, seed):
+
+    if dataset_name in ["rotation", "random"]:
+        save_name = f"bin{n_bins}_seed{seed}"
+    else:
+        save_name = f"{time_threshold}_{location_threshold}_bin{n_bins}_seed{seed}"
+    return save_name
+
 
 def compute_num_params(model, logger):
     num_params = 0

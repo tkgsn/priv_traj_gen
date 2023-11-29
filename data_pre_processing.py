@@ -4,7 +4,7 @@ import pathlib
 import argparse
 import pandas as pd
 import numpy as np
-from my_utils import get_datadir, load, save, set_logger, load_latlon_range, send, get, get_original_dataset_name
+from my_utils import get_datadir, load, save, set_logger, load_latlon_range, send, get, get_original_dataset_name, make_save_name
 from grid import Grid
 import tqdm
 from bisect import bisect_left
@@ -214,14 +214,6 @@ def make_db(dataset, lat_range, lon_range, n_bins, truncate, logger):
     
     # send(db_save_dir / "paths.db")
 
-def make_save_name(dataset_name, n_bins, time_threshold, location_threshold, seed):
-
-    if dataset_name == "rotation":
-        save_name = f"bin{n_bins}_seed{seed}"
-    else:
-        save_name = f"{time_threshold}_{location_threshold}_bin{n_bins}_seed{seed}"
-    return save_name
-
 def run(dataset_name, lat_range, lon_range, n_bins, time_threshold, location_threshold, size, seed, truncate, logger):
     """
     training_data is POI_id (aka state) trajectory
@@ -236,15 +228,16 @@ def run(dataset_name, lat_range, lon_range, n_bins, time_threshold, location_thr
 
     if not (training_data_dir / "training_data.csv").exists():
 
-
         if dataset_name == "rotation":
-            training_data_dir = get_datadir() / dataset_name / f"{size}" / f"bin{n_bins}_seed{seed}"
             trajs, times = make_raw_data_rotation(seed, size, n_bins)
+        
+        elif dataset_name == "random":
+            trajs, times = make_raw_data_random(seed, size, n_bins)
 
         else:
-            training_data_dir = get_datadir() / dataset_name / f"{size}" / f"{n_bins}_tr{truncate}"
+            # training_data_dir = get_datadir() / dataset_name / f"{size}" / f"{n_bins}_tr{truncate}"
 
-            training_data_dir.mkdir(exist_ok=True, parents=True)
+            # training_data_dir.mkdir(exist_ok=True, parents=True)
 
             raw_data_path = training_data_dir.parent.parent / f"raw_data.csv"
             logger.info(f"load raw data from {raw_data_path}")
