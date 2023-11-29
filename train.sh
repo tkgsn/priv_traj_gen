@@ -36,7 +36,7 @@ data_dir=$(jq -r '.data_dir' config.json)
 
 
 cuda_number=0
-patience=10
+patience=20
 batch_size=0
 noise_multiplier=1
 clipping_bound=1
