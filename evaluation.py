@@ -1151,7 +1151,7 @@ if __name__ == "__main__":
             logger.info(f"evaluate {model_path}")
             generator.load_state_dict(torch.load(model_path, map_location=device))
         
-        print("??", generator.parameters())
+        print("??", next(iter(generator.parameters())).device)
         
         args.name = model_path.name
         results = run(generator, dataset, args)
