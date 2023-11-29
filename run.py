@@ -438,6 +438,7 @@ if __name__ == "__main__":
     meta_network = pre_training_meta_network(meta_network, dataset, location_to_class, args.transition_type)
 
     generator, loss_model = construct_generator(dataset.n_locations, meta_network, args.network_type, args.location_embedding_dim, args.n_split, len(dataset.label_to_reference), args.hidden_dim, dataset.reference_to_label, logger)
+    args.num_params = compute_num_params(generator, logger)
     generator.to(device)
     optimizer = optim.Adam(generator.parameters(), lr=args.learning_rate)
 
