@@ -110,6 +110,7 @@ class TrajectoryDataset(Dataset):
         
         self.data = data
         self.seq_len = max([len(trajectory) for trajectory in data])
+        self.min_len = min([len(trajectory) for trajectory in data])
         self.time_data = time_data
         self.n_locations = n_locations
         self.n_bins = int(np.sqrt(n_locations)-2)

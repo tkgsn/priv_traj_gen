@@ -102,11 +102,11 @@ def run(generator, dataset, args):
             jss = evaluate_next_location_on_test_dataset(dataset.first_next_location_counts, dataset.first_order_test_data_loader, dataset.first_counters, generator, 1)
             results["first_next_location_js"] = jss
 
-        if args.evaluate_second_next_location and (dataset.seq_len > 2):
+        if args.evaluate_second_next_location and (dataset.min_len > 2):
             jss = evaluate_next_location_on_test_dataset(dataset.second_next_location_counts, dataset.first_order_test_data_loader, dataset.first_counters, generator, 2)
             results["second_next_location_js"] = jss
 
-        if args.evaluate_second_order_next_location and (dataset.seq_len > 2):
+        if args.evaluate_second_order_next_location and (dataset.min_len > 2):
             print("DEPRECATED: evaluate_second_order_next_location")
             jss = evaluate_next_location_on_test_dataset(dataset.second_order_next_location_counts, dataset.second_order_test_data_loader, dataset.second_counters, generator, 2)
             results["second_order_next_location_js"] = jss

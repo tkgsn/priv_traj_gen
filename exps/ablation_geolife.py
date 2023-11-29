@@ -77,4 +77,5 @@ with concurrent.futures.ProcessPoolExecutor(max_workers=4) as executor:
 
     for command in [command_baseline(n_bins, dim), command_pre_baseline(n_bins, dim), command_hiemrnet(n_bins, dim), command_pre_hiemrnet(n_bins, dim)]:
         combined = f"{command[0]}; {command[1]}"
+        print(combined)
         executor.submit(os.system, combined)
