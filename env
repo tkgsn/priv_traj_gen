@@ -8,11 +8,11 @@
 # export DATASET=geolife_test
 
 # preprocess.sh
-# docker run -it -e DATASET=geolife_mm -e SEED=0 -e MAX_SIZE=0 -e N_BINS=30 -e T_THRESH=30 -e L_THRESH=200 -e TRUNCATE=23 kyotohiemrnet.azurecr.io/hiemrnet /bin/bash -c "./preprocess.sh"
+# docker run -it -e DATASET=geolife -e SEED=0 -e MAX_SIZE=0 -e N_BINS=30 -e T_THRESH=30 -e L_THRESH=200 -e TRUNCATE=23 kyotohiemrnet.azurecr.io/hiemrnet /bin/bash -c "./preprocess.sh"
 export DATASET=random
 export MAX_SIZE=10000
 export SEED=0
-export N_BINS=30
+export N_BINS=62
 export L_THRESH=200
 export T_THRESH=30
 export TRUNCATE=0

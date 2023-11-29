@@ -273,7 +273,7 @@ def run(dataset_name, lat_range, lon_range, n_bins, time_threshold, location_thr
 
             gps = make_gps_data(training_data_dir, lat_range, lon_range, n_bins)
             make_distance_data(training_data_dir, n_bins, gps, logger)
-            make_db(dataset_name, lat_range, lon_range, n_bins, truncate, logger)
+            # make_db(dataset_name, lat_range, lon_range, n_bins, truncate, logger)
 
 
         save_path = training_data_dir / f"training_data.csv"
