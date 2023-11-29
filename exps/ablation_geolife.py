@@ -80,9 +80,6 @@ def command_hiemrnet_pre_multitask(n_bins, dim):
 with concurrent.futures.ProcessPoolExecutor(max_workers=4) as executor:
         
     for command in command_baseline(n_bins, dim), command_pre_baseline(n_bins, dim), command_hiemrnet(n_bins, dim), command_hiemrnet_multitask(n_bins, dim), command_pre_hiemrnet(n_bins, dim), command_hiemrnet_pre_multitask(n_bins, dim):
-        user_input = input(f"{command} (y/n): ").strip().lower()
-        if user_input != "y":
-            continue
         combined = f"{command[0]}; {command[1]}"
         print(combined)
         executor.submit(os.system, combined)
