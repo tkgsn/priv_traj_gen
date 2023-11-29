@@ -87,15 +87,15 @@ def command_hiemrnet_pre_multitask_consistent(n_bins, dim):
 # conduct each command in parallel with 4 processes
 with concurrent.futures.ProcessPoolExecutor(max_workers=4) as executor:
         
-    for command in \
+    for command in [\
             command_baseline(n_bins, dim),\
             command_pre_baseline(n_bins, dim),\
             command_hiemrnet(n_bins, dim),\
             command_hiemrnet_multitask(n_bins, dim),\
             command_pre_hiemrnet(n_bins, dim), \
             command_hiemrnet_pre_multitask(n_bins, dim), \
-            command_hiemrnet_pre_multitask_consistent(n_bins, dim)\
-                :
+            command_hiemrnet_pre_multitask_consistent(n_bins, dim),\
+            ]:
         combined = f"{command[0]}; {command[1]}"
         print(combined)
         executor.submit(os.system, combined)
