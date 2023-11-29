@@ -422,7 +422,6 @@ def evaluate_next_location_on_test_dataset(next_location_counts, data_loader, co
             output = torch.exp(generator(input_locations[:, target_index]))
         else:
             device = next(iter(generator.parameters())).device
-            print(device)
             input_locations = mini_batch["input"].to(device)
             references = [tuple(v) for v in mini_batch["reference"]]
             input_times = mini_batch["time"].to(device)
