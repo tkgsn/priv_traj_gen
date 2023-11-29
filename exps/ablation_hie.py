@@ -1,11 +1,9 @@
 import os
 import concurrent.futures
 
-# n_binss=[6, 14, 30, 62]
-# dims=[8, 16, 32, 64]
-n_binss=[6]
-dims=[8]
-n_epochs = 1
+n_binss=[6, 14, 30, 62]
+dims=[8, 16, 32, 64]
+n_epochs = 100
 
 def command_baseline(n_bins, dim):
     return f'docker run -it --gpus all -v /mnt/data:/data -e TRAINING_DATA_DIR=/data/rotation/10000/bin{n_bins}_seed0 -e SEED=0 -e TRAINING_SEED=0 -e META_N_ITER=0 -e SEED=0 -e EPOCH={n_epochs} -e P_BATCH=100 -e DP=True -e MULTI_TASK=False -e CONSISTENT=False -e MULTILAYER=False -e HIDDEN_DIM={dim} -e LOC_DIM={dim} -e MEM_DIM={dim} -e MEM_HIDDEN_DIM={dim} -e COEF_TIME=1 -e NETWORK_TYPE=baseline kyotohiemrnet.azurecr.io/hiemrnet_cu117 /bin/bash -c "./train.sh"' \
@@ -30,5 +28,5 @@ with concurrent.futures.ProcessPoolExecutor(max_workers=4) as executor:
     for n_bins in n_binss:
         for dim in dims:
             for command in [command_baseline(n_bins, dim), command_pre_baseline(n_bins, dim), command_hiemrnet(n_bins, dim), command_pre_hiemrnet(n_bins, dim)]:
-                executor.submit(os.system, command[0])
-                executor.submit(os.system, command[1])
+                combined = f"{command[0]} && {command[1]}"
+                executor.submit(os.system, combined)

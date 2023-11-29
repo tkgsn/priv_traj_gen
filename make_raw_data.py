@@ -268,8 +268,8 @@ def make_raw_data_test(seed, max_size, mode, is_variable, n_bins):
     
 
 def make_raw_data_rotation(seed, max_size, n_bins):
-    data_dir = get_datadir() / "rotation" / str(max_size) / f"bin{n_bins}_seed{seed}"
-    save_path = data_dir / "training_data.csv"
+    # data_dir = get_datadir() / "rotation" / str(max_size) / f"bin{n_bins}_seed{seed}"
+    # save_path = data_dir / "training_data.csv"
 
     # if save_path.exists():
         # print("already exists")
@@ -302,29 +302,29 @@ def make_raw_data_rotation(seed, max_size, n_bins):
         trajs.append([start_location, mediate_location, end_location])
 
 
-    data_dir.mkdir(parents=True, exist_ok=True)
+    # data_dir.mkdir(parents=True, exist_ok=True)
     
-    print("save to", save_path)
-    save(save_path, trajs)
+    # print("save to", save_path)
+    # save(save_path, trajs)
 
     times = []
-    time_save_path = data_dir / "training_data_time.csv"
+    # time_save_path = data_dir / "training_data_time.csv"
     times = [[0,1,2]]*len(trajs)
-    print("save to", time_save_path)
-    save(time_save_path, times)
+    # print("save to", time_save_path)
+    # save(time_save_path, times)
 
     return trajs, times
 
 
 def make_raw_data_random(seed, max_size, n_bins):
-    data_dir = get_datadir() / "random" / str(max_size) / f"bin{n_bins}_seed{seed}"
-    save_path = data_dir / "training_data.csv"
+    # data_dir = get_datadir() / "random" / str(max_size) / f"bin{n_bins}_seed{seed}"
+    # save_path = data_dir / "training_data.csv"
 
-    if save_path.exists():
-        print("already exists")
-        return
-    else:
-        save_path.parent.mkdir(parents=True, exist_ok=True)
+    # if save_path.exists():
+        # print("already exists")
+        # return
+    # else:
+        # save_path.parent.mkdir(parents=True, exist_ok=True)
     
     n_candidate_locations = 1
     np.random.seed(seed)
@@ -339,14 +339,15 @@ def make_raw_data_random(seed, max_size, n_bins):
         end_location = np.random.choice(candidates_for_the_end_locations)
         trajs.append([start_location, end_location])
 
-    print("save to", save_path)
-    save(save_path, trajs)
+    # print("save to", save_path)
+    # save(save_path, trajs)
 
     times = []
-    time_save_path = data_dir / "training_data_time.csv"
+    # time_save_path = data_dir / "training_data_time.csv"
     times = [[0,1]]*len(trajs)
-    print("save to", time_save_path)
-    save(time_save_path, times)
+    # print("save to", time_save_path)
+    # save(time_save_path, times)
+    return trajs, times
 
 def make_raw_data_geolife(test=False):
     # the format of plt_file: records follow after the 6 raws for auxiliary information
@@ -358,7 +359,7 @@ def make_raw_data_geolife(test=False):
     else:
         data_name = "geolife"
     # define the directory path
-    dir_path = os.path.join(f"/data/{data_name}/Data/", "{:03}/Trajectory/")
+    dir_path = os.path.join(f"temp/{data_name}/Data/", "{:03}/Trajectory/")
     plt_files = []
 
     # loop through all the directories and files
@@ -708,7 +709,7 @@ def convert_mr_to_training(dataset):
     save_dir = get_datadir() / dataset / "raw"
 
     # send mr to the server for backup
-    send(os.path.join(data_dir, "mr.txt"))
+    # send(os.path.join(data_dir, "mr.txt"))
     # format of training: edge_id edge_id ... edge_id 0
 
     # load times
@@ -785,8 +786,8 @@ def convert_mr_to_training(dataset):
         for times in training_data_time:
             f.write(" ".join([str(time) for time in times])+"\n")
 
-    send(os.path.join(save_dir, "training_data.csv"))
-    send(os.path.join(save_dir, "training_data_time.csv"))
+    # send(os.path.join(save_dir, "training_data.csv"))
+    # send(os.path.join(save_dir, "training_data_time.csv"))
 
 
 def run(dataset):
