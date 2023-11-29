@@ -665,14 +665,24 @@ def compute_auxiliary_information(dataset, save_dir, logger):
     # find locations whose count is larger than test_thresh and sort them
     test_thresh = args.test_thresh
     test_locations = {location:count for location, count in dataset.first_location_counts.items() if count > test_thresh}
+    max_test_loc = 20
+    if len(test_locations) > max_test_loc:
+        logger.info(f"WARNING number of test locations is larger than {max_test_loc}")
+        # find the location that has the largest count until the number of test locations become 20
+        test_locations = {k: v for k, v in sorted(dataset.first_location_counts.items(), key=lambda item: item[1], reverse=True)[:max_test_loc]}
     if len(test_locations) == 0:
         logger.info("WARNING no test location is found")
-        # find the location that has the largest count
+        # find the location that has the largest count until the number of test locations become 20
         test_locations = {k: v for k, v in sorted(dataset.first_location_counts.items(), key=lambda item: item[1], reverse=True)[:1]}
     logger.info(f"number of test locations: {len(test_locations)}; {test_locations}")
 
     test_thresh_second = 50
     second_order_test_locations = {locations:count for locations, count in dataset.second_order_first_locations_counts.items() if count > test_thresh_second}
+    max_test_loc = 20
+    if len(second_order_test_locations) > max_test_loc:
+        logger.info(f"WARNING number of 2nd order test locations is larger than {max_test_loc}")
+        # find the location that has the largest count until the number of test locations become 20
+        second_order_test_locations = {k: v for k, v in sorted(dataset.second_order_first_locations_counts.items(), key=lambda item: item[1], reverse=True)[:max_test_loc]}
     if len(second_order_test_locations) == 0:
         logger.info("WARNING no 2nd order test location is found")
         # find the location that has the largest count
