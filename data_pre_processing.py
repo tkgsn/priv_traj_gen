@@ -65,7 +65,7 @@ def process_trajectory(trajectory, location_threshold, time_threshold, startend)
             target_location = (target_location[1], target_location[2])
             distance = geodesic(start_location, target_location).meters
             if distance > location_threshold:
-                if time - start_time >= time_threshold:
+                if time - start_time >= time_threshold*60:
                     # print("stay", start_time, time, start_location)
                     stay_trajectory.append(start_location)
                     time_trajectory.append((start_time, time))
