@@ -553,6 +553,8 @@ def make_save_name(dataset_name, n_bins, time_threshold, location_threshold, see
 
     if dataset_name in ["rotation", "random"]:
         save_name = f"bin{n_bins}_seed{seed}"
+    elif dataset_name == "peopleflow_test":
+        save_name = f"{location_threshold}_{int(time_threshold*60)}_bin{n_bins}_seed{seed}"
     else:
         save_name = f"{location_threshold}_{time_threshold}_bin{n_bins}_seed{seed}"
     return save_name

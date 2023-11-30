@@ -313,4 +313,7 @@ if __name__ == "__main__":
 
     logger = set_logger(__name__, "./log.log")
 
+    if args.dataset in ["peopleflow", "peopleflow_test"]:
+        args.time_threshold = args.time_threshold / 60
+
     run(args.dataset, lat_range, lon_range, args.n_bins, args.time_threshold, args.location_threshold, args.max_size, args.seed, args.truncate, logger)
