@@ -635,7 +635,7 @@ class FullLinearQuadTreeNetwork(LinearQuadTreeNetwork):
         self.hidden_to_query_ = nn.ModuleList([nn.Linear(hidden_dim, self.memory_dim) for _ in range(self.tree.max_depth)])
         # self.hidden_to_query_ = nn.ModuleList([nn.Sequential(nn.Linear(hidden_dim, self.memory_dim), nn.Linear(self.memory_dim, self.memory_dim)) for _ in range(self.tree.max_depth)])
 
-        self.location_linears = nn.ModuleList([nn.Linear(self.memory_dim, 4*self.memory_dim) for _ in range(self.tree.max_depth)])
+        # self.location_linears = nn.ModuleList([nn.Linear(self.memory_dim, 4*self.memory_dim) for _ in range(self.tree.max_depth)])
 
     def compute_scores(self, querys):
         '''
@@ -750,7 +750,8 @@ class FullLinearQuadTreeNetwork(LinearQuadTreeNetwork):
         device = self.root_value.weight.device
         states = []
         ith_state = self.root_value(3*torch.ones(*shape[:-1], device=device).long())
-        for i, linear in enumerate(self.location_linears):
+        # for i, linear in enumerate(self.location_linears):
+        for i, linear in enumerate(self.linears):
             # residual = root_state.repeat_interleave(4**(i+1), dim=-2).view(*shape[:-1], -1, self.memory_dim)
             # residual = ith_state.repeat(*[1]*len(shape[:-1]), 4, 1).view(*shape[:-1], -1, self.memory_dim)
             residual = ith_state.repeat_interleave(4, dim=-2).view(*shape[:-1], -1, self.memory_dim)
