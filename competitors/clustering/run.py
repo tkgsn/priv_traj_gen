@@ -92,7 +92,7 @@ if __name__ == "__main__":
         print("save generator to", save_dir / f"generator.pickle")
 
     with open(save_dir.parent / "params.json", "w") as f:
-        args.training_datadir = str(training_data_dir)
+        args.training_data_dir = str(training_data_dir)
         json.dump(vars(args), f)
         print("save params to", save_dir.parent / "params.json")
     # args = set_args()
