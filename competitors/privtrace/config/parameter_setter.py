@@ -43,14 +43,15 @@ class ParSetter:
         if dataset_file_name is not None:
             args['dataset_file_name'] = dataset_file_name
 
+        if args["fixed_divide_parameter"] != 0:
+            args['level2_max_divide'] = (args['n_bins']+2) / args['fixed_divide_parameter']
+
         print(f"using the range of", args["dataset_config_path"])
         with open(args["dataset_config_path"], "r") as f:
             params = json.load(f)["latlon"][get_original_dataset_name(args["dataset"])]
         args['lat_range'] = params['lat_range']
         args['lon_range'] = params['lon_range']
 
-        if params["fixed_divide_parameter"] != 0:
-            args['level2_max_divide'] = (params['n_bins']+2) / params['fixed_divide_parameter']
         # args['dataset'] = args["dataset"]
         # args['data_name'] = args["data_name"]
         return args
