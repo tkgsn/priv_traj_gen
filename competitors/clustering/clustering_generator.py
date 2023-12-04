@@ -11,6 +11,7 @@ class ClusteringGenerator():
     def __init__(self, distribution, id_to_traj, state_to_centroid_id):
         self.distribution = distribution
         self.id_to_traj = id_to_traj
+        self.state_to_centroid_id = state_to_centroid_id
         self.centroid_id_to_states = self.make_centroid_id_to_states(state_to_centroid_id)
     
     def make_centroid_id_to_states(self, state_to_centroid_id):
@@ -34,6 +35,20 @@ class ClusteringGenerator():
         ids = []
         for id, traj in self.id_to_traj.items():
             if len(traj) == seq_len:
+                ids.append(id)
+        
+        return ids
+
+    def reference_to_ids(self, reference):
+        '''
+        return the ids of the trajectories with the same reference format
+        '''
+        start_state = reference[0]
+        start_centroid_id = self.state_to_centroid_id[start_state]
+        seq_len = len(reference)
+        ids = []
+        for id, traj in self.id_to_traj.items():
+            if len(traj) == seq_len and traj[0] == start_centroid_id:
                 ids.append(id)
         
         return ids
@@ -84,7 +99,8 @@ class ClusteringGenerator():
         sampled = []
         for reference in references:
             seq_len = len(reference)
-            ids = self.seq_len_to_ids(seq_len)
+            # ids = self.seq_len_to_ids(seq_len)
+            ids = self.reference_to_ids(reference)
             sampled_id = self.sample_from_ids(ids)
             traj = self.post_process(self.id_to_traj[sampled_id], reference)
             sampled.append(traj)
