@@ -63,8 +63,9 @@ if __name__ == "__main__":
     print("load route data from", route_data_dir)
     training_data = load(training_data_dir / "training_data.csv")
     time_data = load(training_data_dir / "training_data_time.csv")
-    route_data = load(training_data_dir / "route_training_data.csv")
-    gps = pd.read_csv(training_data_dir / "gps.csv", header=None).values
+    # route_data = load(training_data_dir / "route_training_data.csv")
+    route_data = None
+    # gps = pd.read_csv(training_data_dir / "gps.csv", header=None).values
 
     print("load from", save_dir / f"model_{epsilon}" / f"privtrace_generator.pickle")
     with open(save_dir / f"model_{epsilon}" / f"privtrace_generator.pickle", "rb") as f:

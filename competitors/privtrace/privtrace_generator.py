@@ -133,7 +133,7 @@ if __name__ == "__main__":
     generator = privtrace_generator.PrivTraceGenerator(pc, mo1, privtrace_id_to_states)
 
     # save to f"/data/results/{dataset}/{data_name}/{training_data_name}"
-    save_path = pathlib.Path("/data/results") / par["dataset"] / par["data_name"] / par["training_data_name"] / par["save_name"] / f"model_{par['total_epsilon']}"
+    save_path = pathlib.Path("/data") / par["dataset"] / par["data_name"] / par["training_data_name"] / par["save_name"] / f"model_{par['total_epsilon']}"
     save_path.mkdir(parents=True, exist_ok=True)
     print("save to", save_path / f"privtrace_generator.pickle")
     with open(save_path / f"privtrace_generator.pickle", "wb") as f:
@@ -144,4 +144,5 @@ if __name__ == "__main__":
 
     with open(save_path.parent / f"params.json", "w") as f:
         par["network_type"] = "privtrace"
+        par["training_data_dir"] = str(save_path.parent.parent)
         json.dump(par, f)

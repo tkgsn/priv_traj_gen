@@ -62,7 +62,7 @@ if __name__ == "__main__":
     # trajs = [[point[1:] for point in traj] for traj in raw_trajs]
 
     # write data to the file
-    save_path = pathlib.Path(f"/data/{args.dataset}/{args.data_name}/{args.training_data_name}//privtrace_training_data.dat")
+    save_path = pathlib.Path(f"/data/{args.dataset}/{args.data_name}/{args.training_data_name}/privtrace_training_data.dat")
     save_path.parent.mkdir(parents=True, exist_ok=True)
 
     print("writings to", save_path)
