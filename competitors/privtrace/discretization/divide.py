@@ -50,7 +50,7 @@ class Divide:
         initial_parameter = 20000 / 13
         subdivide_parameter1_ = int(np.ceil(np.sqrt(noisy_density / initial_parameter)))
         # for fair comparison
-        subdivide_parameter1 = min(subdivide_parameter1, int(self.cc.level2_max_divide))
+        subdivide_parameter1_ = min(subdivide_parameter1_, int(self.cc.level2_max_divide))
         subdivide_parameter1 = 2**np.floor(np.log2(subdivide_parameter1_))
         print("FOR FAIR COMPARISON, THE VALUE IS ROUNDED TO POWER OF 2,_gen", subdivide_parameter1_, "->", subdivide_parameter1)
         return subdivide_parameter1
