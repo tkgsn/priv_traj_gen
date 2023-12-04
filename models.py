@@ -29,6 +29,7 @@ class BaseReferenceGenerator(nn.Module):
         output = output[-1] if type(output) == list else output
         assert len(reference) == output.shape[0], "the length of the reference should be {}, but it is {}".format(output.shape[0], len(reference))
 
+        # remove reference complementation for fair comparison
         if True:
             # test!
             pointer = len(sampled)

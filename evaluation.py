@@ -1124,6 +1124,7 @@ if __name__ == "__main__":
     dataset = construct_dataset(eval_data_path, eval_route_data_path, 5)
     compute_auxiliary_information(dataset, model_dir, logger)
 
+    print(training_data_dir)
     training_dataset = construct_dataset(training_data_dir / "training_data.csv", None, 5)
     args.references = training_dataset.references
     args.from_bin = training_dataset.n_bins

@@ -312,6 +312,7 @@ def construct_generator(n_locations, meta_network, network_type, location_embedd
 
 def construct_dataset(training_data_path, route_data_path, n_time_split):
 
+    print(training_data_path.parent)
     # load dataset config    
     with open(training_data_path.parent / "params.json", "r") as f:
         param = json.load(f)
