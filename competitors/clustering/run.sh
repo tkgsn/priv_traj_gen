@@ -1,5 +1,6 @@
 #!/bin/bash
 
+pip3 install geopy
 
 data_size=$MAX_SIZE
 dataset=$DATASET
