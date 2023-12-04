@@ -14,7 +14,6 @@ seed = 0
 # epsilons = [0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0, 2.2, 2.4, 2.6, 2.8, 3.0]
 epsilons = [0]
 ks = [10]
-fixed_divide_parameters = [8, 16, 32]
 # epsilons = [2.0]
 
 

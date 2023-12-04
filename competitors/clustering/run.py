@@ -54,7 +54,7 @@ if __name__ == "__main__":
     args.network_type = "clustering"
 
     training_data_dir = pathlib.Path(f"/data/{args.dataset}/{args.data_name}/{args.training_data_name}")
-    save_dir = pathlib.Path(f"/data/results/{args.dataset}/{args.data_name}/{args.training_data_name}/clustering_{args.k}")
+    save_dir = pathlib.Path(f"/data/{args.dataset}/{args.data_name}/{args.training_data_name}/clustering_{args.k}")
     k = args.k
     epsilon = args.epsilon
 
