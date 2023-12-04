@@ -27,7 +27,7 @@ def make_save_name(dataset_name, n_bins, time_threshold, location_threshold, see
 data_dir = orig_data_dir / dataset / str(max_size) / make_save_name(dataset, n_bins, time_threshold, location_threshold, seed)
 
 def command(epsilon, divide_parameter):
-    return f'docker run --rm -v /mnt/data:/data -e TEST_THRESH=30 -e ABLATION=False -e SEED=0 -e TRUNCATE=0 -e MODEL_DIR={data_dir / f"privtrace" / f"model_{epsilon}"} -e EVAL_INTERVAL=10 -e EVAL_DATA_DIR={data_dir} -e FIXED_DIVIDE_PARAMETER={divide_parameter} kyotohiemrnet.azurecr.io/hiemrnet_cu117 /bin/bash -c "cd ./competitors/privtrace && ./run.sh"' ,\
+    return f'docker run --rm -v /mnt/data:/data -e DATASET={dataset} -e MAX_SIZE={max_size} -e TOTAL_EPSILON={epsilon} -e FIXED_DIVIDE_PARAMETER={divide_parameter} kyotohiemrnet.azurecr.io/hiemrnet_cu117 /bin/bash -c "cd ./competitors/privtrace && ./run.sh"' ,\
             f'docker run --rm -v /mnt/data:/data -e TEST_THRESH=30 -e ABLATION=False -e SEED=0 -e TRUNCATE=0 -e MODEL_DIR={data_dir / f"privtrace" / f"model_{epsilon}"} -e EVAL_INTERVAL=10 -e EVAL_DATA_DIR={data_dir} kyotohiemrnet.azurecr.io/hiemrnet_cu117 /bin/bash -c "./evaluate.sh"'
 
 with concurrent.futures.ProcessPoolExecutor(max_workers=4) as executor:
