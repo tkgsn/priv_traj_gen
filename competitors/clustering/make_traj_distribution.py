@@ -31,6 +31,7 @@ def run(trajs, epsilon):
         counts[i] = traj_count[id_to_traj[i]]
 
     # add noise
+    print(epsilon)
     noisy_traj_count = add_noise(counts, 1, epsilon)
     noisy_traj_distribution = noise_normalize(noisy_traj_count)
 

@@ -14,8 +14,6 @@
 
 
 # cd ../priv_traj_gen
-
-pip3 install geopy
 # dataset=geolife_mm
 # max_size=0
 # data_name=${max_size}
