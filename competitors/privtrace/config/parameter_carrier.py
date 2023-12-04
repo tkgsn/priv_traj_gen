@@ -13,6 +13,8 @@ class ParameterCarrier:
         self.dataset = args['dataset']
         self.data_name = args['data_name']
         self.training_data_name = args['training_data_name']
+        self.level2_max_divide = args['level2_max_divide']
+        self.n_bins = args['n_bins']
 
 
 
