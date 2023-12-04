@@ -25,9 +25,6 @@
 # # remove MTNet_Code
 # rm -rf MTNet_Code
 
-pip3 install PyYaml
-pip3 install geopandas
-
 #
 # VARIABLES
 #

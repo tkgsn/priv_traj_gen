@@ -54,18 +54,19 @@ if __name__ == "__main__":
     args.network_type = "clustering"
 
     training_data_dir = pathlib.Path(f"/data/{args.dataset}/{args.data_name}/{args.training_data_name}")
-    save_dir = pathlib.Path(f"/data/results/{args.dataset}/{args.data_name}/{args.training_data_name}/clustering")
+    save_dir = pathlib.Path(f"/data/results/{args.dataset}/{args.data_name}/{args.training_data_name}/clustering_{args.k}")
     k = args.k
     epsilon = args.epsilon
 
-    save_dir = save_dir / "model_{}_{}".format(epsilon, k)
+    save_dir = save_dir / "model_{}".format(epsilon)
     save_dir.mkdir(parents=True, exist_ok=True)
     (save_dir / "imgs").mkdir(parents=True, exist_ok=True)
 
     print("load data from", training_data_dir)
     training_data = load(training_data_dir / "training_data.csv")
     time_data = load(training_data_dir / "training_data_time.csv")
-    route_data = load(training_data_dir / "route_training_data.csv")
+    # route_data = load(training_data_dir / "route_training_data.csv")
+    route_data = None
     gps = pd.read_csv(training_data_dir / "gps.csv", header=None).values
 
     print("clustering...")
