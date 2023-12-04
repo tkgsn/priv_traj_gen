@@ -17,6 +17,7 @@
 
 pip3 install cvxpy
 pip3 install geopy
+pip3 install shapely
 
 # dataset=geolife_mm
 # max_size=0
