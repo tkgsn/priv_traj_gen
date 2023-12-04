@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # python3 main.py --total_epsilon 1
 # python3 main.py --total_epsilon 5
 # python3 main.py --total_epsilon 10
@@ -10,8 +12,6 @@
 # python3 main.py --total_epsilon 5 --fixed_divide_parameter 20 --dataset taxi --data_name taxi_100000 --training_data_name privtrace --save_name privtrace_epsilon5
 # python3 main.py --total_epsilon 0.15 --fixed_divide_parameter 20 --dataset taxi --data_name taxi_100000 --training_data_name privtrace --save_name privtrace_epsilon0.15
 
-
-#!/bin/bash
 
 # cd ../priv_traj_gen
 

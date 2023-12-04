@@ -35,9 +35,11 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     path = pathlib.Path(f"/data/{args.dataset}/{args.data_name}/{args.training_data_name}")
-    # if path.exists():
-    #     print(f"file {path} already exists")
-    #     exit(0)
+    save_path = pathlib.Path(f"/data/{args.dataset}/{args.data_name}/{args.training_data_name}/privtrace_training_data.dat")
+    save_path.parent.mkdir(parents=True, exist_ok=True)
+    if save_path.exists():
+        print(f"file {save_path} already exists")
+        exit(0)
 
     with open(path / "params.json", "r") as f:
         params = json.load(f)
@@ -62,9 +64,6 @@ if __name__ == "__main__":
     # trajs = [[point[1:] for point in traj] for traj in raw_trajs]
 
     # write data to the file
-    save_path = pathlib.Path(f"/data/{args.dataset}/{args.data_name}/{args.training_data_name}/privtrace_training_data.dat")
-    save_path.parent.mkdir(parents=True, exist_ok=True)
-
     print("writings to", save_path)
 
     with open(save_path, "w") as f:
