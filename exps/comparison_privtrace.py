@@ -12,8 +12,8 @@ time_threshold = 30
 location_threshold = 200
 seed = 0
 
-# epsilons = [0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0]
-epsilons = [2.0]
+epsilons = [0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0]
+# epsilons = [2.0]
 
 def make_save_name(dataset_name, n_bins, time_threshold, location_threshold, seed):
 
