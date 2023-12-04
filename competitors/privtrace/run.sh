@@ -23,6 +23,7 @@ pip3 install cvxpy
 # total_epsilon=0
 dataset=$DATASET
 max_size=$MAX_SIZE
+fixed_divide_parameter=$FIXED_DIVIDE_PARAMETER
 total_epsilon=$TOTAL_EPSILON
 
 
@@ -32,7 +33,13 @@ location_threshold=200
 time_threshold=30
 n_bins=30
 seed_for_dataset=0
-training_data_name=${location_threshold}_${time_threshold}_bin${n_bins}_seed${seed_for_dataset}
+
+if [ $dataset = "random" ]
+then
+    training_data_name=bin${n_bins}_seed${seed_for_dataset}
+else
+    training_data_name=${location_threshold}_${time_threshold}_bin${n_bins}_seed${seed_for_dataset}
+fi
 
 # python3 make_raw_data.py --original_data_name $dataset --max_size $max_size --seed $seed_for_dataset --save_name $data_name --n_bins $n_bins
 # python3 data_pre_processing.py --latlon_config  $latlon_config --dataset $dataset --data_name $data_name --location_threshold $location_threshold --time_threshold $time_threshold --save_name $training_data_name --n_bins $n_bins $option --seed $seed_for_dataset
@@ -48,12 +55,11 @@ training_data_name=${location_threshold}_${time_threshold}_bin${n_bins}_seed${se
 save_name=privtrace
 # save_name=
 dataset_config_path=../../config.json
-# python3 make_training_data.py --dataset $dataset --data_name $data_name --training_data_name $training_data_name --dataset_config $dataset_config_path --dataset_seed $seed_for_dataset
+python3 make_training_data.py --dataset $dataset --data_name $data_name --training_data_name $training_data_name --dataset_config $dataset_config_path --dataset_seed $seed_for_dataset
 # n_bins=30
-python3 privtrace_generator.py --dataset $dataset --data_name $data_name --training_data_name $training_data_name --save_name $save_name --dataset_config_path $dataset_config_path --n_bins $n_bins --total_epsilon $total_epsilon
+python3 privtrace_generator.py --dataset $dataset --data_name $data_name --training_data_name $training_data_name --save_name $save_name --dataset_config_path $dataset_config_path --n_bins $n_bins --total_epsilon $total_epsilon --fixed_divide_parameter $fixed_divide_parameter
 
-evaluate_stay_traj_dir=/data/$dataset/$data_name/$training_data_name
-evaluate_route_traj_dir=/data/$dataset/$data_name/$route_data_name
-save_dir=/data/results/$dataset/$data_name/$training_data_name/$save_name
-
-python3 evaluate.py $evaluate_stay_traj_dir $evaluate_route_traj_dir $save_dir $total_epsilon
+# evaluate_stay_traj_dir=/data/$dataset/$data_name/$training_data_name
+# evaluate_route_traj_dir=/data/$dataset/$data_name/$route_data_name
+# save_dir=/data/$dataset/$data_name/$training_data_name/$save_name
+# python3 evaluate.py $evaluate_stay_traj_dir $evaluate_route_traj_dir $save_dir $total_epsilon
