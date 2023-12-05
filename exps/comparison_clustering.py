@@ -36,6 +36,6 @@ with concurrent.futures.ProcessPoolExecutor(max_workers=4) as executor:
     for k in ks:
         for epsilon in epsilons:
             for seed in seeds:
-                command1, command2 = command(epsilon, k)
+                command1, command2 = command(epsilon, k, seed)
                 combined = f"{command1}; {command2}"
                 executor.submit(os.system, combined)
