@@ -76,7 +76,7 @@ seeds = range(10)
 
 # deconv + pre-trainig + multi task + consistent
 def command_hiemrnet_pre_multitask_consistent(n_bins, dim, seed):
-    save_name = make_save_name(dataset, n_bins, time_threshold, location_threshold, seed)
+    save_name = make_save_name(dataset, n_bins, time_threshold, location_threshold, 0)
     data_dir = orig_data_dir / dataset / str(max_size) / save_name
     multi_task = "True"
     meta_n_iter = 10000
