@@ -22,6 +22,7 @@ dataset=$DATASET
 max_size=$MAX_SIZE
 fixed_divide_parameter=$FIXED_DIVIDE_PARAMETER
 total_epsilon=$TOTAL_EPSILON
+seed=$SEED
 
 
 
@@ -49,7 +50,7 @@ fi
 
 # cd ../privtrace
 
-save_name=privtrace_${fixed_divide_parameter}
+save_name=privtrace_${fixed_divide_parameter}_${seed}
 # save_name=
 dataset_config_path=../../config.json
 python3 make_training_data.py --dataset $dataset --data_name $data_name --training_data_name $training_data_name --dataset_config $dataset_config_path --dataset_seed $seed_for_dataset
