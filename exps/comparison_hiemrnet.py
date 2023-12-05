@@ -3,7 +3,7 @@ import concurrent.futures
 import pathlib
 
 import sys
-sys.path.append("../../")
+sys.path.append("../")
 
 from name_config import make_model_name, make_save_name
 # from my_utils import get_data_dir
