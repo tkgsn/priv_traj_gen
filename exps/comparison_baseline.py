@@ -19,7 +19,7 @@ n_bins = 30
 dims = [64]
 
 dataset = "peopleflow"
-max_size = 0
+max_size = 20000
 
 time_threshold = 30 / 60
 location_threshold = 200
@@ -83,7 +83,7 @@ def command_baseline(n_bins, dim, seed):
 
 
 # conduct each command in parallel
-with concurrent.futures.ProcessPoolExecutor(max_workers=1) as executor:
+with concurrent.futures.ProcessPoolExecutor(max_workers=4) as executor:
         
     for dim in dims:
         for seed in seeds:
@@ -93,7 +93,7 @@ with concurrent.futures.ProcessPoolExecutor(max_workers=1) as executor:
             executor.submit(os.system, combined)
 
 
-with concurrent.futures.ProcessPoolExecutor(max_workers=3) as executor:
+with concurrent.futures.ProcessPoolExecutor(max_workers=4) as executor:
         
     for dim in dims:
         for seed in seeds:
