@@ -20,7 +20,6 @@ dims = [64]
 
 dataset = "peopleflow"
 max_size = 20000
-
 time_threshold = 30 / 60
 location_threshold = 200
 seeds = range(10)
