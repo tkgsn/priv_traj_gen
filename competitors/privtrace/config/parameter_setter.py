@@ -30,6 +30,7 @@ class ParSetter:
         parser.add_argument('--save_name', type=str)
         # this is for our evaluation <- Shun
         parser.add_argument('--n_bins', type=int, default=30)
+        parser.add_argument('--seed', type=int)
         args = vars(parser.parse_args())
 
         if epsilon is not False:

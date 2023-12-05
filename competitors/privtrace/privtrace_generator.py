@@ -115,6 +115,9 @@ if __name__ == "__main__":
     par = ParSetter().set_up_args()
     pc = ParameterCarrier(par)
 
+    # set seed
+    np.random.seed(par["seed"])
+
     data_preparer = DataPreparer(par)
     trajectory_set = data_preparer.get_trajectory_set(pc)
 
