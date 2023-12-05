@@ -10,6 +10,7 @@ import make_traj_distribution
 import matplotlib.pyplot as plt
 import pickle
 import argparse
+import numpy as np
 
 sys.path.append("../../")
 from my_utils import load
@@ -49,12 +50,13 @@ if __name__ == "__main__":
     parser.add_argument('--data_name', type=str)
     parser.add_argument('--training_data_name', type=str)
     parser.add_argument('--k', type=int)
+    parser.add_argument('--seed', type=int)
     parser.add_argument('--epsilon', type=float)
     args = parser.parse_args()
     args.network_type = "clustering"
 
     training_data_dir = pathlib.Path(f"/data/{args.dataset}/{args.data_name}/{args.training_data_name}")
-    save_dir = pathlib.Path(f"/data/{args.dataset}/{args.data_name}/{args.training_data_name}/clustering_{args.k}")
+    save_dir = pathlib.Path(f"/data/{args.dataset}/{args.data_name}/{args.training_data_name}/clustering_{args.k}_{args.seed}")
     k = args.k
     epsilon = args.epsilon
 
@@ -62,6 +64,9 @@ if __name__ == "__main__":
     save_dir.mkdir(parents=True, exist_ok=True)
     (save_dir / "imgs").mkdir(parents=True, exist_ok=True)
 
+
+    # set seed
+    np.random.seed(args.seed)
     print("load data from", training_data_dir)
     training_data = load(training_data_dir / "training_data.csv")
     time_data = load(training_data_dir / "training_data_time.csv")

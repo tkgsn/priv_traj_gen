@@ -5,6 +5,7 @@ dataset=$DATASET
 n_bins=$N_BINS
 epsilon=$EPSILON
 k=$K
+seed=$SEED
 # data_size=0
 # dataset=geolife_mm
 # n_bins=30
@@ -22,5 +23,5 @@ training_data_name=200_30_bin${n_bins}_seed0
 # iterate over k and epsilon
 # for k in ${ks[@]}
 # do
-python3 run.py --dataset $dataset --data_name $data_size --training_data_name $training_data_name --k $k --epsilon $epsilon
+python3 run.py --dataset $dataset --data_name $data_size --training_data_name $training_data_name --k $k --epsilon $epsilon --seed $SEED
 # done
