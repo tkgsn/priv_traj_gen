@@ -1,29 +1,30 @@
 import os
 import concurrent.futures
 import pathlib
+import sys
+sys.path.append("../")
+
+from name_config import make_model_name, make_save_name
+
 
 orig_data_dir = pathlib.Path("/data")
 
-dataset = "geolife"
-n_bins = 30
-max_size = 0
+# dataset = "geolife"
+# max_size = 0
+# time_threshold = 30
 
-time_threshold = 30
+dataset = "peopleflow"
+max_size = 20000
+time_threshold = 30 / 60
+
+n_bins = 30
 location_threshold = 200
 seed = 0
 epsilons = [0.01, 0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0, 2.2, 2.4, 2.6, 2.8, 3.0]
 # epsilons = [0.0]
-ks = [300]
+ks = [100, 300]
 # epsilons = [2.0]
 seeds = range(10)
-
-def make_save_name(dataset_name, n_bins, time_threshold, location_threshold, seed):
-
-    if dataset_name in ["rotation", "random"]:
-        save_name = f"bin{n_bins}_seed{seed}"
-    else:
-        save_name = f"{location_threshold}_{time_threshold}_bin{n_bins}_seed{seed}"
-    return save_name
 
 
 data_dir = orig_data_dir / dataset / str(max_size) / make_save_name(dataset, n_bins, time_threshold, location_threshold, seed)
