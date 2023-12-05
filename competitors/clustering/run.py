@@ -73,18 +73,18 @@ if __name__ == "__main__":
     centroid_trajs, state_to_centroid_id = clustering.run(training_data, gps, k)
 
     print("making traj distribution...")
-    id_to_traj, noisy_traj_distribution = make_traj_distribution.run(centroid_trajs, epsilon)
+    id_to_traj, counts = make_traj_distribution.run(centroid_trajs)
 
     with open(save_dir / "id_to_traj.json", "w") as f:
         json.dump(id_to_traj, f)
         print("save id_to_traj to", save_dir / "id_to_traj.json")
-    plt.bar(range(len(noisy_traj_distribution)), noisy_traj_distribution)
-    plt.savefig(save_dir / "imgs" / "noisy_traj_distribution.png")
+    plt.bar(range(len(counts)), counts)
+    plt.savefig(save_dir / "imgs" / "counts.png")
     plt.clf()
-    print("save noisy_traj_distribution to", save_dir / "imgs" / "noisy_traj_distribution.png")
+    print("save counts to", save_dir / "imgs" / "counts.png")
 
     print("preparing generator...")
-    generator = ClusteringGenerator(noisy_traj_distribution, id_to_traj, state_to_centroid_id)
+    generator = ClusteringGenerator(counts, id_to_traj, state_to_centroid_id, epsilon)
 
     # save generator
     with open(save_dir / f"generator.pickle", "wb") as f:

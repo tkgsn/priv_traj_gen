@@ -19,7 +19,7 @@ def make_traj_count(traj_list):
     """
     return Counter(tuple(traj) for traj in traj_list)
 
-def run(trajs, epsilon):
+def run(trajs):
     """
     from the trajs, computing the distribution of trajs with laplace noise added with epsilon-DP
     """
@@ -31,8 +31,8 @@ def run(trajs, epsilon):
         counts[i] = traj_count[id_to_traj[i]]
 
     # add noise
-    print(epsilon)
-    noisy_traj_count = add_noise(counts, 1, epsilon)
-    noisy_traj_distribution = noise_normalize(noisy_traj_count)
+    # print(epsilon)
+    # noisy_traj_count = add_noise(counts, 1, epsilon)
+    # noisy_traj_distribution = noise_normalize(noisy_traj_count)
 
-    return id_to_traj, noisy_traj_distribution
+    return id_to_traj, counts

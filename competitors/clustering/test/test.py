@@ -7,7 +7,7 @@ import json
 import folium
 import matplotlib.pyplot as plt
 
-sys.path.append("../priv_traj_gen")
+sys.path.append("../../../priv_traj_gen")
 from my_utils import load, save
 
 sys.path.append("./")
@@ -17,21 +17,22 @@ import competitors.clustering.clustering_generator as clustering_generator
 
 class TestGenerator(unittest.TestCase):
     def setUp(self):
+        pass
         # load distribution and id_to_traj
-        with open("./test/data/noisy_traj_distribution.json", "r") as f:
-            self.distribution = json.load(f)
+        # with open("./test/data/noisy_traj_distribution.json", "r") as f:
+        #     self.distribution = json.load(f)
 
-        with open("./test/data/id_to_traj.json", "r") as f:
-            self.id_to_traj = json.load(f)
-            # convert str key to int key
-            self.id_to_traj = {int(k):v for k,v in self.id_to_traj.items()}
+        # with open("./test/data/id_to_traj.json", "r") as f:
+        #     self.id_to_traj = json.load(f)
+        #     # convert str key to int key
+        #     self.id_to_traj = {int(k):v for k,v in self.id_to_traj.items()}
 
-        with open("./test/data/state_to_centroid_id.json", "r") as f:
-            state_to_centroid_id = json.load(f)
-            # convert str key to int key
-            state_to_centroid_id = {int(k):int(v) for k,v in state_to_centroid_id.items()}
+        # with open("./test/data/state_to_centroid_id.json", "r") as f:
+        #     state_to_centroid_id = json.load(f)
+        #     # convert str key to int key
+        #     state_to_centroid_id = {int(k):int(v) for k,v in state_to_centroid_id.items()}
 
-        self.generator = clustering_generator.Generator(self.distribution, self.id_to_traj, state_to_centroid_id)
+        # self.generator = clustering_generator.Generator(self.distribution, self.id_to_traj, state_to_centroid_id)
 
     def test_seq_len_to_ids(self):
         ids = self.generator.seq_len_to_ids(3)
@@ -45,6 +46,42 @@ class TestGenerator(unittest.TestCase):
         for traj, reference in zip(sampled, references):
             self.assertEqual(len(traj), len(reference))
             self.assertEqual(traj[0], reference[0])
+
+
+    # def __init__(self, *args, **kwargs):
+        # super(ClusteringGeneratorTestCase, self).__init__(*args, **kwargs)
+        # self.generator = ClusteringGenerator()
+
+    def test_compute_outsider_probs(self):
+        n_centroids = 4
+        state_to_centroid_id = {0: 0, 1: 1, 2: 2, 3: 3, 4: 0, 5:1, 6:2, 7:3, 8:0, 9:1}
+        # state_to_centroid_id = {0: 0, 1: 1, 2: 2, 3: 3}
+        id_to_traj = {0: [0,1,2], 1: [1,2], 2: [0,1], 3:[0,1,2,3], 4:[0,1,2,3,4], 5:[0,1,2,3,4,5]}
+        count = {0: 10, 1: 5, 2: 8, 3:1, 4:1, 5:1}
+        epsilon = 0
+
+        generator = clustering_generator.ClusteringGenerator(list(count.values()), id_to_traj, state_to_centroid_id, epsilon)
+        print(generator.outsider_probs)
+        # outsider_probs = self.generator.compute_outsider_probs(noisy_count, n_centroids, id_to_traj, epsilon)
+
+        # Add your assertions here to validate the results
+        # self.assertEqual(len(outsider_probs), 2)
+        # self.assertAlmostEqual(outsider_probs[0], 0.7)
+        # self.assertAlmostEqual(outsider_probs[1], 0.99)
+
+
+    def test_make_sample(self):
+        n_centroids = 4
+        # state_to_centroid_id = {0: 0, 1: 1, 2: 2, 3: 3, 4: 0, 5:1, 6:2, 7:3, 8:0, 9:1}
+        state_to_centroid_id = {0: 0, 1: 1, 2: 2, 3: 3}
+        id_to_traj = {0: [0,1,2], 1: [1,2], 2: [0,1], 3:[0,1,2,3], 4:[0,1,2,3,4], 5:[0,1,2,3,4,5]}
+        count = {0: 10, 1: 5, 2: 8, 3:1, 4:1, 5:1}
+        epsilon = 0
+
+        generator = clustering_generator.ClusteringGenerator(list(count.values()), id_to_traj, state_to_centroid_id, epsilon)
+        references = [[0,0], [0,0,0], [0,0,0,0]]
+        sampled = generator.make_sample(references, None)
+        print(sampled)
 
 class TestClustering(unittest.TestCase):
     def setUp(self):

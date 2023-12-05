@@ -3,8 +3,6 @@
 # apt-get install libgl1-mesa-glx
 # pip install opencv-python
 
-pip3 install pyemd shapely geopy cvxpy
-
 # for evaluation of MTNet
 
 # source ./enviornment

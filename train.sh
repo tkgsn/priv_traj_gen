@@ -1,7 +1,5 @@
 #!/bin/bash
 
-pip3 install cvxpy
-
 #
 # VARIABLES
 # 
