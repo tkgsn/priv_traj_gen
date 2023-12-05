@@ -13,14 +13,6 @@ from name_config import make_model_name, make_save_name
 
 orig_data_dir = pathlib.Path("/data")
 
-def make_save_name(dataset_name, n_bins, time_threshold, location_threshold, seed):
-
-    if dataset_name in ["rotation", "random"]:
-        save_name = f"bin{n_bins}_seed{seed}"
-    else:
-        save_name = f"{location_threshold}_{time_threshold}_bin{n_bins}_seed{seed}"
-    return save_name
-
 n_epochs = 31
 
 n_bins = 30
