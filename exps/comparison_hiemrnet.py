@@ -5,7 +5,7 @@ import pathlib
 import sys
 sys.path.append("../../")
 
-from config import make_model_name, make_save_name
+from name_config import make_model_name, make_save_name
 # from my_utils import get_data_dir
 # from data_pre_processing import make_save_name
 # n_binss=[6, 14, 30, 62]

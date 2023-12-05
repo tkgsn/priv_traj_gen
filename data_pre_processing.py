@@ -5,7 +5,7 @@ import argparse
 import pandas as pd
 import numpy as np
 from my_utils import get_datadir, load, save, set_logger, load_latlon_range, send, get, get_original_dataset_name
-from config import make_save_name
+from name_config import make_save_name
 from grid import Grid
 import tqdm
 from bisect import bisect_left
