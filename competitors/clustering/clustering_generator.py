@@ -145,6 +145,7 @@ class ClusteringGenerator():
                 """
                 randomly making the trajectory that is not in the training data
                 """
+                counter = 0
                 while True:
                     traj = [reference[0]]
                     for _ in range(seq_len-1):
@@ -153,6 +154,10 @@ class ClusteringGenerator():
                         # candidates.remove(traj[-1])
                         traj.append(np.random.choice(candidates)) 
                     if tuple(traj) not in self.id_to_traj.values():
+                        break
+                    counter += 1
+                    if counter > 1000:
+                        print("WARNING: cannot find outsider trajectory")
                         break
             else:
                 # ids = self.seq_len_to_ids(seq_len)
