@@ -9,6 +9,7 @@ from scipy.spatial.distance import jensenshannon
 from collections import Counter
 import pathlib
 
+from config import make_model_name, make_save_name
 from my_utils import get_datadir, privtree_clustering, depth_clustering, noise_normalize, add_noise, plot_density, make_trajectories, set_logger, construct_default_quadtree, save, load, compute_num_params, set_budget, send
 from dataset import TrajectoryDataset
 from models import compute_loss_meta_gru_net, compute_loss_gru_meta_gru_net, Markov1Generator, MetaGRUNet, MetaNetwork, FullLinearQuadTreeNetwork, guide_to_model
@@ -350,7 +351,7 @@ if __name__ == "__main__":
     parser.add_argument('--n_epochs', type=int)
     parser.add_argument('--embed_dim', type=int)
     parser.add_argument('--hidden_dim', type=int)
-    parser.add_argument('--save_name', type=str)
+    # parser.add_argument('--save_name', type=str)
     parser.add_argument('--accountant_mode', type=str)
     parser.add_argument('--meta_network_load_path', type=str)
     parser.add_argument('--transition_type', type=str)
@@ -390,7 +391,8 @@ if __name__ == "__main__":
     torch.backends.cudnn.benchmark = False
     torch.use_deterministic_algorithms = True
     torch.backends.cudnn.deterministic = True
-    
+
+    args.save_name = make_model_name(**vars(args))
 
     # data_dir = get_datadir() / args.dataset / args.data_name / args.training_data_name
     training_data_dir = pathlib.Path(args.training_data_dir)

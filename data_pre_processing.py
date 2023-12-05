@@ -4,7 +4,8 @@ import pathlib
 import argparse
 import pandas as pd
 import numpy as np
-from my_utils import get_datadir, load, save, set_logger, load_latlon_range, send, get, get_original_dataset_name, make_save_name
+from my_utils import get_datadir, load, save, set_logger, load_latlon_range, send, get, get_original_dataset_name
+from config import make_save_name
 from grid import Grid
 import tqdm
 from bisect import bisect_left
@@ -82,7 +83,7 @@ def process_trajectory(trajectory, location_threshold, time_threshold, startend)
 
 def make_stay_trajectory(trajectories, time_threshold, location_threshold, startend=False):
 
-    print(f"make stay-point trajectory with threshold {location_threshold}m and {time_threshold}min")
+    print(f"make stay-point trajectory with threshold {location_threshold}m and {time_threshold}hour")
 
     partial_process_trajectory = functools.partial(process_trajectory, location_threshold=location_threshold, time_threshold=time_threshold, startend=startend)
 
