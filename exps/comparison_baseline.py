@@ -18,9 +18,15 @@ n_epochs = 31
 n_bins = 30
 dims = [64]
 
-dataset = "peopleflow"
-max_size = 20000
-time_threshold = 30 / 60
+# dataset = "peopleflow"
+# max_size = 20000
+# time_threshold = 30 / 60
+
+dataset = "geolife"
+max_size = 0
+time_threshold = 30
+
+
 location_threshold = 200
 seeds = range(10)
 
