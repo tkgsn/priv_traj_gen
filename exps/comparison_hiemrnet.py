@@ -24,7 +24,7 @@ dataset = "peopleflow"
 # max_size = 0
 max_size = 20000
 
-time_threshold = 30
+time_threshold = 30 / 60
 location_threshold = 200
 seed = 0
 
