@@ -276,8 +276,6 @@ def process_state_i(i, states, db_path, latlon_to_state, DG, truncate):
                 for end_node in end_nodes:
                     # check if (node, end_node) is in DG
                     if (node, end_node) in DG.edges:
-                        shortest_path = path[end_node]
-                        shortest_length = length[end_node]
                         flag = True
                         break
                     if end_node in path:
@@ -300,11 +298,13 @@ def process_state_i(i, states, db_path, latlon_to_state, DG, truncate):
             # if len(shortest_path) > truncate:
                 # print(shortest_path)
             if (shortest_path is not None) and (len(shortest_path) < truncate):
-                state_route = latlon_route_to_state_route(shortest_path, latlon_to_state)
-                assert state_route[0] == i, f"different start point {i} {j} -> {state_route}"
-                assert state_route[-1] == j, f"different end point {i} {j} -> {state_route}"
                 if flag:
+                    state_route = [i, j]
                     assert len(state_route) == 2, f"direct road but not length 2 {i} {j} -> {state_route}"
+                else:
+                    state_route = latlon_route_to_state_route(shortest_path, latlon_to_state)
+                    assert state_route[0] == i, f"different start point {i} {j} -> {state_route}"
+                    assert state_route[-1] == j, f"different end point {i} {j} -> {state_route}"
                 # state_routes.append(state_route)
 
                 # remove duplicate routes
