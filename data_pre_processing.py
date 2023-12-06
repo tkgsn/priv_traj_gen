@@ -251,7 +251,7 @@ def make_reversible_stay_traj(traj, road_db):
                     if route == traj[cursor1:cursor2+1]:
                         continue
                 
-                assert cursor2-1 == cursor1, f"the adjacent states should be connected by the road network, but {traj[cursor1]} and {traj[cursor2]} are not connected"
+                assert cursor2-1 != cursor1, f"the adjacent states should be connected by the road network, but {traj[cursor1]} and {traj[cursor2]} are not connected {route}"
                 reversible_stay_traj.append(traj[cursor2-1])
                 cursor1 = cursor2-1
                 break
