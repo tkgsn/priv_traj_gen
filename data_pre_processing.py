@@ -15,6 +15,7 @@ import concurrent.futures
 import functools
 from make_raw_data import make_raw_data_random, make_raw_data_rotation
 import subprocess
+import sqlite3
 
 def compute_distance_matrix(state_to_latlon, n_locations):
 
@@ -204,8 +205,7 @@ def make_db(dataset, lat_range, lon_range, n_bins, truncate, logger):
 
     db_save_dir = get_datadir() / original_dataset / "pair_to_route" / f"{n_bins}_tr{truncate}"
     db_save_dir.mkdir(exist_ok=True, parents=True)
-    # if not (db_save_dir / "paths.db").exists():
-    if True:
+    if not (db_save_dir / "paths.db").exists():
         # to avoid the latency of the shared file directory, we use temp_db_save_dir, which is moved to db_save_dir after
         temp_db_save_dir = "./temp"
         graph_data_dir = get_datadir() / dataset / "raw"
@@ -221,10 +221,22 @@ def make_db(dataset, lat_range, lon_range, n_bins, truncate, logger):
     else:
         logger.info(f"pair_to_route already exists in {db_save_dir / 'paths.db'}")
     
+    return db_save_dir / "paths.db"
+    
     # send(db_save_dir / "paths.db")
 
 def make_reversible_stay_traj(traj, road_db):
-    pass
+    # open database
+    with sqlite3.connect(road_db) as conn:
+        c = conn.cursor()
+        for cursor in range(1, len(traj)):
+            from_state = traj[cursor-1]
+            to_state = traj[cursor]
+            query = f"SELECT route FROM state_edge_to_route WHERE start_state={from_state} AND end_state={to_state}"
+            c.execute(query)
+            route = c.fetchone()[0]
+            print(from_state, to_state, route)
+
 
 def make_reversible_trajs(trajs, road_db):
     reversible_trajs = []
@@ -268,14 +280,15 @@ def run(dataset_name, lat_range, lon_range, n_bins, time_threshold, location_thr
             raw_trajs = check_in_range(raw_trajs, grid)
 
             if dataset_name == "chengdu":
-                make_db(dataset_name, lat_range, lon_range, n_bins, truncate, logger)
                 # for the road network dataset, we make stay trajectory with road network information
-
+                db_path = make_db(dataset_name, lat_range, lon_range, n_bins, truncate, logger)
+                
                 # represent route trajectory by states
                 route_time_trajs, route_trajs = make_stay_trajectory(raw_trajs, 0, 0)
-
+                route_trajs, route_time_trajs, indice = make_complessed_dataset(route_time_trajs, route_trajs, grid)
+                print(route_trajs[:10])
                 # convert to reversible stay trajectory from the route trajectory
-                trajs = make_reversible_trajs(route_trajs, road_db)
+                trajs = make_reversible_trajs(route_trajs, db_path)
 
             else:
                 logger.info(f"make stay trajectory by {time_threshold}min and {location_threshold}m")
