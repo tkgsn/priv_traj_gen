@@ -240,82 +240,82 @@ def make_edge_adj_file(gdf_edges, save_dir):
             adjs.extend([-1]*(max_num_adjs-len(adjs)))
             f.write("," + ",".join([str(adj) for adj in adjs])+"\n")
 
-def convert_mr_to_training(data_dir, save_dir):
-    # format of training: edge_id edge_id ... edge_id 0
+# def convert_mr_to_training(data_dir, save_dir):
+#     # format of training: edge_id edge_id ... edge_id 0
 
-    # load times
-    with open(os.path.join(data_dir, "times.csv"), "r") as f:
-        f.readline()
-        times = []
-        for line in f:
-            time = line.split(",")
-            time = [float(t) for t in time if t != ""]
-            times.append(time)
+#     # load times
+#     with open(os.path.join(data_dir, "times.csv"), "r") as f:
+#         f.readline()
+#         times = []
+#         for line in f:
+#             time = line.split(",")
+#             time = [float(t) for t in time if t != ""]
+#             times.append(time)
 
-    training_data = []
-    training_data_time = []
-    n_strange = 0
-    with open(os.path.join(data_dir, "mr.txt"), "r") as f:
-        f.readline()
-        for line in f:
-            id = int(line.split(";")[0])
-            edge_ids_for_each_point = line.split(";")[1]
-            edge_ids = line.split(";")[2]
-            wkt = line.split(";")[3]
+#     training_data = []
+#     training_data_time = []
+#     n_strange = 0
+#     with open(os.path.join(data_dir, "mr.txt"), "r") as f:
+#         f.readline()
+#         for line in f:
+#             id = int(line.split(";")[0])
+#             edge_ids_for_each_point = line.split(";")[1]
+#             edge_ids = line.split(";")[2]
+#             wkt = line.split(";")[3]
 
-            edge_ids = edge_ids.split(",")
-            # convert to int
-            edge_ids = [int(edge_id) for edge_id in edge_ids if edge_id != ""]
-            # if it includes 0, it means that map matching failed
-            if len(edge_ids) == 0:
-                continue
-            # edge_ids.append(0)
+#             edge_ids = edge_ids.split(",")
+#             # convert to int
+#             edge_ids = [int(edge_id) for edge_id in edge_ids if edge_id != ""]
+#             # if it includes 0, it means that map matching failed
+#             if len(edge_ids) == 0:
+#                 continue
+#             # edge_ids.append(0)
 
-            edge_ids_for_each_point = edge_ids_for_each_point.split(",")
-            # convert to int
-            edge_ids_for_each_point = [int(edge_id) for edge_id in edge_ids_for_each_point if edge_id != ""]
+#             edge_ids_for_each_point = edge_ids_for_each_point.split(",")
+#             # convert to int
+#             edge_ids_for_each_point = [int(edge_id) for edge_id in edge_ids_for_each_point if edge_id != ""]
 
-            assert len(times[id-1]) == len(edge_ids_for_each_point), f"{len(times[id-1])} != {len(edge_ids_for_each_point)}"
+#             assert len(times[id-1]) == len(edge_ids_for_each_point), f"{len(times[id-1])} != {len(edge_ids_for_each_point)}"
 
-            # get the indice that change the edge
-            change_edge_indices = [0] + [i+1 for i in range(len(edge_ids_for_each_point)-1) if edge_ids_for_each_point[i] != edge_ids_for_each_point[i+1]]
-            edge_ids_ = [edge_ids_for_each_point[i] for i in change_edge_indices] + [0]
-            # get the time of the change
-            change_times = [times[id-1][i] for i in change_edge_indices]
-            # get the difference of the time
-            change_times = [0] + [int(change_times[i+1]-change_times[i]) for i in range(len(change_times)-1)]
+#             # get the indice that change the edge
+#             change_edge_indices = [0] + [i+1 for i in range(len(edge_ids_for_each_point)-1) if edge_ids_for_each_point[i] != edge_ids_for_each_point[i+1]]
+#             edge_ids_ = [edge_ids_for_each_point[i] for i in change_edge_indices] + [0]
+#             # get the time of the change
+#             change_times = [times[id-1][i] for i in change_edge_indices]
+#             # get the difference of the time
+#             change_times = [0] + [int(change_times[i+1]-change_times[i]) for i in range(len(change_times)-1)]
 
-            # edge_ids_ <- original edges
-            # edge_ids <- connected by compensation if two adjacent edges are not connected
-            # add 0 to the times where the edge is compensated
-            cursor = 0
-            for i in range(len(edge_ids_)-1):
-                current_edge = edge_ids_[i]
-                while current_edge != edge_ids[cursor]:
-                    cursor += 1
-                    change_times.insert(cursor, 0)
-                cursor += 1
+#             # edge_ids_ <- original edges
+#             # edge_ids <- connected by compensation if two adjacent edges are not connected
+#             # add 0 to the times where the edge is compensated
+#             cursor = 0
+#             for i in range(len(edge_ids_)-1):
+#                 current_edge = edge_ids_[i]
+#                 while current_edge != edge_ids[cursor]:
+#                     cursor += 1
+#                     change_times.insert(cursor, 0)
+#                 cursor += 1
 
-            if len(change_times) != len(edge_ids):
-                n_strange += 1
-                print("WARNING: diffenrt length", len(change_times), len(edge_ids), n_strange)
-                print(edge_ids, edge_ids_)
-                edge_ids = edge_ids[:len(change_times)]
-            # if len(edge_ids_) != len(edge_ids)+1:
-                # print("skip because an edge is not connected")
-                # continue
+#             if len(change_times) != len(edge_ids):
+#                 n_strange += 1
+#                 print("WARNING: diffenrt length", len(change_times), len(edge_ids), n_strange)
+#                 print(edge_ids, edge_ids_)
+#                 edge_ids = edge_ids[:len(change_times)]
+#             # if len(edge_ids_) != len(edge_ids)+1:
+#                 # print("skip because an edge is not connected")
+#                 # continue
 
-            training_data_time.append(change_times)
-            training_data.append(edge_ids + [0])
-            assert len(change_times) == len(edge_ids), f"{len(change_times)} != {len(edge_ids)}"
+#             training_data_time.append(change_times)
+#             training_data.append(edge_ids + [0])
+#             assert len(change_times) == len(edge_ids), f"{len(change_times)} != {len(edge_ids)}"
     
-    with open(os.path.join(save_dir, "training_data.csv"), "w") as f:
-        for edge_ids in training_data:
-            f.write(" ".join([str(edge_id) for edge_id in edge_ids])+"\n")
+#     with open(os.path.join(save_dir, "training_data.csv"), "w") as f:
+#         for edge_ids in training_data:
+#             f.write(" ".join([str(edge_id) for edge_id in edge_ids])+"\n")
     
-    with open(os.path.join(save_dir, "training_data_time.csv"), "w") as f:
-        for times in training_data_time:
-            f.write(" ".join([str(time) for time in times])+"\n")
+#     with open(os.path.join(save_dir, "training_data_time.csv"), "w") as f:
+#         for times in training_data_time:
+#             f.write(" ".join([str(time) for time in times])+"\n")
 
 
 def run_geolife(data_dir, save_dir, indice=None):
