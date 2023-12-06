@@ -128,7 +128,7 @@ if __name__ == '__main__':
     training_settings = {"training_data_dir": data_dir, "dataset": data_dir.split('/')[2], "data_name": data_dir.split('/')[-2], "network_type": "mtnet"}
     with open(config.SAVE_DIR / 'params.json', 'w') as f:
         json.dump(training_settings, f)
-    send(config.SAVE_DIR / 'params.json')
+    # send(config.SAVE_DIR / 'params.json')
     
     config.PARAM_BASE = config.SAVE_DIR
     n_data = 0
