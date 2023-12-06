@@ -47,7 +47,7 @@ def process_trajectory(trajectory, location_threshold, time_threshold, startend)
 
     start_index = 0
     i = 0
-
+    skip = (location_threshold == 0) and (time_threshold == 0)
     while True:
         # find the length of the stay
         start_record = trajectory[start_index]
@@ -66,8 +66,8 @@ def process_trajectory(trajectory, location_threshold, time_threshold, startend)
             time = float(target_location[0])
             target_location = (target_location[1], target_location[2])
             distance = geodesic(start_location, target_location).meters
-            if distance > location_threshold:
-                if time - start_time >= time_threshold*60:
+            if skip or distance > location_threshold:
+                if skip or time - start_time >= time_threshold*60:
                     # print("stay", start_time, time, start_location)
                     stay_trajectory.append(start_location)
                     time_trajectory.append((start_time, time))
@@ -229,23 +229,39 @@ def make_db(dataset, lat_range, lon_range, n_bins, truncate, logger):
 def make_reversible_stay_traj(traj, road_db):
     # open database
     with sqlite3.connect(road_db) as conn:
+        reversible_stay_traj = [traj[0]]
         c = conn.cursor()
-        for cursor in range(1, len(traj)):
-            from_state = traj[cursor-1]
-            to_state = traj[cursor]
-            query = f"SELECT route FROM state_edge_to_route WHERE start_state={from_state} AND end_state={to_state}"
-            c.execute(query)
-            route = c.fetchone()
-            if route is None:
-                print("WARNING: route is None")
-                print(from_state, to_state)
-            else:
-                print(from_state, to_state, route[0])
+        cursor1 = 0
+        while True:
+            for cursor2 in range(cursor1+1, len(traj)+1):
+                if cursor2 == len(traj):
+                    reversible_stay_traj.append(traj[cursor2-1])
+                    cursor1 = cursor2
+                    break
+
+                from_state = traj[cursor1]
+                to_state = traj[cursor2]
+                query = f"SELECT route FROM state_edge_to_route WHERE start_state={from_state} AND end_state={to_state}"
+                c.execute(query)
+                route = c.fetchone()
+                # if route is the same as the partial traj from cursor to cursor2, then we can reverse the traj
+                if route is not None:
+                    route = eval(route[0])
+                    if route == traj[cursor1:cursor2+1]:
+                        continue
+                
+                reversible_stay_traj.append(traj[cursor2-1])
+                cursor1 = cursor2-1
+                break
+
+            if cursor1 == len(traj):
+                break
+    return reversible_stay_traj
 
 
 def make_reversible_trajs(trajs, road_db):
     reversible_trajs = []
-    for traj in trajs:
+    for traj in tqdm.tqdm(trajs):
         reversible_trajs.append(make_reversible_stay_traj(traj, road_db))
     return reversible_trajs
 
@@ -287,14 +303,21 @@ def run(dataset_name, lat_range, lon_range, n_bins, time_threshold, location_thr
             if dataset_name == "chengdu":
                 # for the road network dataset, we make stay trajectory with road network information
                 db_path = make_db(dataset_name, lat_range, lon_range, n_bins, truncate, logger)
-                
+
                 # represent route trajectory by states
                 route_time_trajs, route_trajs = make_stay_trajectory(raw_trajs, 0, 0)
                 route_trajs, route_time_trajs, indice = make_complessed_dataset(route_time_trajs, route_trajs, grid)
-                print(route_trajs[:10])
+                # copy db_path to ./temp
+                subprocess.run(["cp", db_path, "./"])
                 # convert to reversible stay trajectory from the route trajectory
-                trajs = make_reversible_trajs(route_trajs, db_path)
+                print("make reversible trajs using", db_path)
+                trajs = make_reversible_trajs(route_trajs, "./paths.db")
+                times = [[0 for _ in traj] for traj in trajs]
 
+                logger.info(f"save route complessed dataset to {training_data_dir / f'route_training_data.csv'}")
+                save(training_data_dir / f"route_training_data.csv", route_trajs)
+                logger.info(f"save route time dataset to {training_data_dir / f'route_training_data_time.csv'}")
+                save(training_data_dir / f"route_training_data_time.csv", route_time_trajs)
             else:
                 logger.info(f"make stay trajectory by {time_threshold}min and {location_threshold}m")
                 time_trajs, trajs = make_stay_trajectory(raw_trajs, time_threshold, location_threshold)
@@ -317,7 +340,6 @@ def run(dataset_name, lat_range, lon_range, n_bins, time_threshold, location_thr
 
             gps = make_gps_data(training_data_dir, lat_range, lon_range, n_bins)
             make_distance_data(training_data_dir, n_bins, gps, logger)
-            # make_db(dataset_name, lat_range, lon_range, n_bins, truncate, logger)
 
 
         save_path = training_data_dir / f"training_data.csv"

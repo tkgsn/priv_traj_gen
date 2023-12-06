@@ -626,6 +626,7 @@ def make_raw_data_from_map_matched_data(data_dir):
         for j in range(len(traj)):
             new_traj.append([time_traj[j], traj[j][0], traj[j][1]])
         trajs.append(new_traj)
+        
 
     return trajs
 
