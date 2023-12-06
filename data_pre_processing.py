@@ -233,6 +233,7 @@ def make_reversible_stay_traj(traj, road_db):
         c = conn.cursor()
         cursor1 = 0
         while True:
+            print(cursor1)
             for cursor2 in range(cursor1+1, len(traj)+1):
                 if cursor2 == len(traj):
                     reversible_stay_traj.append(traj[cursor2-1])
@@ -253,7 +254,6 @@ def make_reversible_stay_traj(traj, road_db):
                 reversible_stay_traj.append(traj[cursor2-1])
                 cursor1 = cursor2-1
                 break
-
             if cursor1 == len(traj):
                 break
     return reversible_stay_traj
