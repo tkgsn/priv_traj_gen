@@ -45,6 +45,9 @@ def process_trajectory(trajectory, location_threshold, time_threshold, startend)
     stay_trajectory = [(trajectory[0][1], trajectory[0][2])]
     time_trajectory = [(trajectory[0][0], trajectory[0][0])]
 
+    if len(trajectory) == 1:
+        return stay_trajectory, time_trajectory
+
     start_index = 0
     i = 0
     skip = (location_threshold == 0) and (time_threshold == 0)
