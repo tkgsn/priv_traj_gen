@@ -576,10 +576,11 @@ def process_map_matched_data(data_dir, trajs):
 
     new_trajs = []
     for traj in trajs:
-        edge_id = traj[0]
-        new_traj = [nodes_edges[edge_id][0], nodes_edges[edge_id][1]]
-        for edge in traj[1:]:
-            new_traj.append(nodes_edges[edge][1])
+        # edge_id = traj[0]
+        # new_traj = [nodes_edges[edge_id][0], nodes_edges[edge_id][1]]
+        new_traj = []
+        for edge in traj:
+            new_traj.append(nodes_edges[edge][0])
         new_trajs.append(new_traj)
     return new_trajs, nodes_edges
 

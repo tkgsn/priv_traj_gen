@@ -205,8 +205,8 @@ def make_db(dataset, lat_range, lon_range, n_bins, truncate, logger):
 
     db_save_dir = get_datadir() / original_dataset / "pair_to_route" / f"{n_bins}_tr{truncate}"
     db_save_dir.mkdir(exist_ok=True, parents=True)
-    # if not (db_save_dir / "paths.db").exists():
-    if True:
+    if not (db_save_dir / "paths.db").exists():
+    # if True:
         # to avoid the latency of the shared file directory, we use temp_db_save_dir, which is moved to db_save_dir after
         temp_db_save_dir = "./temp"
         graph_data_dir = get_datadir() / dataset / "raw"
