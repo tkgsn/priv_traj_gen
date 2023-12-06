@@ -6,7 +6,7 @@ import seaborn as sns
 import argparse
 import pickle
 
-from my_utils import construct_default_quadtree, noise_normalize, save, plot_density, get_datadir, set_logger, get, send, get_original_dataset_name
+from my_utils import construct_default_quadtree, noise_normalize, save, plot_density, get_datadir, set_logger, get_original_dataset_name
 from collections import Counter
 import numpy as np
 import scipy
