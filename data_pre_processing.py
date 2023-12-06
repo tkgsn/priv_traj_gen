@@ -205,7 +205,8 @@ def make_db(dataset, lat_range, lon_range, n_bins, truncate, logger):
 
     db_save_dir = get_datadir() / original_dataset / "pair_to_route" / f"{n_bins}_tr{truncate}"
     db_save_dir.mkdir(exist_ok=True, parents=True)
-    if not (db_save_dir / "paths.db").exists():
+    # if not (db_save_dir / "paths.db").exists():
+    if True:
         # to avoid the latency of the shared file directory, we use temp_db_save_dir, which is moved to db_save_dir after
         temp_db_save_dir = "./temp"
         graph_data_dir = get_datadir() / dataset / "raw"
@@ -234,8 +235,12 @@ def make_reversible_stay_traj(traj, road_db):
             to_state = traj[cursor]
             query = f"SELECT route FROM state_edge_to_route WHERE start_state={from_state} AND end_state={to_state}"
             c.execute(query)
-            route = c.fetchone()[0]
-            print(from_state, to_state, route)
+            route = c.fetchone()
+            if route is None:
+                print("WARNING: route is None")
+                print(from_state, to_state)
+            else:
+                print(from_state, to_state, route[0])
 
 
 def make_reversible_trajs(trajs, road_db):

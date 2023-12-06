@@ -262,7 +262,6 @@ def process_state_i(i, states, db_path, latlon_to_state, DG, truncate):
             if i == j:
                 continue
 
-
             end_nodes = check_node_in_state(c, j)
             if end_nodes is None:
                 # print("WARNING", j, "has no node")
