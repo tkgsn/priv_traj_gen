@@ -10,15 +10,15 @@ import yaml
 import subprocess
 
 
-def send(path):
+# def send(path):
 
-    source_file_path = path
-    destination_file_path = f'evaluation-server:{path.parent}'
+#     source_file_path = path
+#     destination_file_path = f'evaluation-server:{path.parent}'
 
-    print('ssh', 'evaluation-server', f"'mkdir -p {path.parent}'")
-    print('scp', source_file_path, destination_file_path)
-    result = subprocess.run(['ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"mkdir -p {path.parent}"])
-    result = subprocess.run(['scp', '-o', 'StrictHostKeyChecking=no', source_file_path, destination_file_path])
+#     print('ssh', 'evaluation-server', f"'mkdir -p {path.parent}'")
+#     print('scp', source_file_path, destination_file_path)
+#     result = subprocess.run(['ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"mkdir -p {path.parent}"])
+#     result = subprocess.run(['scp', '-o', 'StrictHostKeyChecking=no', source_file_path, destination_file_path])
 
 def tstrip(traj):
     ridx = len(traj) - 1
@@ -228,8 +228,8 @@ class Benchmarker:
         print(len(samples), "data generated to", save_dir / f"samples.txt")
         print(len(samples_t), "time data generated to", save_dir / f"samples_time.txt")
 
-        send(save_dir / f"samples.txt")
-        send(save_dir / f"samples_time.txt")
+        # send(save_dir / f"samples.txt")
+        # send(save_dir / f"samples_time.txt")
 
         # assert len(samples) == len(self.trajs)
         dist_des, dist_route = self.eval_density(*self.proc_density(samples))

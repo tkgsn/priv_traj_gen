@@ -131,7 +131,7 @@ def run(dataset, data_path, save_dir):
 
     # make directory
     make_mtnet_training_data(save_dir, save_dir)
-    send(save_dir, parent=True)
+    # send(save_dir, parent=True)
 
 
 if __name__ == "__main__":

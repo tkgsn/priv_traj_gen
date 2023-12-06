@@ -589,60 +589,60 @@ def load(save_path, size=0, seed=0):
             trajectories.append(trajectory)
     return trajectories
     
-def send(path, parent=False):
-    print("SEND!")
-    path = pathlib.Path(path)
+# def send(path, parent=False):
+#     print("SEND!")
+#     path = pathlib.Path(path)
 
-    source_file_path = path
-    destination_file_path = f'evaluation-server:{path.parent}'
+#     source_file_path = path
+#     destination_file_path = f'evaluation-server:{path.parent}'
 
-    # print('ssh', 'evaluation-server', f"'mkdir -p {path.parent}'")
-    if parent:
-        # compose first
-        print(f"tar -cvf {path.stem}.tar {path}")
-        result = subprocess.run(['tar', '-cvf', path.parent / f"{path.stem}.tar", path])
-        # then send
-        result = subprocess.run(['ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"mkdir -p {path.parent}"])
-        print('scp', '-r', '-o', 'StrictHostKeyChecking=no', f"{path.parent}/{path.stem}.tar", destination_file_path)
-        result = subprocess.run(['scp', '-o', 'StrictHostKeyChecking=no', f"{path.parent}/{path.stem}.tar", destination_file_path])
-        # then decompress
-        print('ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"tar -xvf {path.parent}/{path.stem}.tar -C /")
-        result = subprocess.run(['ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"tar -xvf {path.parent}/{path.stem}.tar -C /"])
-        # remove the tar file
-        print('ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"rm {path.parent}/{path.stem}.tar")
-        result = subprocess.run(['ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"rm {path.parent}/{path.stem}.tar"])
+#     # print('ssh', 'evaluation-server', f"'mkdir -p {path.parent}'")
+#     if parent:
+#         # compose first
+#         print(f"tar -cvf {path.stem}.tar {path}")
+#         result = subprocess.run(['tar', '-cvf', path.parent / f"{path.stem}.tar", path])
+#         # then send
+#         result = subprocess.run(['ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"mkdir -p {path.parent}"])
+#         print('scp', '-r', '-o', 'StrictHostKeyChecking=no', f"{path.parent}/{path.stem}.tar", destination_file_path)
+#         result = subprocess.run(['scp', '-o', 'StrictHostKeyChecking=no', f"{path.parent}/{path.stem}.tar", destination_file_path])
+#         # then decompress
+#         print('ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"tar -xvf {path.parent}/{path.stem}.tar -C /")
+#         result = subprocess.run(['ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"tar -xvf {path.parent}/{path.stem}.tar -C /"])
+#         # remove the tar file
+#         print('ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"rm {path.parent}/{path.stem}.tar")
+#         result = subprocess.run(['ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"rm {path.parent}/{path.stem}.tar"])
 
-        # print('scp', "-r", source_file_path, destination_file_path)
-        # result = subprocess.run(['ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"mkdir -p {path.parent}"])
-        # result = subprocess.run(['scp', '-r', '-o', 'StrictHostKeyChecking=no', source_file_path, destination_file_path])
-    else:
-        print('scp', source_file_path, destination_file_path)
-        result = subprocess.run(['ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"mkdir -p {path.parent}"])
-        result = subprocess.run(['scp', '-o', 'StrictHostKeyChecking=no', source_file_path, destination_file_path])
+#         # print('scp', "-r", source_file_path, destination_file_path)
+#         # result = subprocess.run(['ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"mkdir -p {path.parent}"])
+#         # result = subprocess.run(['scp', '-r', '-o', 'StrictHostKeyChecking=no', source_file_path, destination_file_path])
+#     else:
+#         print('scp', source_file_path, destination_file_path)
+#         result = subprocess.run(['ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"mkdir -p {path.parent}"])
+#         result = subprocess.run(['scp', '-o', 'StrictHostKeyChecking=no', source_file_path, destination_file_path])
 
-def get(path, parent=False):
-    print("!")
-    source_file_path = f'evaluation-server:{path}'
-    destination_file_path = pathlib.Path(path).parent
-    destination_file_path.mkdir(parents=True, exist_ok=True)
+# def get(path, parent=False):
+#     print("!")
+#     source_file_path = f'evaluation-server:{path}'
+#     destination_file_path = pathlib.Path(path).parent
+#     destination_file_path.mkdir(parents=True, exist_ok=True)
 
-    if parent:
-        directory_name = pathlib.Path(path).stem
-        # first compose the directory by tar
-        print('ssh', 'evaluation-server', f"tar -cvf {directory_name}.tar {path}")
-        result = subprocess.run(['ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"tar -cvf {directory_name}.tar {path}"])
-        # then download the tar file
-        print('scp', source_file_path, destination_file_path)
-        result = subprocess.run(['scp', '-o', 'StrictHostKeyChecking=no', f"evaluation-server:~/{directory_name}.tar", destination_file_path])
-        # then decompress the tar file
-        print('tar', '-xvf', f'{destination_file_path}/{directory_name}.tar', '-C', "/")
-        result = subprocess.run(['tar', '-xvf', f'{destination_file_path}/{directory_name}.tar', "-C", "/"])
-        # remove the tar file
-        print('rm', f'{destination_file_path}/{directory_name}.tar')
-        result = subprocess.run(['rm', f'{destination_file_path}/{directory_name}.tar'])
-    else:
-        print('scp', source_file_path, destination_file_path)
-        result = subprocess.run(['scp', '-o', 'StrictHostKeyChecking=no', source_file_path, destination_file_path])
+#     if parent:
+#         directory_name = pathlib.Path(path).stem
+#         # first compose the directory by tar
+#         print('ssh', 'evaluation-server', f"tar -cvf {directory_name}.tar {path}")
+#         result = subprocess.run(['ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"tar -cvf {directory_name}.tar {path}"])
+#         # then download the tar file
+#         print('scp', source_file_path, destination_file_path)
+#         result = subprocess.run(['scp', '-o', 'StrictHostKeyChecking=no', f"evaluation-server:~/{directory_name}.tar", destination_file_path])
+#         # then decompress the tar file
+#         print('tar', '-xvf', f'{destination_file_path}/{directory_name}.tar', '-C', "/")
+#         result = subprocess.run(['tar', '-xvf', f'{destination_file_path}/{directory_name}.tar', "-C", "/"])
+#         # remove the tar file
+#         print('rm', f'{destination_file_path}/{directory_name}.tar')
+#         result = subprocess.run(['rm', f'{destination_file_path}/{directory_name}.tar'])
+#     else:
+#         print('scp', source_file_path, destination_file_path)
+#         result = subprocess.run(['scp', '-o', 'StrictHostKeyChecking=no', source_file_path, destination_file_path])
 
 
 def load_latlon_range(dataset):
