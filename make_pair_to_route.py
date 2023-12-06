@@ -285,31 +285,18 @@ def process_state_i(i, states, db_path, latlon_to_state, DG, truncate):
                     # in this case, there is a direct road from node to end_node
                     break
 
-            # for path in paths:
-            #     for end_node in end_nodes:
-            #         if end_node in path:
-            #             latlon_routes.append(path[end_node])
-
-
-            # print(latlon_routes)
-            # state_routes = []
-            # for latlon_route in latlon_routes:
-            # if len(shortest_path) > truncate:
-                # print(shortest_path)
-            if (shortest_path is not None) and (len(shortest_path) < truncate):
-                if flag:
-                    state_route = [i, j]
-                    assert len(state_route) == 2, f"direct road but not length 2 {i} {j} -> {state_route}"
-                else:
+            if flag:
+                state_route = [i, j]
+                assert len(state_route) == 2, f"direct road but not length 2 {i} {j} -> {state_route}"
+            else:
+                if (shortest_path is not None) and (len(shortest_path) < truncate):
                     state_route = latlon_route_to_state_route(shortest_path, latlon_to_state)
                     assert state_route[0] == i, f"different start point {i} {j} -> {state_route}"
                     assert state_route[-1] == j, f"different end point {i} {j} -> {state_route}"
-                # state_routes.append(state_route)
-
-                # remove duplicate routes
-                # state_routes = list(set([tuple(route) for route in state_routes]))
-                # state_routess[j] = state_routes
-
+                else:
+                    state_route = None
+            
+            if state_route is not None:
                 # save with pickle
                 with open(f"temp/state_routes_from_{i}_to_{j}.pkl", "wb") as f:
                     pickle.dump(state_route, f)
