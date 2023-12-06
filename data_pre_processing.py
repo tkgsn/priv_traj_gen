@@ -323,8 +323,6 @@ def run(dataset_name, lat_range, lon_range, n_bins, time_threshold, location_thr
                 time_trajs, trajs = make_stay_trajectory(raw_trajs, time_threshold, location_threshold)
                 logger.info("make complessed dataset by the grid")
                 trajs, times, indice = make_complessed_dataset(time_trajs, trajs, grid)
-                with open(training_data_dir / "indice.json", "w") as f:
-                    json.dump(indice, f)
                 # send(training_data_dir / "indice.json")
 
                 times = [[time[0] for time in traj] for traj in times]
@@ -341,6 +339,9 @@ def run(dataset_name, lat_range, lon_range, n_bins, time_threshold, location_thr
             gps = make_gps_data(training_data_dir, lat_range, lon_range, n_bins)
             make_distance_data(training_data_dir, n_bins, gps, logger)
 
+
+        with open(training_data_dir / "indice.json", "w") as f:
+            json.dump(indice, f)
 
         save_path = training_data_dir / f"training_data.csv"
         logger.info(f"save complessed dataset to {save_path}")

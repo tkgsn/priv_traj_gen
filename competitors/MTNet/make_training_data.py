@@ -361,7 +361,7 @@ def run_geolife(data_dir, save_dir, indice=None):
 
 
 
-def run(data_path, save_path, indice=None):
+def run(data_path, save_path, indice):
 
     # # make id_to_edge.json
     # with open(setting_path, "r") as f:
@@ -414,11 +414,11 @@ def run(data_path, save_path, indice=None):
             f.write(line)
 
     # load data_path / trajs_demo.csv
-    with open(data_path / "trajs_demo.csv", "r") as f:
+    with open(data_path / "training_data.csv", "r") as f:
         lines = f.readlines()
 
     # load data_path / tstamps_demo.csv
-    with open(data_path / "tstamps_demo.csv", "r") as f:
+    with open(data_path / "training_data_time.csv", "r") as f:
         time_lines = f.readlines()
 
     # shuffle
@@ -431,17 +431,17 @@ def run(data_path, save_path, indice=None):
     #     lines = lines[:num_data]
     #     time_lines = [time_lines[i] for i in p]
     #     time_lines = time_lines[:num_data]
-    if indice is None:
-        indice = list(range(len(lines)))
+    # if indice is None:
+        # indice = list(range(len(lines)))
     lines = [lines[i] for i in indice]
     time_lines = [time_lines[i] for i in indice]
     
     # write
-    with open(save_path / "training_data.csv", "w") as f:
+    with open(save_path / "mtnet_training_data.csv", "w") as f:
         for line in lines:
             f.write(line)
 
-    with open(save_path / "training_data_time.csv", "w") as f:
+    with open(save_path / "mtnet_training_data_time.csv", "w") as f:
         for line in time_lines:
             f.write(line)
 
@@ -450,21 +450,23 @@ def run(data_path, save_path, indice=None):
 if __name__ == "__main__":
     data_path = pathlib.Path(sys.argv[1])
     save_path = pathlib.Path(sys.argv[2])
-    save_path.mkdir(parents=True, exist_ok=True)
+    # save_path.mkdir(parents=True, exist_ok=True)
 
     # get(data_path, parent=True)
 
-    dataset = sys.argv[3]
-    indice_path = sys.argv[4]
-    print("load index information", indice_path)
+    # dataset = sys.argv[3]
+    # indice_path = sys.argv[4]
+    print("load index information", save_path / "indice.json")
     # get(indice_path)
-    with open(indice_path, "r") as f:
+    with open(save_path / "indice.json", "r") as f:
         indice = json.load(f)
-    if dataset == "chengdu":
-        run(data_path, save_path, indice)
-    elif dataset == "geolife_mm":
-        run(data_path, save_path, indice)
-    elif dataset == "geolife_test_mm":
-        run(data_path, save_path, indice)
+    
+    run(data_path, save_path, indice)
+    # if dataset == "chengdu":
+    #     run(data_path, save_path, indice)
+    # elif dataset == "geolife_mm":
+    #     run(data_path, save_path, indice)
+    # elif dataset == "geolife_test_mm":
+    #     run(data_path, save_path, indice)
     # else:
     #     run(data_path, save_path)

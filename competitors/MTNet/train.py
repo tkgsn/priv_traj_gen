@@ -9,6 +9,9 @@ import sys
 import json
 import pathlib
 
+sys.path.append("../../")
+from name_config import make_model_name
+
 def train_epoch(epoch, gen, loader, optim):
     if epoch == 0:
     # if False:
@@ -99,30 +102,30 @@ def main():
 
 if __name__ == '__main__':
     data_dir = sys.argv[1]
-    save_dir = sys.argv[2]
-    epoch = int(sys.argv[3])
-    cuda_number = int(sys.argv[4])
-    config.TRAJ_FIX_LEN = int(sys.argv[6])
-    config.P_BATCH = int(sys.argv[7])
-    seed = int(sys.argv[8])
+    epoch = int(sys.argv[2])
+    cuda_number = int(sys.argv[3])
+    config.TRAJ_FIX_LEN = int(sys.argv[5])
+    config.P_BATCH = int(sys.argv[6])
+    seed = int(sys.argv[7])
+
     # set seed
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
     np.random.seed(seed)
     torch.backends.cudnn.deterministic = True
-
+    
     # convert string to bool
-    if sys.argv[5] == 'True':
+    if sys.argv[4] == 'True':
         config.DP = True
     else:
         config.DP = False
     config.DATA_DIR = pathlib.Path(data_dir)
-    config.SAVE_DIR = pathlib.Path(save_dir)
+    config.SAVE_DIR = config.DATA_DIR / make_model_name(network_type="mtnet", is_dp=config.DP, seed=seed)
     config.SAVE_DIR.mkdir(parents=True, exist_ok=True)
     config.SAMPLE_SAVE_DIR = config.SAVE_DIR
 
     # training_data_dir=/data/${dataset}/${max_size}/${name}
-    training_settings = {"training_data_dir": data_dir, "dataset": data_dir.split('/')[2], "data_name": data_dir.split('/')[-2], "network_type": "MTNet"}
+    training_settings = {"training_data_dir": data_dir, "dataset": data_dir.split('/')[2], "data_name": data_dir.split('/')[-2], "network_type": "mtnet"}
     with open(config.SAVE_DIR / 'params.json', 'w') as f:
         json.dump(training_settings, f)
     send(config.SAVE_DIR / 'params.json')

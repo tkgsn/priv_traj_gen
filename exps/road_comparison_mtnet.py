@@ -16,7 +16,6 @@ orig_data_dir = pathlib.Path("/data")
 n_epochs = 31
 
 n_bins = 30
-dims = [32]
 
 # dataset = "geolife"
 # max_size = 0
@@ -24,10 +23,12 @@ dims = [32]
 
 dataset = "chengdu"
 max_size = 10000
+indice_name = "bin30_seed0"
 
 time_threshold = 30 / 60
 location_threshold = 200
-seeds = range(10)
+# seeds = range(10)
+seeds = [0]
 
 # def command_baseline(n_bins, dim):
 #     save_name = make_save_name(dataset, n_bins, time_threshold, location_threshold, seed)
@@ -76,33 +77,27 @@ seeds = range(10)
 #         , f'docker run --rm --gpus all -v /mnt/data:/data -e TEST_THRESH=30 -e ABLATION=True -e SEED=0 -e TRUNCATE=0 -e MODEL_DIR={data_dir / f"hiemrnet_dpTrue_meta{meta_n_iter}_dim{dim}_{dim}_{dim}_{dim}_btch0_cldepth_1000_tr{multi_task}_coFalse_mulFalse_test"} -e EVAL_INTERVAL=10 -e EVAL_DATA_DIR={data_dir} kyotohiemrnet.azurecr.io/hiemrnet_cu117 /bin/bash -c "./evaluate.sh"'
 
 # deconv + pre-trainig + multi task + consistent
-def command_hiemrnet_pre_multitask_consistent(n_bins, dim, seed):
+def command_mtnet(n_bins, seed):
     save_name = make_save_name(dataset, n_bins, time_threshold, location_threshold, 0)
     data_dir = orig_data_dir / dataset / str(max_size) / save_name
-    multi_task = "True"
-    meta_n_iter = 10000
-    consistent = "True"
-    model_name = make_model_name(network_type="hiemrnet", is_dp=True, meta_n_iter=meta_n_iter, memory_dim=dim, memory_hidden_dim=dim, location_embedding_dim=dim, hidden_dim=dim, batch_size=0, train_all_layers=multi_task, consistent=consistent, seed=seed)
-    return f'docker run --rm --gpus all -v /mnt/data:/data -e TRAINING_DATA_DIR={data_dir} -e SEED={seed} -e META_N_ITER={meta_n_iter} -e SEED=0 -e EPOCH={n_epochs} -e P_BATCH=100 -e DP=True -e MULTI_TASK={multi_task} -e CONSISTENT={consistent} -e HIDDEN_DIM={dim} -e LOC_DIM={dim} -e MEM_DIM={dim} -e MEM_HIDDEN_DIM={dim} -e COEF_TIME=1 -e NETWORK_TYPE=hiemrnet kyotohiemrnet.azurecr.io/hiemrnet_cu117 /bin/bash -c "./train.sh"' \
+    model_name = make_model_name(network_type="mtnet", is_dp=True, seed=seed)
+    max_length = 20
+    return f'docker run --rm --gpus all -v /mnt/data:/data -e DATASET={dataset} -e SEED={seed} -e MAX_SIZE={max_size} -e DP=True -e EPOCH={n_epochs} -e MAX_LENGTH={max_length} -e P_BATCH=100 -e INDICE_NAME={indice_name} kyotohiemrnet.azurecr.io/hiemrnet_cu117 /bin/bash -c "cd competitors/MTNet && ./run.sh"' \
         , f'docker run --rm --gpus all -v /mnt/data:/data -e TEST_THRESH=30 -e ABLATION=False -e SEED=0 -e TRUNCATE=0 -e MODEL_DIR={data_dir / model_name} -e EVAL_INTERVAL=1 -e EVAL_DATA_DIR={data_dir} kyotohiemrnet.azurecr.io/hiemrnet_cu117 /bin/bash -c "./evaluate.sh"'
 
 
 # conduct each command in parallel
 with concurrent.futures.ProcessPoolExecutor(max_workers=1) as executor:
-        
-    for dim in dims:
-        for seed in seeds:
-            command = command_hiemrnet_pre_multitask_consistent(n_bins, dim, seed)
-            combined = f"{command[0]}"
-            print(combined)
-            executor.submit(os.system, combined)
+    for seed in seeds:
+        command = command_mtnet(n_bins, seed)
+        combined = f"{command[0]}"
+        print(combined)
+        executor.submit(os.system, combined)
 
 
-with concurrent.futures.ProcessPoolExecutor(max_workers=3) as executor:
-        
-    for dim in dims:
-        for seed in seeds:
-            command = command_hiemrnet_pre_multitask_consistent(n_bins, dim, seed)
-            combined = f"{command[1]}"
-            print(combined)
-            executor.submit(os.system, combined)
+# with concurrent.futures.ProcessPoolExecutor(max_workers=1) as executor:
+#     for seed in seeds:
+#         command = command_mtnet(n_bins, seed)
+#         combined = f"{command[1]}"
+#         print(combined)
+#         executor.submit(os.system, combined)
