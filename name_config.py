@@ -1,7 +1,7 @@
 
 def make_save_name(dataset_name, n_bins, time_threshold, location_threshold, seed):
 
-    if dataset_name in ["rotation", "random"]:
+    if dataset_name in ["rotation", "random", "chengdu"]:
         save_name = f"bin{n_bins}_seed{seed}"
     elif dataset_name == "peopleflow":
         save_name = f"{location_threshold}_{int(time_threshold*60)}_bin{n_bins}_seed{seed}"

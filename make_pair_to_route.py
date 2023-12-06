@@ -323,7 +323,7 @@ def make_state_pair_to_state_route(n_states, db_path, latlon_to_state, DG, trunc
     pathlib.Path("temp").mkdir(parents=True, exist_ok=True)
     with concurrent.futures.ProcessPoolExecutor() as executor:
         # iterator = executor.map(partial_process_state_i, start_states)
-        futures = [executor.submit(partial_process_state_i, i) for i in start_states]
+        futures = [executor.submit(partial_process_state_i, i) for i in start_states[:1]]
         for future in tqdm.tqdm(concurrent.futures.as_completed(futures), total=len(futures)):
             future.result()
     
@@ -345,6 +345,7 @@ def run(n_bins, data_dir, lat_range, lon_range, truncate, save_dir):
     if truncate == 0:
         truncate = float("inf")
 
+    pathlib.Path(save_dir).mkdir(parents=True, exist_ok=True)
     db_path = pathlib.Path(save_dir) / "paths.db"
 
     print("make grid")

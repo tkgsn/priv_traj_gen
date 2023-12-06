@@ -14,7 +14,7 @@ import make_pair_to_route
 import concurrent.futures
 import functools
 from make_raw_data import make_raw_data_random, make_raw_data_rotation
-
+import subprocess
 
 def compute_distance_matrix(state_to_latlon, n_locations):
 
@@ -204,16 +204,33 @@ def make_db(dataset, lat_range, lon_range, n_bins, truncate, logger):
 
     db_save_dir = get_datadir() / original_dataset / "pair_to_route" / f"{n_bins}_tr{truncate}"
     db_save_dir.mkdir(exist_ok=True, parents=True)
-    if not (db_save_dir / "paths.db").exists():
-    # if True:
+    # if not (db_save_dir / "paths.db").exists():
+    if True:
+        # to avoid the latency of the shared file directory, we use temp_db_save_dir, which is moved to db_save_dir after
+        temp_db_save_dir = "./temp"
         graph_data_dir = get_datadir() / dataset / "raw"
-        # get(get_datadir() / dataset / "raw", parent=True)
         logger.info(f"make pair_to_route to {db_save_dir}")
-        make_pair_to_route.run(n_bins, graph_data_dir, lat_range, lon_range, truncate, db_save_dir)
+        make_pair_to_route.run(n_bins, graph_data_dir, lat_range, lon_range, truncate, temp_db_save_dir)
+        # move to db_save_dir with subprocess
+        logger.info(f"move {temp_db_save_dir} to {db_save_dir}")
+        # (pathlib.Path(temp_db_save_dir) / "paths.db").rename(db_save_dir / "paths.db")
+        subprocess.run(["mv", pathlib.Path(temp_db_save_dir) / "paths.db", db_save_dir / "paths.db"])
+        # remove ./temp
+        logger.info(f"remove {temp_db_save_dir}")
+        subprocess.run(["rm", "-rf", temp_db_save_dir])
     else:
         logger.info(f"pair_to_route already exists in {db_save_dir / 'paths.db'}")
     
     # send(db_save_dir / "paths.db")
+
+def make_reversible_stay_traj(traj, road_db):
+    pass
+
+def make_reversible_trajs(trajs, road_db):
+    reversible_trajs = []
+    for traj in trajs:
+        reversible_trajs.append(make_reversible_stay_traj(traj, road_db))
+    return reversible_trajs
 
 def run(dataset_name, lat_range, lon_range, n_bins, time_threshold, location_threshold, size, seed, truncate, logger):
     """
@@ -250,19 +267,26 @@ def run(dataset_name, lat_range, lon_range, n_bins, time_threshold, location_thr
             logger.info(f"check in range")
             raw_trajs = check_in_range(raw_trajs, grid)
 
-            logger.info(f"make stay trajectory by {time_threshold}min and {location_threshold}m")
-            time_trajs, trajs = make_stay_trajectory(raw_trajs, time_threshold, location_threshold)
-            route_time_trajs, route_trajs = make_stay_trajectory(raw_trajs, 0, 0)
+            if dataset_name == "chengdu":
+                make_db(dataset_name, lat_range, lon_range, n_bins, truncate, logger)
+                # for the road network dataset, we make stay trajectory with road network information
 
-            logger.info("make complessed dataset by the grid")
-            trajs, times, indice = make_complessed_dataset(time_trajs, trajs, grid)
+                # represent route trajectory by states
+                route_time_trajs, route_trajs = make_stay_trajectory(raw_trajs, 0, 0)
 
-            with open(training_data_dir / "indice.json", "w") as f:
-                json.dump(indice, f)
-            # send(training_data_dir / "indice.json")
+                # convert to reversible stay trajectory from the route trajectory
+                trajs = make_reversible_trajs(route_trajs, road_db)
 
-            times = [[time[0] for time in traj] for traj in times]
+            else:
+                logger.info(f"make stay trajectory by {time_threshold}min and {location_threshold}m")
+                time_trajs, trajs = make_stay_trajectory(raw_trajs, time_threshold, location_threshold)
+                logger.info("make complessed dataset by the grid")
+                trajs, times, indice = make_complessed_dataset(time_trajs, trajs, grid)
+                with open(training_data_dir / "indice.json", "w") as f:
+                    json.dump(indice, f)
+                # send(training_data_dir / "indice.json")
 
+                times = [[time[0] for time in traj] for traj in times]
             # route_dataset, route_times, _ = make_complessed_dataset(route_time_trajs, route_trajs, grid, indice)
             # route_times = [[time[0] for time in traj] for traj in route_times]
             # time_save_path = training_data_dir / f"route_training_data_time.csv"
