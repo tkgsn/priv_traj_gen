@@ -20,8 +20,8 @@ def load_trajs_raw():
     trajs, tdpts, tcosts = [], [], []  # T+1, T, T
     lens = []
     size_cnt = 0
-    data_name = 'training_data.csv'
-    time_data_name = 'training_data_time.csv'
+    data_name = 'mtnet_training_data.csv'
+    time_data_name = 'mtnet_training_data_time.csv'
     # data_name = 'trajs_demo.csv'
     # time_data_name = 'tstamps_demo.csv'
     # with open(os.path.join(config.SAVE_DIR, data_name), "r") as ftraj:
