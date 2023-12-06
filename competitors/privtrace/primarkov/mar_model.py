@@ -19,7 +19,7 @@ class MarkovModel:
 
         self.real_markov_matrix = np.array([])
         self.noisy_markov_matrix = np.array([])
-        self.optimized_start_end_distribution = np.array([])
+        # self.optimized_start_end_distribution = np.array([])
         self.shortest_lengths = np.array([])
         self.large_cell_lengths = np.array([])
         self.length_inside_large_cell = np.array([])

@@ -143,7 +143,7 @@ class ClusteringGenerator():
             is_outsider = np.random.binomial(1, self.outsider_probs[seq_len])
             if is_outsider:
                 """
-                randomly making the trajectory that is not in the training data
+                randomly maki212ng the trajectory that is not in the training data
                 """
                 while True:
                     traj = [reference[0]]

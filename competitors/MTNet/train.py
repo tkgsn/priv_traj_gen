@@ -104,6 +104,13 @@ if __name__ == '__main__':
     cuda_number = int(sys.argv[4])
     config.TRAJ_FIX_LEN = int(sys.argv[6])
     config.P_BATCH = int(sys.argv[7])
+    seed = int(sys.argv[8])
+    # set seed
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    np.random.seed(seed)
+    torch.backends.cudnn.deterministic = True
+
     # convert string to bool
     if sys.argv[5] == 'True':
         config.DP = True
@@ -115,7 +122,7 @@ if __name__ == '__main__':
     config.SAMPLE_SAVE_DIR = config.SAVE_DIR
 
     # training_data_dir=/data/${dataset}/${max_size}/${name}
-    training_settings = {"dataset": data_dir.split('/')[2], "data_name": data_dir.split('/')[-2], "network_type": "MTNet"}
+    training_settings = {"training_data_dir": data_dir, "dataset": data_dir.split('/')[2], "data_name": data_dir.split('/')[-2], "network_type": "MTNet"}
     with open(config.SAVE_DIR / 'params.json', 'w') as f:
         json.dump(training_settings, f)
     send(config.SAVE_DIR / 'params.json')

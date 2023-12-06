@@ -6,8 +6,8 @@ import numpy as np
 import geopandas as gpd
 import os
 
-sys.path.append("../")
-from my_utils import get
+# sys.path.append("../../")
+# from my_utils import get
 
 # sys.path.append('../../priv_traj_gen')
 # from my_utils import load
@@ -452,12 +452,12 @@ if __name__ == "__main__":
     save_path = pathlib.Path(sys.argv[2])
     save_path.mkdir(parents=True, exist_ok=True)
 
-    get(data_path, parent=True)
+    # get(data_path, parent=True)
 
     dataset = sys.argv[3]
     indice_path = sys.argv[4]
     print("load index information", indice_path)
-    get(indice_path)
+    # get(indice_path)
     with open(indice_path, "r") as f:
         indice = json.load(f)
     if dataset == "chengdu":
