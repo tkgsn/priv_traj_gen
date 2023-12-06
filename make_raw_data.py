@@ -1,5 +1,5 @@
 import argparse
-from my_utils import get_datadir, save, load, construct_default_quadtree, set_logger, send
+from my_utils import get_datadir, save, load, construct_default_quadtree, set_logger
 import pandas as pd
 import numpy as np
 import glob

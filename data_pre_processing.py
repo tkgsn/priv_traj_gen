@@ -4,7 +4,7 @@ import pathlib
 import argparse
 import pandas as pd
 import numpy as np
-from my_utils import get_datadir, load, save, set_logger, load_latlon_range, send, get, get_original_dataset_name
+from my_utils import get_datadir, load, save, set_logger, load_latlon_range, get_original_dataset_name
 from name_config import make_save_name
 from grid import Grid
 import tqdm
@@ -300,7 +300,7 @@ def run(dataset_name, lat_range, lon_range, n_bins, time_threshold, location_thr
             logger.info(f"check in range")
             raw_trajs = check_in_range(raw_trajs, grid)
 
-            if dataset_name == "chengdu":
+            if dataset_name in ["chengdu", "geolife_mm"]:
                 # for the road network dataset, we make stay trajectory with road network information
                 db_path = make_db(dataset_name, lat_range, lon_range, n_bins, truncate, logger)
 
