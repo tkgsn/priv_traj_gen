@@ -278,7 +278,6 @@ def process_state_i(i, states, db_path, latlon_to_state, DG, truncate):
                     if (node, end_node) in DG.edges:
                         shortest_path = path[end_node]
                         shortest_length = length[end_node]
-                        print("direct road", i, j, shortest_length)
                         flag = True
                     if end_node in path:
                         if length[end_node] < shortest_length:
