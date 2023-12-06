@@ -279,6 +279,7 @@ def process_state_i(i, states, db_path, latlon_to_state, DG, truncate):
                         shortest_path = path[end_node]
                         shortest_length = length[end_node]
                         flag = True
+                        break
                     if end_node in path:
                         if length[end_node] < shortest_length:
                             shortest_length = length[end_node]
