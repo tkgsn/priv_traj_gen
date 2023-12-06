@@ -311,6 +311,7 @@ def run(dataset_name, lat_range, lon_range, n_bins, time_threshold, location_thr
                 subprocess.run(["cp", db_path, "./"])
                 # convert to reversible stay trajectory from the route trajectory
                 print("make reversible trajs using", db_path)
+                print(route_trajs[:10])
                 trajs = make_reversible_trajs(route_trajs, "./paths.db")
                 times = [[0 for _ in traj] for traj in trajs]
 
