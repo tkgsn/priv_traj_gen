@@ -114,7 +114,6 @@ def compless(state_trajectory, time_trajectory, cost=False):
 
         cursor = 2
         while True:
-            print(traj, cursor)
             if cursor > len(traj)-2:
                 break
 
