@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # source ./enviornment
+pip3 install osmnx
 
 #
 # VARIABLES
