@@ -16,6 +16,7 @@ import sqlite3
 import tqdm
 import json
 import pyemd
+import subprocess
 
 import sys
 sys.path.append("./competitors/privtrace")
@@ -83,7 +84,9 @@ def run(generator, dataset, args):
         original_dataset_name = get_original_dataset_name(dataset)
         print(type(original_dataset_name), original_dataset_name)
         route_db_path = get_datadir() / original_dataset_name / "pair_to_route"/ f"{n_bins}_tr{args.truncate}" / "paths.db"
-        # get(route_db_path)
+        # copy the database to ./ to avoid the latency
+        subprocess.run(["cp", route_db_path, "./"])
+        route_db_path = "./paths.db"
         print("compensating trajectories by", route_db_path)
     else:
         print("not compensating trajectories")
