@@ -250,7 +250,7 @@ def make_reversible_stay_traj(traj, road_db):
                 # if route is the same as the partial traj from cursor to cursor2, then we can reverse the traj
                 if route is not None:
                     route = eval(route[0])
-                    print(route, traj[cursor1:cursor2+1])
+                    # print(route, traj[cursor1:cursor2+1])
                     if route == traj[cursor1:cursor2+1]:
                         continue
                 
