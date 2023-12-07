@@ -95,9 +95,9 @@ with concurrent.futures.ProcessPoolExecutor(max_workers=1) as executor:
         executor.submit(os.system, combined)
 
 
-# with concurrent.futures.ProcessPoolExecutor(max_workers=1) as executor:
-#     for seed in seeds:
-#         command = command_mtnet(n_bins, seed)
-#         combined = f"{command[1]}"
-#         print(combined)
-#         executor.submit(os.system, combined)
+with concurrent.futures.ProcessPoolExecutor(max_workers=1) as executor:
+    for seed in seeds:
+        command = command_mtnet(n_bins, seed)
+        combined = f"{command[1]}"
+        print(combined)
+        executor.submit(os.system, combined)
