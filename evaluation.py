@@ -1020,7 +1020,10 @@ def set_args(run_args):
     args.evaluate_first_next_location = True and (training_setting["network_type"] in ["hiemrnet", "baseline"])
     args.evaluate_second_next_location = True and (training_setting["network_type"] in ["hiemrnet", "baseline"])
     args.evaluate_second_order_next_location = False and (training_setting["network_type"] in ["hiemrnet", "baseline"])
-    args.compensation = False
+    args.dataset = dataset_name
+
+    args.compensation = (dataset_name in ["chengdu", "geolife_mm"])
+    
     args.eval_initial = True
     args.n_test_locations = 30
     args.n_split = 5
@@ -1031,7 +1034,6 @@ def set_args(run_args):
     args.eval_interval = run_args.eval_interval
     args.test_thresh = run_args.test_thresh
 
-    args.dataset = dataset_name
     # args.time_threshold = run_args.time_threshold
     args.route_generator = (training_setting["network_type"] == "MTNet")
     args.truncate = run_args.truncate

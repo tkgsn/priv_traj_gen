@@ -27,7 +27,8 @@ max_size = 10000
 
 time_threshold = 30 / 60
 location_threshold = 200
-seeds = range(10)
+# seeds = range(10)
+seeds = [0]
 
 # def command_baseline(n_bins, dim):
 #     save_name = make_save_name(dataset, n_bins, time_threshold, location_threshold, seed)
