@@ -1148,7 +1148,7 @@ if __name__ == "__main__":
         if i % args.eval_interval != 0:
             continue
 
-        if training_setting["network_type"] == "MTNet":
+        if training_setting["network_type"] == "mtnet":
             generator = MTNetGeneratorMock(model_path / "samples.txt", model_path / "samples_time.txt", training_setting["dataset"], n_bins)
         elif training_setting["network_type"] == "privtrace":
             with open(model_path / f"privtrace_generator.pickle", "rb") as f:
@@ -1156,7 +1156,7 @@ if __name__ == "__main__":
         elif training_setting["network_type"] == "clustering":
             with open(model_path / f"generator.pickle", "rb") as f:
                 generator = pickle.load(f)
-        else:
+        elif training_setting["network_type"] in ["hiemrnet", "baseline"]:
             meta_network, _ = construct_meta_network(training_setting["clustering"], training_setting["network_type"], training_dataset.n_locations, training_setting["memory_dim"], training_setting["memory_hidden_dim"], training_setting["location_embedding_dim"], training_setting["multilayer"], training_setting["consistent"], logger)
             if hasattr(meta_network, "remove_class_to_query"):
                 meta_network.remove_class_to_query()
