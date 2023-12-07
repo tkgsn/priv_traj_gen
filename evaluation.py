@@ -1025,8 +1025,6 @@ def set_args(run_args):
     args.evaluate_second_next_location = True and (training_setting["network_type"] in ["hiemrnet", "baseline"])
     args.evaluate_second_order_next_location = False and (training_setting["network_type"] in ["hiemrnet", "baseline"])
     args.dataset = dataset_name
-
-    args.compensation = (dataset_name in ["chengdu", "geolife_mm"])
     
     args.eval_initial = True
     args.n_test_locations = 30
@@ -1039,7 +1037,8 @@ def set_args(run_args):
     args.test_thresh = run_args.test_thresh
 
     # args.time_threshold = run_args.time_threshold
-    args.route_generator = (training_setting["network_type"] == "MTNet")
+    args.route_generator = (training_setting["network_type"] == "mtnet")
+    args.compensation = (dataset_name in ["chengdu", "geolife_mm"]) and (not args.route_generator)
     args.truncate = run_args.truncate
     # if run_args.location_threshold == 0 and run_args.time_threshold == 0:
         # args.compensation = False
@@ -1051,7 +1050,6 @@ def set_args(run_args):
 
 if __name__ == "__main__":
     from run import construct_dataset, construct_generator, construct_meta_network
-    print("!!!")
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_dir', type=str)
 
