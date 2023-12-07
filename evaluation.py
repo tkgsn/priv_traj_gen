@@ -1051,7 +1051,7 @@ def set_args(run_args):
 
 if __name__ == "__main__":
     from run import construct_dataset, construct_generator, construct_meta_network
-    
+    print("!!!")
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_dir', type=str)
 
