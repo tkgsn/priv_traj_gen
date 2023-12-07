@@ -1165,11 +1165,10 @@ if __name__ == "__main__":
             if hasattr(meta_network, "remove_class_to_query"):
                 meta_network.remove_class_to_query()
             generator, _ = construct_generator(training_dataset.n_locations, meta_network, training_setting["network_type"], training_setting["location_embedding_dim"], training_setting["n_split"], len(training_dataset.label_to_reference), training_setting["hidden_dim"], training_dataset.reference_to_label, logger)
-            logger.info(f"evaluate {model_path}")
+            logger.info(f"evaluate {model_path}!")
             generator.load_state_dict(torch.load(model_path, map_location=device))
             generator = generator.to(device)
-        
-        print(generator, device)
+            print(generator, device)
 
         args.name = model_path.name
         results = run(generator, dataset, args)
