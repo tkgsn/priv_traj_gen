@@ -80,6 +80,7 @@ def run(generator, dataset, args):
 
     n_bins = int(np.sqrt(dataset.n_locations)-2)
 
+    print("???")
     if args.compensation:
         original_dataset_name = get_original_dataset_name(dataset)
         print(type(original_dataset_name), original_dataset_name)
