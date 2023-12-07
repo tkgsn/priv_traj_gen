@@ -4,7 +4,7 @@ import sys
 import geopandas as gpd
 
 # sys.path.append("../../priv_traj_gen")
-from my_utils import load, load_latlon_range, get, send
+from my_utils import load, load_latlon_range
 from grid import Grid
 from data_pre_processing import check_in_range
 
@@ -111,7 +111,7 @@ def run(dataset, data_path, save_dir):
     save_graph_shapefile_directional(G, filepath=save_dir)
 
     # make gps file
-    get(data_path)
+    # get(data_path)
     data = load(data_path)
     ranges = Grid.make_ranges_from_latlon_range_and_nbins(lat_range, lon_range, 2)
     grid = Grid(ranges)
