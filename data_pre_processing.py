@@ -112,17 +112,16 @@ def compless(state_trajectory, time_trajectory, cost=False):
         if len(traj) <= 3:
             return traj
 
-        print(traj)
-
         cursor = 2
         while True:
-            if cursor == len(traj)-2:
+            print(traj, cursor)
+            if cursor > len(traj)-2:
                 break
 
             if [traj[cursor-2],traj[cursor-1]] == [traj[cursor],traj[cursor+1]]:
                 traj.pop(cursor)
                 traj.pop(cursor)
-                cursor -= 1
+                # cursor -= 1
             else:
                 cursor += 1
         
