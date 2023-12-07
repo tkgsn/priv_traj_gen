@@ -106,6 +106,23 @@ def make_stay_trajectory(trajectories, time_threshold, location_threshold, start
 
 
 def compless(state_trajectory, time_trajectory, cost=False):
+
+    def compless_2(traj):
+
+        cursor = 2
+        while True:
+            if cursor == len(traj)-2:
+                break
+
+            if [traj[cursor-2],traj[cursor-1]] == [traj[cursor],traj[cursor+1]]:
+                traj.pop(cursor)
+                traj.pop(cursor)
+                cursor -= 1
+            else:
+                cursor += 1
+        
+        return traj
+
     # compless time trajectory according to state trajectory
     complessed_time_trajectory = []
     j = 0
@@ -126,8 +143,12 @@ def compless(state_trajectory, time_trajectory, cost=False):
     # print("before", state_trajectory)
     # remove consecutive same states
     state_trajectory = [state_trajectory[0]] + [state_trajectory[i] for i in range(1, len(state_trajectory)) if state_trajectory[i] != state_trajectory[i-1]]
+
+    state_trajectory = compless_2(state_trajectory)
+    complessed_time_trajectory = [0] * len(state_trajectory)
     # print("after", state_trajectory)
     return state_trajectory, complessed_time_trajectory
+
 
 
 def make_complessed_dataset(time_trajectories, trajectories, grid, indice=None):
