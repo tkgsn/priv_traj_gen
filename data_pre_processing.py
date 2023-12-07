@@ -109,6 +109,7 @@ def compless(state_trajectory, time_trajectory, cost=False):
 
     def compless_2(traj):
 
+        print(traj)
         cursor = 2
         while True:
             if cursor == len(traj)-2:
