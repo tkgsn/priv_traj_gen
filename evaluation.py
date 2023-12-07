@@ -1169,6 +1169,8 @@ if __name__ == "__main__":
             generator.load_state_dict(torch.load(model_path, map_location=device))
             generator = generator.to(device)
         
+        print(generator, device)
+
         args.name = model_path.name
         results = run(generator, dataset, args)
         print("save result to", args.save_dir / f"evaluated_{args.name}_trun{args.truncate}_{args.to_bin}.json")
