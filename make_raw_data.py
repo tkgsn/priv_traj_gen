@@ -770,8 +770,8 @@ def convert_mr_to_training(dataset):
                 # continue
 
             training_data_time.append(change_times)
-            # training_data.append(edge_ids + [0])
-            training_data.append(edge_ids_)
+            training_data.append(edge_ids + [0])
+            # training_data.append(edge_ids_)
             assert len(change_times) == len(edge_ids), f"{len(change_times)} != {len(edge_ids)}"
     
     with open(os.path.join(save_dir, "training_data.csv"), "w") as f:
