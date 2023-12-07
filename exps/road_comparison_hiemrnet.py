@@ -22,8 +22,11 @@ dims = [32]
 # max_size = 0
 # time_threshold = 30
 
-dataset = "chengdu"
-max_size = 10000
+# dataset = "chengdu"
+# max_size = 10000
+
+dataset = "geolife_mm"
+max_size = 0
 
 time_threshold = 30 / 60
 location_threshold = 200
