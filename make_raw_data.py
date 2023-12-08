@@ -703,8 +703,7 @@ def convert_mr_to_training(dataset):
     data_dir = get_datadir() / dataset / "raw"
     save_dir = get_datadir() / dataset / "raw"
 
-    max_length = 20
-
+    # max_length = 20
     # send mr to the server for backup
     # send(os.path.join(data_dir, "mr.txt"))
     # format of training: edge_id edge_id ... edge_id 0
