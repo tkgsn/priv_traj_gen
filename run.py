@@ -432,9 +432,12 @@ if __name__ == "__main__":
         args.epsilon = 0
         logger.info("pre-training is not done")
     else:
-        # decide the budget for the pre-training (this is for depth_clustering with depth = 2)
-        args.epsilon = min([args.epsilon, set_budget(len(dataset), int(np.sqrt(dataset.n_locations)) -2)])
-        logger.info(f"epsilon is set as: {args.epsilon}")
+        if args.epsilon == 0:
+            # decide the budget for the pre-training (this is for depth_clustering with depth = 2)
+            args.epsilon = min([args.epsilon, set_budget(len(dataset), int(np.sqrt(dataset.n_locations)) -2)])
+            logger.info(f"epsilon is set as: {args.epsilon} by our method")
+        else:
+            logger.info(f"epsilon is fixed as: {args.epsilon}")
 
     meta_network, location_to_class = construct_meta_network(args.clustering, args.network_type, dataset.n_locations, args.memory_dim, args.memory_hidden_dim, args.location_embedding_dim, args.multilayer, args.consistent, logger)
     meta_network.to(device)
