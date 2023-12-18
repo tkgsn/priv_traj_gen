@@ -22,7 +22,7 @@ time_threshold = 30
 location_threshold = 200
 seeds = range(1)
 
-def command(n_bins, epsilon, seed):
+def command_hiemrnet(n_bins, epsilon, seed):
     meta_n_iter = 10000
     save_name = make_save_name(dataset, n_bins, time_threshold, location_threshold, seed)
     data_dir = orig_data_dir / dataset / str(max_size) / save_name
@@ -35,7 +35,7 @@ with concurrent.futures.ProcessPoolExecutor(max_workers=4) as executor:
     for seed in seeds:
         for n_bins in n_binss:
             for epsilon in epsilons:
-                for command in [command(n_bins, epsilon, seed)]:
+                for command in [command_hiemrnet(n_bins, epsilon, seed)]:
                     combined = f"{command[0]}"
                     executor.submit(os.system, combined)
 
