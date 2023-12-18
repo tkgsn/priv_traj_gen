@@ -17,6 +17,7 @@ memory_dim=$MEM_DIM
 memory_hidden_dim=$MEM_HIDDEN_DIM
 coef_time=$COEF_TIME
 network_type=$NETWORK_TYPE
+epsilon=$EPSILON
 # 
 # VARIABLES END
 #
@@ -37,7 +38,6 @@ patience=20
 batch_size=0
 noise_multiplier=1
 clipping_bound=1
-epsilon=1000
 n_split=5
 learning_rate=1e-3
 accountant_mode=rdp
