@@ -434,7 +434,7 @@ if __name__ == "__main__":
     else:
         if args.epsilon == 0:
             # decide the budget for the pre-training (this is for depth_clustering with depth = 2)
-            args.epsilon = min([args.epsilon, set_budget(len(dataset), int(np.sqrt(dataset.n_locations)) -2)])
+            args.epsilon = set_budget(len(dataset), int(np.sqrt(dataset.n_locations)) -2)
             logger.info(f"epsilon is set as: {args.epsilon} by our method")
         else:
             logger.info(f"epsilon is fixed as: {args.epsilon}")
