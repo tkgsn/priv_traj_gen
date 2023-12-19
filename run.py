@@ -279,7 +279,7 @@ def pre_training_meta_network(meta_network, dataset, location_to_class, transiti
         for location in locations:
             if location in next_location_counts:
                 next_location_count_i += np.array(next_location_counts[location]) 
-        logger.info(f"sum of next location counts in class {i}: {sum(next_location_count_i)}")
+        logger.info(f"sum of next location counts in class {i}: {sum(next_location_count_i)} add noise by epsilon = {args.epsilon}")
         target_count_i = add_noise(next_location_count_i, args.global_clip, args.epsilon)
         target_count_i = torch.tensor(target_count_i)
         
