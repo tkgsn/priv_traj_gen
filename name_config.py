@@ -16,4 +16,7 @@ def make_model_name(**kwargs):
         save_name = f"{kwargs['network_type']}_dp{kwargs['is_dp']}_pre{kwargs['meta_n_iter']}_dim{kwargs['memory_dim']}_{kwargs['memory_hidden_dim']}_{kwargs['location_embedding_dim']}_{kwargs['hidden_dim']}_btch{kwargs['batch_size']}_{kwargs['seed']}"
     elif kwargs["network_type"] == "mtnet":
         save_name = f"{kwargs['network_type']}_dp{kwargs['is_dp']}_{kwargs['seed']}"
+
+    if kwargs["transition_type"] == "test":
+        save_name = "test"
     return save_name
