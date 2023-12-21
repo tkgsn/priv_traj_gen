@@ -380,7 +380,7 @@ def plot_density(counts, n_locations, save_path, anotation=None, coef=1):
 
 def add_noise(values, sensitivity, epsilon):
     # add Laplace noise
-    if epsilon == 0:
+    if epsilon == float("inf"):
         print("WARNING: noise not added")
         return values
     print(np.random.laplace(loc=0, scale=sensitivity/epsilon, size=len(values)))
