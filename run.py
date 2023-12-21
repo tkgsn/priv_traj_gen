@@ -273,7 +273,7 @@ def pre_training_meta_network(meta_network, dataset, location_to_class, transiti
             next_location_counts = evaluation.make_next_location_count(dataset, 0)
         elif transition_type == "test":
             logger.info(f"use test transition matrix")
-            next_location_counts = {location: [0] * dataset.n_locations for location in range(dataset.n_locations)}
+            next_location_counts = {location: [1] * dataset.n_locations for location in range(dataset.n_locations)}
 
         # find the locations belonging to the class i
         next_location_count_i = torch.zeros(dataset.n_locations)
