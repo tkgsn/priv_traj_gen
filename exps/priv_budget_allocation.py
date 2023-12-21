@@ -22,7 +22,8 @@ max_size = 0
 time_threshold = 30
 location_threshold = 200
 seeds = range(1)
-meta_dist = "eye"
+# meta_dist = "eye"
+meta_dist = "dirichlet"
 
 def command_hiemrnet(n_bins, epsilon, seed):
     meta_n_iter = 10000
