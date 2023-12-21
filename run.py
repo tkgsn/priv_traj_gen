@@ -36,7 +36,7 @@ def train_meta_network(meta_network, next_location_counts, n_iter, early_stoppin
     def depth_to_ids(depth):
         return [node.id for node in tree.get_nodes(depth)]
     # make test data
-    test_input = torch.eye(n_classes).to(device)
+    # test_input = torch.eye(n_classes).to(device)
 
     original_targets = torch.zeros(n_classes, n_locations).to(device)
     for i in range(n_classes):
@@ -271,6 +271,9 @@ def pre_training_meta_network(meta_network, dataset, location_to_class, transiti
         elif transition_type == "first":
             logger.info(f"use first transition matrix")
             next_location_counts = evaluation.make_next_location_count(dataset, 0)
+        elif transition_type == "test":
+            logger.info(f"use test transition matrix")
+            next_location_counts = {location: [0] * dataset.n_locations for location in range(dataset.n_locations)}
 
         # find the locations belonging to the class i
         next_location_count_i = torch.zeros(dataset.n_locations)

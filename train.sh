@@ -57,8 +57,9 @@ clustering=depth
 activate=relu
 # activate=leaky_relu
 
-transition_type=first
+# transition_type=first
 # transition_type=marginal
+transition_type=test
 
 # set the options
 remove_first_value=True
