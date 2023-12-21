@@ -18,6 +18,7 @@ memory_hidden_dim=$MEM_HIDDEN_DIM
 coef_time=$COEF_TIME
 network_type=$NETWORK_TYPE
 epsilon=$EPSILON
+meta_dist=$META_DIST
 # 
 # VARIABLES END
 #
@@ -47,7 +48,6 @@ coef_location=1
 n_classes=10
 global_clip=1
 meta_patience=1000
-meta_dist=dirichlet
 clustering=depth
 
 
