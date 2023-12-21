@@ -18,5 +18,5 @@ def make_model_name(**kwargs):
         save_name = f"{kwargs['network_type']}_dp{kwargs['is_dp']}_{kwargs['seed']}"
 
     if kwargs["transition_type"] == "test":
-        save_name = "test"
+        save_name = f"test_eps{kwargs['epsilon']}"
     return save_name
