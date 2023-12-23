@@ -500,6 +500,7 @@ class BaseQuadTreeNetwork(nn.Module):
                 # that is, this generates Pr(location|depth)
                 if (not self.training) or self.pre_training:
                 # if True:
+                    print("AA")
                     distribution = torch.zeros(*scores.shape[:-2], 4**depth).to(scores.device)
                     for i in range(depth):
                         ids = list(range(sum([4**depth_ for depth_ in range(0,i)]), sum([4**depth_ for depth_ in range(0,i+1)])))
