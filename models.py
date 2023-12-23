@@ -329,6 +329,7 @@ def compute_loss_meta_gru_net(target_locations, target_times, output_locations, 
     loss.append(F.nll_loss(output_times.view(-1, output_times.shape[-1]), (target_times).view(-1)) * coef_time)
     return loss
 
+
 def compute_loss_gru_meta_gru_net(target_paths, target_times, output_locations, output_times, coef_location, coef_time):
     output_locations = output_locations.view(-1, 4)
     target_paths = target_paths.view(-1)
@@ -499,6 +500,8 @@ class BaseQuadTreeNetwork(nn.Module):
                 # when evaluation_mode, conducting consistent sampling for all locations; it generates probability distribution in all layers
                 # that is, this generates Pr(location|depth)
                 # if (not self.training) or self.pre_training:
+                if self.pre_training:
+                    return scores
                 if False:
                     distribution = torch.zeros(*scores.shape[:-2], 4**depth).to(scores.device)
                     for i in range(depth):
@@ -518,7 +521,6 @@ class BaseQuadTreeNetwork(nn.Module):
                 # in the case of not consistent, this generates probability distribution on the depth layer
                 distribution = F.log_softmax(scores[..., ids], dim=-1)
             else:
-                print("!!")
                 # when training_mode, we consider that each node generates probability distribution on the 4 children nodes, i.e., P(child|parent)
                 distribution = scores[..., ids]
 

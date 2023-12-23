@@ -306,22 +306,6 @@ class QuadTree(Grid):
 
 
     def make_quad_distribution(self, counts):
-        # assert self.is_complete
-        # to batched shape
-        # if len(counts.shape) == 1:
-        #     counts = counts.rehsape(1, -1)
-        # self._register_count_to_complete_graph(counts)
-        # batch_size = counts.shape[0]
-
-        # nodes_except_leafs = self.get_all_nodes()
-        # nodes_except_leafs = [node for node in nodes_except_leafs if node.is_leaf() is False]
-        # quad_distribution = np.zeros(batch_size, len(nodes_except_leafs), 4)
-
-        # for node in nodes_except_leafs:
-        #     for i, child in enumerate(node.children):
-        #         quad_distribution[:,node.id,i] = child.get_count()
-
-        # return quad_distribution
         assert self.is_complete
         # to batched shape
         if len(counts.shape) == 1:
