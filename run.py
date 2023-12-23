@@ -309,8 +309,8 @@ def pre_training_meta_network(meta_network, dataset, location_to_class, transiti
         test_input = torch.eye(n_classes).to(device)
         meta_network_output = meta_network(test_input)
         for i in range(n_classes):
-            print(meta_network_output[i].cpu().shape)
-            plot_density(meta_network_output[i].cpu(), dataset.n_locations, save_dir / "imgs" / f"meta_network_output_{i}.png")
+            print(meta_network_output[-1][i].cpu())
+            plot_density(meta_network_output[-1][i].cpu().view(-1), dataset.n_locations, save_dir / "imgs" / f"meta_network_output_{i}.png")
         meta_network.train()
 
 
