@@ -69,6 +69,7 @@ def train_meta_network(meta_network, next_location_counts, n_iter, early_stoppin
             
             losses = []
             loss = 0
+            print("a")
             if type(meta_network_output) == list:
                 quad_loss = True
                 if quad_loss:
@@ -90,8 +91,10 @@ def train_meta_network(meta_network, next_location_counts, n_iter, early_stoppin
                         losses.append(F.kl_div(meta_network_output.view(batch_size,-1), test_target[-1], reduction='batchmean'))
                     loss = sum(losses)
             else:
+                print("b")
                 quad_loss = True
                 if quad_loss:
+                    print("c")
                     print(meta_network_output.shape)
                     target = tree.make_quad_distribution(target)
                     meta_network_output = meta_network_output.view(*target.shape)
