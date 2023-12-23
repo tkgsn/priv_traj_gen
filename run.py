@@ -44,6 +44,7 @@ def train_meta_network(meta_network, next_location_counts, n_iter, early_stoppin
         original_targets[i][original_targets[i] < 0] = 0
         original_targets[i] = original_targets[i] / original_targets[i].sum()
 
+    print("!!")
 
     with tqdm.tqdm(range(n_iter)) as pbar:
         for epoch in pbar:
