@@ -69,25 +69,17 @@ def train_meta_network(meta_network, next_location_counts, n_iter, early_stoppin
             losses = []
             loss = 0
             if type(meta_network_output) == list:
-                quad_loss = True
-                if quad_loss:
-                    target = tree.make_quad_distribution(target)
-                    meta_network_output = meta_network_output.view(*target.shape)
+                batch_size = meta_network_output[0].shape[0]
+                test_target = evaluation.make_target_distributions_of_all_layers(target, tree)
+                train_all_layers = True
+                if train_all_layers:
+                    # meta_network_output = meta_network.to_location_distribution(meta_network_output, target_depth=0)
                     for depth in range(tree.max_depth):
-                        ids = depth_to_ids(depth)
-                        loss += F.kl_div(meta_network_output[:,ids,:], target[:,ids,:], reduction='batchmean') * 4**(tree.max_depth-depth-1)
+                        losses.append(F.kl_div(meta_network_output[depth].view(batch_size,-1), test_target[depth], reduction='batchmean'))
                 else:
-                    batch_size = meta_network_output[0].shape[0]
-                    test_target = evaluation.make_target_distributions_of_all_layers(target, tree)
-                    train_all_layers = True
-                    if train_all_layers:
-                        # meta_network_output = meta_network.to_location_distribution(meta_network_output, target_depth=0)
-                        for depth in range(tree.max_depth):
-                            losses.append(F.kl_div(meta_network_output[depth].view(batch_size,-1), test_target[depth], reduction='batchmean'))
-                    else:
-                        meta_network_output = meta_network.to_location_distribution(meta_network_output, target_depth=-1)
-                        losses.append(F.kl_div(meta_network_output.view(batch_size,-1), test_target[-1], reduction='batchmean'))
-                    loss = sum(losses)
+                    meta_network_output = meta_network.to_location_distribution(meta_network_output, target_depth=-1)
+                    losses.append(F.kl_div(meta_network_output.view(batch_size,-1), test_target[-1], reduction='batchmean'))
+                loss = sum(losses)
             else:
                 quad_loss = True
                 if quad_loss:
@@ -309,6 +301,17 @@ def pre_training_meta_network(meta_network, dataset, location_to_class, transiti
     else:
         meta_network.load_state_dict(torch.load(args.meta_network_load_path))
         logger.info(f"load meta network from {args.meta_network_load_path}")
+
+    # plot the test output of meta_network
+    with torch.no_grad():
+        meta_network.pre_training = False
+        test_input = torch.eye(n_classes).to(device)
+        meta_network_output = meta_network(test_input)
+        meta_network_output = meta_network_output[-1] if type(meta_network_output) == list else meta_network_output
+        for i in range(n_classes):
+            plot_density(meta_network_output[i], dataset.n_locations, save_dir / "imgs" / f"meta_network_output_{i}.png")
+
+
     if hasattr(meta_network, "remove_class_to_query"):
         meta_network.remove_class_to_query()
     
