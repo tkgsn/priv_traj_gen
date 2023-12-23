@@ -262,6 +262,9 @@ def construct_meta_network(clustering_type, network_type, n_locations, memory_di
     return meta_network, location_to_class
 
 def pre_training_meta_network(meta_network, dataset, location_to_class, transition_type):
+    if args.meta_n_iter == 0:
+        return meta_network
+
     n_classes = len(set(location_to_class.values()))
     target_counts = []
     for i in range(n_classes):
@@ -288,7 +291,7 @@ def pre_training_meta_network(meta_network, dataset, location_to_class, transiti
         
         target_counts.append(target_count_i)
 
-        # plot_density(target_count_i, dataset.n_locations, save_path / "imgs" / f"class_next_location_distribution_{i}.png")
+        plot_density(target_count_i, dataset.n_locations, save_dir / "imgs" / f"class_next_location_distribution_{i}.png")
 
     device = next(meta_network.parameters()).device
     target_counts = torch.stack(target_counts).to(device)
