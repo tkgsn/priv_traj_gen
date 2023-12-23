@@ -492,6 +492,9 @@ class BaseQuadTreeNetwork(nn.Module):
         assert scores.shape[-2] == len(self.tree.get_all_nodes()) - len(self.tree.get_leafs()), "the range of the input distribution should be should be {}, but it is {}".format(len(self.tree.get_all_nodes()) - len(self.tree.get_leafs()), scores.shape[-2])
         if not self.training and self.pre_training:
             print("WARNING: PRE-TRAINING_MODE")
+
+        if self.pre_training:
+            return scores
         # scores is sorted according to node.id
         def get_log_distribution_at_depth(scores, depth):
 
@@ -500,8 +503,6 @@ class BaseQuadTreeNetwork(nn.Module):
                 # when evaluation_mode, conducting consistent sampling for all locations; it generates probability distribution in all layers
                 # that is, this generates Pr(location|depth)
                 # if (not self.training) or self.pre_training:
-                if self.pre_training:
-                    return scores
                 if False:
                     distribution = torch.zeros(*scores.shape[:-2], 4**depth).to(scores.device)
                     for i in range(depth):
