@@ -305,11 +305,12 @@ def pre_training_meta_network(meta_network, dataset, location_to_class, transiti
     # plot the test output of meta_network
     with torch.no_grad():
         meta_network.pre_training = False
+        meta_network.eval()
         test_input = torch.eye(n_classes).to(device)
         meta_network_output = meta_network(test_input)
-        meta_network_output = meta_network_output[-1] if type(meta_network_output) == list else meta_network_output
         for i in range(n_classes):
-            plot_density(meta_network_output[i], dataset.n_locations, save_dir / "imgs" / f"meta_network_output_{i}.png")
+            plot_density(meta_network_output[i].cpu(), dataset.n_locations, save_dir / "imgs" / f"meta_network_output_{i}.png")
+        meta_network.train()
 
 
     if hasattr(meta_network, "remove_class_to_query"):
