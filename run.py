@@ -73,8 +73,8 @@ def train_meta_network(meta_network, next_location_counts, n_iter, early_stoppin
                 quad_loss = True
                 if quad_loss:
                     target = tree.make_quad_distribution(target)
-                    print(meta_network_output)
-                    meta_network_output = torch.tensor(meta_network_output).view(*target.shape)
+                    print(meta_network_output[0].shape)
+                    meta_network_output = meta_network_output[0].view(*target.shape)
                     for depth in range(tree.max_depth):
                         ids = depth_to_ids(depth)
                         loss += F.kl_div(meta_network_output[:,ids,:], target[:,ids,:], reduction='batchmean') * 4**(tree.max_depth-depth-1)
