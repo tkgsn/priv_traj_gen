@@ -70,7 +70,7 @@ def train_meta_network(meta_network, next_location_counts, n_iter, early_stoppin
             losses = []
             loss = 0
             if type(meta_network_output) == list:
-                quad_loss = False
+                quad_loss = True
                 if quad_loss:
                     target = tree.make_quad_distribution(target)
                     print(meta_network_output[0].shape)
