@@ -73,7 +73,7 @@ def train_meta_network(meta_network, next_location_counts, n_iter, early_stoppin
                 quad_loss = True
                 if quad_loss:
                     target = tree.make_quad_distribution(target)
-                    print(meta_network_output[0].shape)
+                    print(meta_network_output[1].shape)
                     meta_network_output = meta_network_output[1].view(*target.shape)
                     for depth in range(tree.max_depth):
                         ids = depth_to_ids(depth)
