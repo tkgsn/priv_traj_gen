@@ -494,7 +494,7 @@ class BaseQuadTreeNetwork(nn.Module):
             print("WARNING: PRE-TRAINING_MODE")
 
         if self.pre_training:
-            return scores
+            return F.log_softmax(scores, dim=-1)
         
         # scores is sorted according to node.id
         def get_log_distribution_at_depth(scores, depth):
