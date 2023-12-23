@@ -383,9 +383,7 @@ def add_noise(values, sensitivity, epsilon):
     if epsilon == float("inf"):
         print("WARNING: noise not added")
         return values
-    print(np.random.laplace(loc=0, scale=sensitivity/epsilon, size=len(values)))
     values = np.array(values) + np.random.laplace(loc=0, scale=sensitivity/epsilon, size=len(values))
-    print(values)
     return values.tolist()
 
 
