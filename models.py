@@ -495,6 +495,7 @@ class BaseQuadTreeNetwork(nn.Module):
 
         if self.pre_training:
             return scores
+        
         # scores is sorted according to node.id
         def get_log_distribution_at_depth(scores, depth):
 
