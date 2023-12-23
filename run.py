@@ -81,9 +81,6 @@ def train_meta_network(meta_network, next_location_counts, n_iter, early_stoppin
             # normalize target
             target[target < 0] = 0
             target = target / target.sum(dim=1).reshape(-1,1)
-
-            if distribution == "eye":
-                fixed_target = tree.make_quad_distribution(target)
             
             losses = []
             loss = 0
