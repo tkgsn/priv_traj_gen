@@ -518,6 +518,7 @@ class BaseQuadTreeNetwork(nn.Module):
                 # in the case of not consistent, this generates probability distribution on the depth layer
                 distribution = F.log_softmax(scores[..., ids], dim=-1)
             else:
+                print("!!")
                 # when training_mode, we consider that each node generates probability distribution on the 4 children nodes, i.e., P(child|parent)
                 distribution = scores[..., ids]
 
