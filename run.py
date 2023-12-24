@@ -72,8 +72,8 @@ def train_meta_network(meta_network, next_location_counts, n_iter, early_stoppin
                 for i in range(n_classes):
                     target += input[:,i].reshape(-1,1) * next_location_counts[i]
                 # normalize target
-                # target[target < 0] = 0
-                # target = target / target.sum(dim=1).reshape(-1,1)
+                target[target < 0] = 0
+                target = target / target.sum(dim=1).reshape(-1,1)
                 print(target.shape, target.sum())
             elif distribution == "eye":
                 input = torch.eye(n_classes).to(device)
@@ -115,7 +115,7 @@ def train_meta_network(meta_network, next_location_counts, n_iter, early_stoppin
             optimizer.step()
 
 
-            # pbar.set_description(f"loss: {loss.item()} ({[v.item() for v in losses]})")
+            pbar.set_description(f"loss: {loss.item()} ({[v.item() for v in losses]})")
             early_stopping(loss.item(), meta_network)
 
             if early_stopping.early_stop:
