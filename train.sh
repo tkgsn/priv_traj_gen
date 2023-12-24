@@ -47,7 +47,7 @@ meta_network_load_path=None
 coef_location=1
 n_classes=10
 global_clip=1
-meta_patience=1000
+meta_patience=10000
 clustering=depth
 
 
