@@ -84,7 +84,6 @@ def train_meta_network(meta_network, next_location_counts, n_iter, early_stoppin
                     target += input[:,i].reshape(-1,1) * next_location_counts[i]
                 target[target < 0] = 0
                 target = target / target.sum(dim=1).reshape(-1,1)
-                target = tree.make_quad_distribution(target)
             else:
                 raise NotImplementedError
             
