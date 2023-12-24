@@ -74,9 +74,17 @@ def train_meta_network(meta_network, next_location_counts, n_iter, early_stoppin
                 # normalize target
                 target[target < 0] = 0
                 target = target / target.sum(dim=1).reshape(-1,1)
-                print(target.shape, target.sum())
             elif distribution == "eye":
                 input = torch.eye(n_classes).to(device)
+            elif distribution == "both":
+                input = torch.distributions.dirichlet.Dirichlet(torch.ones(n_classes)).sample((batch_size,)).to(device)
+                input = torch.cat([input, torch.eye(n_classes).to(device)], dim=0)
+                target = torch.zeros(input.shape[0], n_locations).to(device)
+                for i in range(n_classes):
+                    target += input[:,i].reshape(-1,1) * next_location_counts[i]
+                target[target < 0] = 0
+                target = target / target.sum(dim=1).reshape(-1,1)
+                target = tree.make_quad_distribution(target)
             else:
                 raise NotImplementedError
             
