@@ -84,7 +84,6 @@ def train_meta_network(meta_network, next_location_counts, n_iter, early_stoppin
                     target += input[:,i].reshape(-1,1) * next_location_counts[i]
                 target[target < 0] = 0
                 target = target / target.sum(dim=1).reshape(-1,1)
-                print(target.shape, target.sum())
             else:
                 raise NotImplementedError
             
@@ -105,7 +104,7 @@ def train_meta_network(meta_network, next_location_counts, n_iter, early_stoppin
                     losses.append(F.kl_div(meta_network_output.view(batch_size,-1), test_target[-1], reduction='batchmean'))
                 loss = sum(losses)
             else:
-                quad_loss = True
+                quad_loss = args.network_type == "hiemrnet"
                 if quad_loss:
                     if distribution != "eye":
                         target = tree.make_quad_distribution(target)
