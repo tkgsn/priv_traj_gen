@@ -14,7 +14,7 @@ orig_data_dir = pathlib.Path("/data")
 n_binss = [30]
 dim = 32
 # epsilons = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5]
-epsilons = [1e-3, 0.1, 1, 10]
+epsilons = [float("inf"), 1e-3, 0.1, 1.0]
 n_epochs = 50
 
 dataset = "geolife"
