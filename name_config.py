@@ -13,7 +13,7 @@ def make_model_name(**kwargs):
     if kwargs["network_type"] == "hiemrnet":
         save_name = f"{kwargs['network_type']}_dp{kwargs['is_dp']}_{kwargs['meta_dist']}{kwargs['meta_n_iter']}_dim{kwargs['memory_dim']}_{kwargs['memory_hidden_dim']}_{kwargs['location_embedding_dim']}_{kwargs['hidden_dim']}_btch{kwargs['batch_size']}_tr{kwargs['train_all_layers']}_co{kwargs['consistent']}_eps{kwargs['epsilon']}_{kwargs['seed']}"
     elif kwargs["network_type"] == "baseline":
-        save_name = f"{kwargs['network_type']}_dp{kwargs['is_dp']}_pre{kwargs['meta_n_iter']}_dim{kwargs['memory_dim']}_{kwargs['memory_hidden_dim']}_{kwargs['location_embedding_dim']}_{kwargs['hidden_dim']}_btch{kwargs['batch_size']}_{kwargs['seed']}"
+        save_name = f"{kwargs['network_type']}_dp{kwargs['is_dp']}_pre{kwargs['meta_n_iter']}_dim{kwargs['memory_dim']}_{kwargs['memory_hidden_dim']}_{kwargs['location_embedding_dim']}_{kwargs['hidden_dim']}_btch{kwargs['batch_size']}_eps{kwargs['epsilon']}_{kwargs['seed']}"
     elif kwargs["network_type"] == "mtnet":
         save_name = f"{kwargs['network_type']}_dp{kwargs['is_dp']}_{kwargs['seed']}"
 
