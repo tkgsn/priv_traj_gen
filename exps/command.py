@@ -1,13 +1,7 @@
 from name_config import make_model_name, make_save_name
-import pathlib
+import json
 import sys
 sys.path.append("../")
-
-with open("../config.json") as f:
-    config = json.load(f)
-
-orig_data_dir = config["data_dir"]
-
 
 def command_baseline(data_dir, dim, seed, epsilon, n_epochs):
     meta_n_iter = 0
