@@ -6,6 +6,8 @@ sys.path.append("../")
 with open("../config.json") as f:
     config = json.load(f)
 
+orig_data_dir = config["data_dir"]
+
 
 
 def command_baseline(data_dir, dim, seed, epsilon, n_epochs):
