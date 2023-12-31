@@ -12,7 +12,7 @@ n_epochs = 100
 epsilon = 0
 
 n_bins = 14
-dim = 64
+dim = 32
 
 dataset = "geolife"
 max_size = 0
