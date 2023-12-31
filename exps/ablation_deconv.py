@@ -1,5 +1,10 @@
 import os
 import concurrent.futures
+import sys
+sys.path.append("../")
+
+from name_config import make_save_name
+
 from command import *
 
 n_epochs = 100
