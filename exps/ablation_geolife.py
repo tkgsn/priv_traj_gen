@@ -9,11 +9,6 @@ from name_config import make_save_name
 import json
 from command import *
 
-with open("../config.json") as f:
-    config = json.load(f)
-
-orig_data_dir = config["data_dir"]
-
 n_epochs = 100
 epsilon = 0
 
