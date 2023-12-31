@@ -10,7 +10,7 @@ from command import *
 n_epochs = 100
 epsilon = 0.0
 
-n_bins = 14
+n_bins = 62
 dim = 32
 
 dataset = "geolife"
