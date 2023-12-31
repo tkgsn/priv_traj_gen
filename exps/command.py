@@ -3,6 +3,11 @@ import json
 import sys
 sys.path.append("../")
 
+with open("../config.json") as f:
+    config = json.load(f)
+
+
+
 def command_baseline(data_dir, dim, seed, epsilon, n_epochs):
     meta_n_iter = 0
     network_type = "baseline"
