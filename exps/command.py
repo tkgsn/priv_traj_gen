@@ -26,7 +26,7 @@ def command_baseline(data_dir, dim, seed, epsilon, n_epochs):
 def command_baseline_pre(data_dir, dim, seed, epsilon, n_epochs):
     meta_n_iter = 0
     network_type = "baseline"
-    meta_dist = "dirichlet"
+    meta_dist = "both"
     transition_type = "first"
     train_all_layers = False
     model_dir = data_dir / make_model_name(network_type=network_type, is_dp=True, meta_n_iter=meta_n_iter, memory_dim=dim, memory_hidden_dim=dim, location_embedding_dim=dim, hidden_dim=dim, batch_size=0, train_all_layers=train_all_layers, consistent=True, epsilon=epsilon, seed=seed, meta_dist=meta_dist, transition_type=transition_type)

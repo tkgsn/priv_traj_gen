@@ -278,57 +278,60 @@ def construct_meta_network(clustering_type, network_type, n_locations, memory_di
 
 def pre_training_meta_network(meta_network, dataset, location_to_class, transition_type):
     if args.meta_n_iter == 0:
-        return meta_network
-
-    n_classes = len(set(location_to_class.values()))
-    target_counts = []
-    for i in range(n_classes):
-        if transition_type == "marginal":
-            logger.info(f"use marginal transition matrix")
-            next_location_counts = dataset.next_location_counts
-        elif transition_type == "first":
-            logger.info(f"use first transition matrix")
-            next_location_counts = evaluation.make_next_location_count(dataset, 0)
-        elif transition_type == "test":
-            logger.info(f"use test transition matrix")
-            next_location_counts = {location: [1] * dataset.n_locations for location in range(dataset.n_locations)}
-
-        # find the locations belonging to the class i
-        next_location_count_i = torch.zeros(dataset.n_locations)
-        locations = [location for location, class_ in location_to_class.items() if class_ == i]
-        logger.info(f"n locations in class {i}: {len(locations)}")
-        for location in locations:
-            if location in next_location_counts:
-                next_location_count_i += np.array(next_location_counts[location]) 
-        logger.info(f"sum of next location counts in class {i}: {sum(next_location_count_i)} add noise by epsilon = {args.epsilon}")
-        target_count_i = add_noise(next_location_count_i, args.global_clip, args.epsilon)
-        target_count_i = torch.tensor(target_count_i)
-        
-        target_counts.append(target_count_i)
-
-        plot_density(target_count_i, dataset.n_locations, save_dir / "imgs" / f"class_next_location_distribution_{i}.png")
-
-    device = next(meta_network.parameters()).device
-    target_counts = torch.stack(target_counts).to(device)
-    if args.meta_network_load_path == "None":
-        early_stopping = EarlyStopping(patience=args.meta_patience, path=save_dir / "meta_network.pt", delta=1e-6)
-        train_meta_network(meta_network, target_counts, args.meta_n_iter, early_stopping, args.meta_dist)
-        args.meta_network_load_path = str(save_dir / "meta_network.pt")
+        pass
+    
     else:
-        meta_network.load_state_dict(torch.load(args.meta_network_load_path))
-        logger.info(f"load meta network from {args.meta_network_load_path}")
+        
 
-    # plot the test output of meta_network
-    with torch.no_grad():
-        meta_network.pre_training = False
-        meta_network.eval()
-        test_input = torch.eye(n_classes).to(device)
-        meta_network_output = meta_network(test_input)
-        if type(meta_network_output) == list:
-            meta_network_output = meta_network_output[-1]
+        n_classes = len(set(location_to_class.values()))
+        target_counts = []
         for i in range(n_classes):
-            plot_density(torch.exp(meta_network_output[i]).cpu().view(-1), dataset.n_locations, save_dir / "imgs" / f"meta_network_output_{i}.png")
-        meta_network.train()
+            if transition_type == "marginal":
+                logger.info(f"use marginal transition matrix")
+                next_location_counts = dataset.next_location_counts
+            elif transition_type == "first":
+                logger.info(f"use first transition matrix")
+                next_location_counts = evaluation.make_next_location_count(dataset, 0)
+            elif transition_type == "test":
+                logger.info(f"use test transition matrix")
+                next_location_counts = {location: [1] * dataset.n_locations for location in range(dataset.n_locations)}
+
+            # find the locations belonging to the class i
+            next_location_count_i = torch.zeros(dataset.n_locations)
+            locations = [location for location, class_ in location_to_class.items() if class_ == i]
+            logger.info(f"n locations in class {i}: {len(locations)}")
+            for location in locations:
+                if location in next_location_counts:
+                    next_location_count_i += np.array(next_location_counts[location]) 
+            logger.info(f"sum of next location counts in class {i}: {sum(next_location_count_i)} add noise by epsilon = {args.epsilon}")
+            target_count_i = add_noise(next_location_count_i, args.global_clip, args.epsilon)
+            target_count_i = torch.tensor(target_count_i)
+            
+            target_counts.append(target_count_i)
+
+            plot_density(target_count_i, dataset.n_locations, save_dir / "imgs" / f"class_next_location_distribution_{i}.png")
+
+        device = next(meta_network.parameters()).device
+        target_counts = torch.stack(target_counts).to(device)
+        if args.meta_network_load_path == "None":
+            early_stopping = EarlyStopping(patience=args.meta_patience, path=save_dir / "meta_network.pt", delta=1e-6)
+            train_meta_network(meta_network, target_counts, args.meta_n_iter, early_stopping, args.meta_dist)
+            args.meta_network_load_path = str(save_dir / "meta_network.pt")
+        else:
+            meta_network.load_state_dict(torch.load(args.meta_network_load_path))
+            logger.info(f"load meta network from {args.meta_network_load_path}")
+
+        # plot the test output of meta_network
+        with torch.no_grad():
+            meta_network.pre_training = False
+            meta_network.eval()
+            test_input = torch.eye(n_classes).to(device)
+            meta_network_output = meta_network(test_input)
+            if type(meta_network_output) == list:
+                meta_network_output = meta_network_output[-1]
+            for i in range(n_classes):
+                plot_density(torch.exp(meta_network_output[i]).cpu().view(-1), dataset.n_locations, save_dir / "imgs" / f"meta_network_output_{i}.png")
+            meta_network.train()
 
 
     if hasattr(meta_network, "remove_class_to_query"):
