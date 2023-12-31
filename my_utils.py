@@ -82,19 +82,6 @@ def convert_distance_label_distribution(distance_labels, pre_state, probs, n_dis
         distance_label_distribution[label] += prob
     return distance_label_distribution
 
-# def compute_distance_distribution(pairs, distance_labels, n_distance_labels):
-#     # compute distance
-#     distances = []
-#     for pre_state, prob in pairs:
-#         distances.append(convert_distance_label_distribution(torch.tensor(distance_labels), pre_state, prob, n_distance_labels))
-
-#     distances = torch.stack(distances)
-#     # print(distances.sum())
-#     # take mean
-#     prob = torch.mean(distances, axis=0)
-    
-#     return prob
-
 def compute_distance_distribution(pairs, distance_labels, n_distance_labels):
     # compute distance
     distance_label_distribution = torch.zeros(n_distance_labels).to(list(pairs.values())[0].device)
@@ -131,45 +118,6 @@ def compute_distance_distribution_(pairs, distance_matrix, n_bins_for_distance):
         prob[i] = counter[i+1] / len(distances)
     
     return prob
-
-# def load_time_dataset(data_dir, *, logger):
-
-
-#     if data_dir.parts[2] == "taxi":
-#         max_seq_len = 2
-#         real_time_traj = []
-#         data_path = data_dir / "training_data.csv"
-#         trajectories = load_dataset(data_path, logger=logger)
-#         for traj in trajectories:
-#             real_time_traj.append(list(range(len(traj))) + [max_seq_len])
-#     else:
-#         time_data_path = data_dir / "training_data_time.csv"
-#         real_time_traj = load_dataset(time_data_path, logger=logger)
-
-    
-#     return real_time_traj
-
-
-# def load_dataset(data_dir, *, logger):
-#     trajectories = []
-
-#     # for data_dir in data_dirs:
-#     logger.info(f"load data from {data_dir}")
-#     data = load(data_dir)
-#     for trajectory in data:
-#         trajectory = [int(v) for v in trajectory]
-#         trajectories.append(trajectory)
-#     logger.info(f"length of dataset: {len(trajectories)}")
-
-#     if data_dir.parts[2] == "taxi":
-#         new = []
-#         for trajectory in trajectories:
-#             if len(trajectory) > 1 and trajectory[0] != trajectory[-1]:
-#                 new.append([trajectory[0], trajectory[-1]])
-#             else:
-#                 new.append([trajectory[0]])
-#         trajectories = new
-#     return trajectories
                  
 def get_datadir():
     with open(f"config.json", "r") as f:
@@ -410,52 +358,6 @@ def compute_next_location_count(target, trajectories, n_locations, next_first=Fa
             counts.append(count[i])
     return counts
 
-
-# clustering based on the global distribution and distance
-# each cluster has the probability that is approximately larger than 1/n_classes
-# basically, locations in the same cluster are closer to each other than locations in different clusters
-# def clustering(global_distribution, distance_matrix, n_classes):
-
-#     def check_threshold(clustered_in_i, global_distribution, threshold):
-#         # check if the sum of probability of locations in clustered_in_i is larger than threshold
-#         sum_prob = 0
-#         for loc in clustered_in_i:
-#             sum_prob += global_distribution[loc]
-#         return sum_prob > threshold
-
-#     location_to_class = {}
-#     threshold = 1/n_classes
-#     clustered = []
-#     all_locations = list(range(len(global_distribution)))
-#     # find locations to be clustered to class i
-#     for i in range(n_classes):
-#         # base_location is the smallest id of location that is not clustered yet
-#         remained = set(all_locations) - set(clustered)
-#         if len(remained) == 0:
-#             print('all locations are clustered')
-#             break
-#         else:
-#             base_location = min(set(all_locations) - set(clustered))
-#         clustered_in_i = [base_location]
-#         location_to_class[base_location] = i
-#         # sort locations by distance to base_location to find the closest location
-#         sorted_locations = sorted(set(all_locations) - set(clustered_in_i+clustered), key=lambda x: distance_matrix[x][base_location])
-#         for loc in sorted_locations:
-#             # check if the sum of probability of locations in clustered_in_i is larger than threshold
-#             if check_threshold(clustered_in_i, global_distribution, threshold):
-#                 # print(f"prob for class {i} is {sum([global_distribution[loc] for loc in clustered_in_i])}")
-#                 break
-#             # add the closest location to clustered_in_i
-#             clustered_in_i.append(loc)
-#             location_to_class[loc] = i
-#         clustered.extend(clustered_in_i)
-    
-#     # assign the rest of locations to the last class
-#     for loc in set(all_locations) - set(clustered):
-#         location_to_class[loc] = n_classes-1
-        
-#     return location_to_class
-
 def construct_default_quadtree(n_bins):
     ranges = Grid.make_ranges_from_latlon_range_and_nbins([0,1], [0,1], n_bins)
     quad_tree = QuadTree(ranges)
@@ -519,14 +421,6 @@ def privtree_clustering(count, theta):
             for state in state_list:
                 location_to_class[state] = i
 
-    # classes = [[leaf] for leaf in quad_tree.get_leafs()]
-    # quad_tree.merged_leafs = classes
-    # location_to_class = {}
-    # for i, leaf in enumerate(quad_tree.get_leafs()):
-    #     state_list = leaf.state_list
-    #     for state in state_list:
-    #         location_to_class[state] = i
-    
     quad_tree.merged_leafs = classes
     return location_to_class, quad_tree
 
@@ -590,61 +484,6 @@ def load(save_path, size=0, seed=0):
             trajectories.append(trajectory)
     return trajectories
     
-# def send(path, parent=False):
-#     print("SEND!")
-#     path = pathlib.Path(path)
-
-#     source_file_path = path
-#     destination_file_path = f'evaluation-server:{path.parent}'
-
-#     # print('ssh', 'evaluation-server', f"'mkdir -p {path.parent}'")
-#     if parent:
-#         # compose first
-#         print(f"tar -cvf {path.stem}.tar {path}")
-#         result = subprocess.run(['tar', '-cvf', path.parent / f"{path.stem}.tar", path])
-#         # then send
-#         result = subprocess.run(['ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"mkdir -p {path.parent}"])
-#         print('scp', '-r', '-o', 'StrictHostKeyChecking=no', f"{path.parent}/{path.stem}.tar", destination_file_path)
-#         result = subprocess.run(['scp', '-o', 'StrictHostKeyChecking=no', f"{path.parent}/{path.stem}.tar", destination_file_path])
-#         # then decompress
-#         print('ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"tar -xvf {path.parent}/{path.stem}.tar -C /")
-#         result = subprocess.run(['ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"tar -xvf {path.parent}/{path.stem}.tar -C /"])
-#         # remove the tar file
-#         print('ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"rm {path.parent}/{path.stem}.tar")
-#         result = subprocess.run(['ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"rm {path.parent}/{path.stem}.tar"])
-
-#         # print('scp', "-r", source_file_path, destination_file_path)
-#         # result = subprocess.run(['ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"mkdir -p {path.parent}"])
-#         # result = subprocess.run(['scp', '-r', '-o', 'StrictHostKeyChecking=no', source_file_path, destination_file_path])
-#     else:
-#         print('scp', source_file_path, destination_file_path)
-#         result = subprocess.run(['ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"mkdir -p {path.parent}"])
-#         result = subprocess.run(['scp', '-o', 'StrictHostKeyChecking=no', source_file_path, destination_file_path])
-
-# def get(path, parent=False):
-#     print("!")
-#     source_file_path = f'evaluation-server:{path}'
-#     destination_file_path = pathlib.Path(path).parent
-#     destination_file_path.mkdir(parents=True, exist_ok=True)
-
-#     if parent:
-#         directory_name = pathlib.Path(path).stem
-#         # first compose the directory by tar
-#         print('ssh', 'evaluation-server', f"tar -cvf {directory_name}.tar {path}")
-#         result = subprocess.run(['ssh', '-o', 'StrictHostKeyChecking=no', 'evaluation-server', f"tar -cvf {directory_name}.tar {path}"])
-#         # then download the tar file
-#         print('scp', source_file_path, destination_file_path)
-#         result = subprocess.run(['scp', '-o', 'StrictHostKeyChecking=no', f"evaluation-server:~/{directory_name}.tar", destination_file_path])
-#         # then decompress the tar file
-#         print('tar', '-xvf', f'{destination_file_path}/{directory_name}.tar', '-C', "/")
-#         result = subprocess.run(['tar', '-xvf', f'{destination_file_path}/{directory_name}.tar', "-C", "/"])
-#         # remove the tar file
-#         print('rm', f'{destination_file_path}/{directory_name}.tar')
-#         result = subprocess.run(['rm', f'{destination_file_path}/{directory_name}.tar'])
-#     else:
-#         print('scp', source_file_path, destination_file_path)
-#         result = subprocess.run(['scp', '-o', 'StrictHostKeyChecking=no', source_file_path, destination_file_path])
-
 
 def load_latlon_range(dataset):
     if dataset.split("_")[-1] == "mm":

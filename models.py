@@ -40,31 +40,6 @@ class BaseReferenceGenerator(nn.Module):
                 location_probs = torch.exp(output).view(output.shape[0], -1)
                 locations = location_probs.multinomial(1)
             return locations
-
-        log_location_probs = output
-
-        # pointer = len(sampled)
-        # if pointer == 1:
-        #     if reference[0][0] != -1:
-        #         locations = torch.tensor([v[0] for v in reference]).view(-1, 1).to(output.device)
-        #     elif torch.allclose(reference[:, 0], -1*torch.ones_like(reference[:, 0])):
-        #         location_probs = torch.exp(log_location_probs).view(log_location_probs.shape[0], -1)
-        #         locations = location_probs.multinomial(1)
-        #     else:
-        #         raise NotImplementedError("the first element of the reference should be -1, but it is {}".format(reference[0][0]))
-        # else:
-        #     passed_locations = torch.concatenate([v for v in sampled[1:]], dim=1).view(-1, len(sampled)-1)
-        #     log_location_probs = self.remove_location(log_location_probs, passed_locations)
-        #     location_probs = torch.exp(log_location_probs).view(log_location_probs.shape[0], -1)
-        #     # if all locations are removed, then we just sample from the first location
-        #     indice = location_probs.sum(dim=-1) == 0
-        #     location_probs[indice,0] = 1
-        #     # sample
-        #     locations = location_probs.multinomial(1)
-        #     # replace by the reference
-        #     locations = torch.concat([passed_locations, locations], dim=-1)[range(len(reference)), reference[:, pointer-1]].view(-1, 1)
-
-        return locations
     
     def step(self, input):
         return self(input)
@@ -541,43 +516,6 @@ class BaseQuadTreeNetwork(nn.Module):
         del self.class_to_query
 
 
-# class ResidualQuadTreeNetwork(BaseQuadTreeNetwork):
-#     def __init__(self, n_locations, memory_dim, hidden_dim, n_classes, activate, multilayer=False, is_consistent=False):
-#         super().__init__(n_locations, memory_dim, hidden_dim, n_classes, activate, is_consistent)
-#         if multilayer:
-#             # self.linears = nn.ModuleList([nn.Sequential(nn.Linear(self.memory_dim, 8*self.memory_dim), self.activate, nn.Linear(8*self.memory_dim, 4*self.memory_dim)) for _ in range(self.tree.max_depth)])
-#             self.linears = nn.ModuleList([nn.Sequential(nn.Linear(self.memory_dim, 4*self.memory_dim), self.activate) for _ in range(self.tree.max_depth)])
-#         else:
-#             # self.linears = nn.ModuleList([nn.Linear(self.memory_dim, 4*self.memory_dim) for _ in range(self.tree.max_depth)])
-#             self.linears = nn.ModuleList([nn.Embedding(4, self.memory_dim) for _ in range(self.tree.max_depth)])
-#         self.input_dim = hidden_dim
-#         # state_to_key is the standard MLP
-#         # self.state_to_key = nn.Sequential(nn.Linear(self.memory_dim, self.memory_dim), self.activate, nn.Linear(self.memory_dim, self.memory_dim))
-#         # self.state_to_key = nn.Linear(self.memory_dim, self.memory_dim)
-#         self.state_to_key = nn.ModuleList([nn.Linear(self.memory_dim, self.memory_dim) for _ in range(self.tree.max_depth)])
-#         # self.state_to_key = nn.ModuleList([nn.Sequential(nn.Linear(self.memory_dim, self.memory_dim), nn.Linear(self.memory_dim, self.memory_dim)) for _ in range(self.tree.max_depth)])
-#         self.root_value = nn.Embedding(1, self.memory_dim)
-
-#     def make_states(self, shape):
-#         '''
-#         root_state: batch_size * seq_len * memory_dim
-#         output: batch_size * seq_len * (4^depth+4^depth-1+...+4) * memory_dim
-#         From the root_state, recursively apply the linear operation to the state until it reaches the maximum depth
-#         because the linear layer is (memory_dim, 4*memory_dim), each layer has 4 times parameters (nodes) than the previous layer
-#         '''
-#         # print(shape)
-#         device = self.root_value.weight.device
-#         states = []
-#         input = torch.tensor([0,1,2,3], device=device).repeat(shape[0], shape[1], 1)
-#         vectors = [linear(input) for linear in self.linears]
-#         ith_state = self.root_value(torch.zeros(*shape[:-1], device=device).long())
-#         root_state = ith_state
-#         for i, vector in enumerate(vectors):
-#             ith_state = ith_state.repeat_interleave(4, dim=-2).view(*shape[:-1], -1, self.memory_dim) + vector.repeat(*[1]*len(shape[:-1]),4**(i),1).view(*shape[:-1], -1, self.memory_dim)
-#             # print(i, ith_state[0][0])
-#             states.append(ith_state)
-#         states = torch.concat(states, dim=-2)
-#         return states
 
 class LinearQuadTreeNetwork(BaseQuadTreeNetwork):
     def __init__(self, n_locations, memory_dim, hidden_dim, n_classes, activate, multilayer=False, is_consistent=False):

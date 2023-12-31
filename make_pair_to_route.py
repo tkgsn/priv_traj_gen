@@ -69,38 +69,6 @@ def make_graph(data_dir):
     # return DG, G
     return DG
 
-
-# def find_the_node_from_latlon(G, latlon):
-#     """
-#     find the nearest node from latlon
-#     """
-#     nodes = list(G.nodes)
-#     min_distance = float("inf")
-#     min_node = None
-#     for node in nodes:
-#         distance = geodesic(latlon, node).km
-#         if distance < min_distance:
-#             min_distance = distance
-#             min_node = node
-#     return min_node
-
-# def make_state_to_node(G, n_states, state_to_latlon, db_path):
-#     """
-#     make a mapping from state to node
-#     mapping is based on the shortest euclidean distance
-#     """
-
-#     with sqlite3.connect(db_path) as conn:
-#         c = conn.cursor()
-#         c.execute("DROP TABLE IF EXISTS state_to_node")
-#         c.execute("CREATE TABLE IF NOT EXISTS state_to_node (state integer, node text, PRIMARY KEY (state))")
-
-#         for i in tqdm.tqdm(range(n_states)):
-#             latlon = state_to_latlon(i)
-#             node = find_the_node_from_latlon(G, latlon)
-#             c.execute("INSERT INTO state_to_node VALUES (?, ?)", (i, str(node)))
-
-
 def make_node_to_state(G, n_states, latlon_to_state, db_path):
     """
     make a mapping from node to state
@@ -141,16 +109,6 @@ def state_pair_to_latlon_routes(state_pair, cursor):
                 latlon_route = eval(latlon_route[2])
                 latlon_routes.append(latlon_route)
     
-    # choose the shortest one
-    # if len(latlon_routes) == 0:
-        # return None
-    # latlon_route = min(latlon_routes, key=lambda x: len(x))
-
-    # c = cursor.execute("SELECT * FROM paths WHERE start_node=? AND end_node=?", (str(start_node), str(end_node)))
-    # latlon_route = c.fetchone()
-    # if latlon_route is not None:
-        # latlon_route = eval(latlon_route[2])
-    
     return latlon_routes
 
 def latlon_route_to_state_route(latlon_route, latlon_to_state):
@@ -162,34 +120,6 @@ def latlon_route_to_state_route(latlon_route, latlon_to_state):
     return state_route
 
 
-# def make_paths(DG, db_path):
-#     """
-#     make a mapping from node to node
-#     mapping is based on the shortest euclidean distance
-#     """
-#     # paths = nx.all_pairs_dijkstra_path(G)
-#     di_paths = nx.all_pairs_dijkstra_path(DG)
-
-#     # print("find paths for all pairs from", len(G), "nodes")
-#     print("find paths for all pairs from", len(DG), "nodes")
-#     with sqlite3.connect(db_path) as conn:
-#         c = conn.cursor()
-#         c.execute("DROP TABLE IF EXISTS paths")
-#         c.execute("CREATE TABLE paths (start_node text, end_node text, path text, PRIMARY KEY (start_node, end_node))")
-
-#         # for start_node, v in tqdm.tqdm(paths):
-#             # for end_node, path in v.items():
-#                 # c.execute("INSERT INTO paths VALUES (?, ?, ?)", (str(start_node), str(end_node), str(path)))
-        
-#         for start_node, v in tqdm.tqdm(di_paths):
-#             for end_node, path in v.items():
-#                 # if start_node, end_node in paths, then skip
-#                 # c.execute("SELECT * FROM paths WHERE start_node=? AND end_node=?", (str(start_node), str(end_node)))
-#                 # if c.fetchone() != None:
-#                     # continue
-#                 c.execute("INSERT INTO paths VALUES (?, ?, ?)", (str(start_node), str(end_node), str(path)))
-
-
 
 def check_node_in_state(cursor, state):
     c = cursor.execute("SELECT * FROM node_to_state WHERE state=?", (state,))
@@ -199,48 +129,6 @@ def check_node_in_state(cursor, state):
     else:
         return [eval(n[0]) for n in node]
 
-
-# def process_state_i_(i, states, db_path, latlon_to_state, DG):
-#     n_inserted = 0
-#     with sqlite3.connect(db_path) as conn:
-#         c = conn.cursor()
-
-#         nodes = check_node_in_state(c, i)
-#         # compute path from node
-#         paths = []
-#         for node in nodes:
-#             paths.append(nx.single_source_dijkstra_path(DG, node))
-
-#         for j in states:
-#             latlon_routes = []
-
-#             if i == j:
-#                 continue
-
-#             end_nodes = check_node_in_state(c, j)
-#             if end_nodes is None:
-#                 # print("WARNING", j, "has no node")
-#                 continue
-
-#             for path in paths:
-#                 for end_node in end_nodes:
-#                     if end_node in path:
-#                         latlon_routes.append(path[end_node])
-
-
-#             # print(latlon_routes)
-#             state_routes = []
-#             for latlon_route in latlon_routes:
-#                 state_route = latlon_route_to_state_route(latlon_route, latlon_to_state)
-#                 assert state_route[0] == i, f"different start point {i} {j} -> {state_route}"
-#                 assert state_route[-1] == j, f"different end point {i} {j} -> {state_route}"
-#                 state_routes.append(state_route)
-
-#             # remove duplicate routes
-#             state_routes = list(set([tuple(route) for route in state_routes]))
-#             n_inserted += 1
-#             c.execute("INSERT INTO state_edge_to_route VALUES (?, ?, ?)", (i, j, str(state_routes)))
-#     return n_inserted
 
 def process_state_i(i, states, db_path, latlon_to_state, DG, truncate):
     """

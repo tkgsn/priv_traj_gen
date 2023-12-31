@@ -21,41 +21,6 @@ class Grid():
                 ranges.append([(x_axis[i], x_axis[i+1]), (y_axis[j], y_axis[j+1])])
         return ranges
 
-    # @staticmethod
-    # def make_ranges_from_latlon_range_and_nbins(lat_range, lon_range, n_bins):
-    #     x_axis = np.linspace(lon_range[0], lon_range[1], n_bins+1)
-    #     y_axis = np.linspace(lat_range[0], lat_range[1], n_bins+1)
-
-    #     # compute the bin size
-    #     x_bin_size = x_axis[1] - x_axis[0]
-    #     y_bin_size = y_axis[1] - y_axis[0]
-
-    #     # insert the first element (-infty, x_axis[0]) and the last element (x_axis[-1], +infty)
-    #     x_axis = np.insert(x_axis, 0, x_axis[0]-x_bin_size)
-    #     x_axis = np.append(x_axis, x_axis[-1]+x_bin_size)
-
-    #     # insert the first element (-infty, y_axis[0]) and the last element (y_axis[-1], +infty)
-    #     y_axis = np.insert(y_axis, 0, y_axis[0]-y_bin_size)
-    #     y_axis = np.append(y_axis, y_axis[-1]+y_bin_size)
-
-    #     ranges = []
-    #     for i in range(len(x_axis)-1):
-    #         for j in range(len(y_axis)-1):
-    #             ranges.append([(x_axis[i], x_axis[i+1]), (y_axis[j], y_axis[j+1])])
-    #     return ranges
-
-    # @staticmethod
-    # def make_ranges_from_privtrace_info(info_path):
-    #     with open(info_path, "rb") as f:
-    #         info = pickle.load(f)
-    #     x_ranges, y_ranges = info
-    #     ranges = []
-    #     for x_ranges_level2, y_ranges_level2 in zip(x_ranges, y_ranges):
-    #         if len(x_ranges_level2) == 2:
-    #             ranges.append([(x_ranges_level2[0], x_ranges_level2[1]), (y_ranges_level2[0], y_ranges_level2[1])])
-    #         else:
-    #             ranges += [[(x_ranges_level2[i], x_ranges_level2[i+1]), (y_ranges_level2[j], y_ranges_level2[j+1])] for i in range(len(x_ranges_level2)-1) for j in range(len(y_ranges_level2)-1)]
-    #     return ranges
 
     def __init__(self, ranges):
         self.grids = self.make_grid_from_ranges(ranges)
