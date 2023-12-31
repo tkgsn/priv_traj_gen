@@ -1,12 +1,10 @@
 import os
 import concurrent.futures
-import pathlib
 import sys
 sys.path.append("../")
 
 from name_config import make_save_name
 
-import json
 from command import *
 
 n_epochs = 100

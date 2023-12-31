@@ -3,7 +3,10 @@ import pathlib
 import sys
 sys.path.append("../")
 
-orig_data_dir = pathlib.Path("/data")
+with open("../config.json") as f:
+    config = json.load(f)
+
+orig_data_dir = config["data_dir"]
 
 
 def command_baseline(data_dir, dim, seed, epsilon, n_epochs):
@@ -30,7 +33,7 @@ def command_baseline_pre(data_dir, dim, seed, epsilon, n_epochs):
 
 
 # d
-def command_hiemrnet(data_dir, dim, epsilon, seed):
+def command_hiemrnet(data_dir, dim, epsilon, seed, n_epochs):
     meta_n_iter = 0
     network_type = "hiemrnet"
     meta_dist = "both"
@@ -41,7 +44,7 @@ def command_hiemrnet(data_dir, dim, epsilon, seed):
         , f'docker run --rm --gpus all -v /mnt/data:/data -e TEST_THRESH=30 -e ABLATION=True -e SEED=0 -e TRUNCATE=0 -e MODEL_DIR={model_dir} -e EVAL_INTERVAL=10 -e EVAL_DATA_DIR={data_dir} kyotohiemrnet.azurecr.io/hiemrnet_cu117 /bin/bash -c "./evaluate.sh"'
 
 # d+p
-def command_hiemrnet_pre(data_dir, dim, epsilon, seed):
+def command_hiemrnet_pre(data_dir, dim, epsilon, seed, n_epochs):
     meta_n_iter = 10000
     network_type = "hiemrnet"
     meta_dist = "both"
@@ -54,7 +57,7 @@ def command_hiemrnet_pre(data_dir, dim, epsilon, seed):
 
 
 # d+m
-def command_hiemrnet_multitask(data_dir, dim, epsilon, seed):
+def command_hiemrnet_multitask(data_dir, dim, epsilon, seed, n_epochs):
     meta_n_iter = 0
     network_type = "hiemrnet"
     meta_dist = "both"
@@ -66,7 +69,7 @@ def command_hiemrnet_multitask(data_dir, dim, epsilon, seed):
 
 
 # d+m+p
-def command_hiemrnet_multitask_pre(data_dir, dim, epsilon, seed):
+def command_hiemrnet_multitask_pre(data_dir, dim, epsilon, seed, n_epochs):
     meta_n_iter = 10000
     network_type = "hiemrnet"
     meta_dist = "both"
