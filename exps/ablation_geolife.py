@@ -1,9 +1,10 @@
 import os
 import concurrent.futures
 import pathlib
-from name_config import make_model_name, make_save_name
 import sys
 sys.path.append("../")
+
+from name_config import make_save_name
 
 import json
 from command import *
@@ -23,7 +24,6 @@ dataset = "geolife"
 max_size = 0
 time_threshold = 30
 location_threshold = 200
-seeds = [0]
 seeds = range(1)
 
 data_dir = orig_data_dir / dataset / str(max_size) / make_save_name(dataset, n_bins, time_threshold, location_threshold, 0)
