@@ -10,7 +10,7 @@ from command import *
 n_epochs = 100
 epsilon = 0.0
 n_bins = 30
-dim = 64
+dim = 32
 
 dataset = "random"
 max_size = 10000
