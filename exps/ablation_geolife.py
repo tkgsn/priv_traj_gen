@@ -6,6 +6,7 @@ sys.path.append("../")
 from name_config import make_save_name
 
 from command import *
+from command import orig_data_dir
 
 n_epochs = 100
 epsilon = 0
