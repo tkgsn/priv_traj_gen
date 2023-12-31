@@ -1,12 +1,13 @@
 from name_config import make_model_name, make_save_name
 import json
+import pathlib
 import sys
 sys.path.append("../")
 
 with open("../config.json") as f:
     config = json.load(f)
 
-orig_data_dir = config["data_dir"]
+orig_data_dir = pathlib.Path(config["data_dir"])
 
 
 
