@@ -9,7 +9,7 @@ from command import *
 from command import orig_data_dir
 
 n_epochs = 100
-epsilon = 0
+epsilon = 0.0
 
 n_bins = 14
 dim = 32
