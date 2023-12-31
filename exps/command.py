@@ -24,7 +24,7 @@ def command_baseline(data_dir, dim, seed, epsilon, n_epochs):
 
 # p
 def command_baseline_pre(data_dir, dim, seed, epsilon, n_epochs):
-    meta_n_iter = 0
+    meta_n_iter = 10000
     network_type = "baseline"
     meta_dist = "both"
     transition_type = "first"
