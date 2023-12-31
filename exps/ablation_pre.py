@@ -9,10 +9,10 @@ from command import *
 
 n_epochs = 100
 epsilon = 0.0
-n_bins = 30
+n_bins = 62
 dim = 32
 
-dataset = "random"
+dataset = "rotation"
 max_size = 10000
 
 time_threshold = 30
@@ -23,7 +23,7 @@ seeds = range(10)
 data_dir = orig_data_dir / dataset / str(max_size) / make_save_name(dataset, n_bins, time_threshold, location_threshold, 0)
 
 # conduct each command in parallel with 4 processes
-with concurrent.futures.ProcessPoolExecutor(max_workers=2) as executor:
+with concurrent.futures.ProcessPoolExecutor(max_workers=1) as executor:
 
     for seed in seeds:
             

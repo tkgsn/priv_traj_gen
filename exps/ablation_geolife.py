@@ -17,7 +17,7 @@ dataset = "geolife"
 max_size = 0
 time_threshold = 30
 location_threshold = 200
-seeds = range(1)
+seeds = range(10)
 
 data_dir = orig_data_dir / dataset / str(max_size) / make_save_name(dataset, n_bins, time_threshold, location_threshold, 0)
 
