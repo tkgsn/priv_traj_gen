@@ -15,6 +15,10 @@ git clone https://github.com/tkgsn/priv_traj_gen
 cd priv_traj_gen
 docker build -t kyotohiemrnet.azurecr.io/hiemrnet_cu117 .
 ```
+We used File shares of Azure for the data directory and mount on /mnt/data with the script made by Azure or you can just use your local directory if you don't use virtual machine
+```
+sudo mkdir -p /mnt/data
+```
 
 ## experiments
 
