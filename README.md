@@ -21,18 +21,18 @@ docker build -t kyotohiemrnet.azurecr.io/hiemrnet_cu117 .
 
 ### prepare dataset
 ```
-docker run -it -e DATASET=geolife kyotohiemrnet.azurecr.io/hiemrnet_cu117 /bin/bash -c "./preprare.sh"
-docker run -it -e DATASET=peopleflow kyotohiemrnet.azurecr.io/hiemrnet_cu117_ /bin/bash -c "./preprare.sh"
-docker run -it -e DATASET=chengdu kyotohiemrnet.azurecr.io/hiemrnet_cu117_ /bin/bash -c "./preprare.sh"
+docker run -v /mnt/data:/data -e DATASET=geolife kyotohiemrnet.azurecr.io/hiemrnet_cu117 /bin/bash -c "./prepare.sh"
+docker run -v /mnt/data:/data -e DATASET=peopleflow kyotohiemrnet.azurecr.io/hiemrnet_cu117_ /bin/bash -c "./prepare.sh"
+docker run -v /mnt/data:/data -e DATASET=chengdu kyotohiemrnet.azurecr.io/hiemrnet_cu117_ /bin/bash -c "./prepare.sh"
 ```
 
 ### preprocess dataset
 ```
-docker run -it -e DATASET=geolife -e SEED=0 -e MAX_SIZE=0 -e N_BINS=30 -e T_THRESH=30 -e L_THRESH=200 -e TRUNCATE=0 kyotohiemrnet.azurecr.io/hiemrnet_cu117 /bin/bash -c "./preprocess.sh"
-docker run -it -e DATASET=peopleflow -e SEED=0 -e MAX_SIZE=0 -e N_BINS=30 -e T_THRESH=30/60 -e L_THRESH=200 -e TRUNCATE=0 kyotohiemrnet.azurecr.io/hiemrnet_cu117 /bin/bash -c "./preprocess.sh"
-docker run -it -e DATASET=chengdu -e SEED=0 -e MAX_SIZE=0 -e N_BINS=30 -e T_THRESH=30 -e L_THRESH=200 -e TRUNCATE=0 kyotohiemrnet.azurecr.io/hiemrnet_cu117 /bin/bash -c "./preprocess.sh"
-docker run -it -e DATASET=random -e SEED=0 -e MAX_SIZE=0 -e N_BINS=30 -e T_THRESH=30 -e L_THRESH=200 -e TRUNCATE=0 kyotohiemrnet.azurecr.io/hiemrnet_cu117 /bin/bash -c "./preprocess.sh"
-docker run -it -e DATASET=rotation -e SEED=0 -e MAX_SIZE=0 -e N_BINS=30 -e T_THRESH=30 -e L_THRESH=200 -e TRUNCATE=0 kyotohiemrnet.azurecr.io/hiemrnet_cu117 /bin/bash -c "./preprocess.sh"
+docker run -v /mnt/data:/data -e DATASET=geolife -e SEED=0 -e MAX_SIZE=0 -e N_BINS=30 -e T_THRESH=30 -e L_THRESH=200 -e TRUNCATE=0 kyotohiemrnet.azurecr.io/hiemrnet_cu117 /bin/bash -c "./preprocess.sh"
+docker run -v /mnt/data:/data -e DATASET=peopleflow -e SEED=0 -e MAX_SIZE=0 -e N_BINS=30 -e T_THRESH=30/60 -e L_THRESH=200 -e TRUNCATE=0 kyotohiemrnet.azurecr.io/hiemrnet_cu117 /bin/bash -c "./preprocess.sh"
+docker run -v /mnt/data:/data -e DATASET=chengdu -e SEED=0 -e MAX_SIZE=0 -e N_BINS=30 -e T_THRESH=30 -e L_THRESH=200 -e TRUNCATE=0 kyotohiemrnet.azurecr.io/hiemrnet_cu117 /bin/bash -c "./preprocess.sh"
+docker run -v /mnt/data:/data -e DATASET=random -e SEED=0 -e MAX_SIZE=0 -e N_BINS=30 -e T_THRESH=30 -e L_THRESH=200 -e TRUNCATE=0 kyotohiemrnet.azurecr.io/hiemrnet_cu117 /bin/bash -c "./preprocess.sh"
+docker run -v /mnt/data:/data -e DATASET=rotation -e SEED=0 -e MAX_SIZE=0 -e N_BINS=30 -e T_THRESH=30 -e L_THRESH=200 -e TRUNCATE=0 kyotohiemrnet.azurecr.io/hiemrnet_cu117 /bin/bash -c "./preprocess.sh"
 ```
 
 ```
