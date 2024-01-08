@@ -1,0 +1,729 @@
+*
+* Visual Studio Code Server
+*
+* By using the software, you agree to
+* the Visual Studio Code Server License Terms (https://aka.ms/vscode-server-license) and
+* the Microsoft Privacy Statement (https://privacy.microsoft.com/en-US/privacystatement).
+*
+
+Open this link in your browser https://vscode.dev/tunnel/coding/priv_traj_gen
+
+[2023-12-26 06:21:19] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 2
+[2023-12-26 06:21:19] info [russh::server] wrote id
+[2023-12-26 06:21:20] info [russh::server] read other id
+[2023-12-26 06:21:20] info [russh::server] session is running
+[2023-12-26 06:21:25] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 3
+[2023-12-26 06:21:25] info [russh::server] wrote id
+[2023-12-26 06:21:25] info [russh::server] read other id
+[2023-12-26 06:21:25] info [russh::server] session is running
+[2023-12-26 06:21:26] info [rpc.0] Checking /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/log.txt and /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/pid.txt for a running server...
+[2023-12-26 06:21:26] info [rpc.0] Starting server...
+[2023-12-26 06:21:26] info [rpc.0] Server started
+[2023-12-26 06:21:46] info [rpc.0] Forwarding port 45775
+[2023-12-26 06:26:41] info [rpc.0] Forwarding port 46791
+[2023-12-26 09:47:01] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 4
+[2023-12-26 09:47:01] info [russh::server] wrote id
+[2023-12-26 09:47:02] info [russh::server] read other id
+[2023-12-26 09:47:02] info [russh::server] session is running
+[2023-12-26 09:47:03] info [rpc.2] Checking /root/.vscode/cli/servers/Insiders-9621add46007f7a1ab37d1fce9bcdcecca62aeb0/log.txt and /root/.vscode/cli/servers/Insiders-9621add46007f7a1ab37d1fce9bcdcecca62aeb0/pid.txt for a running server...
+[2023-12-26 09:47:03] info [rpc.2] Downloading Visual Studio Code server -> /tmp/.tmpJvNLTi/vscode-server-linux-x64.tar.gz
+[2023-12-26 09:47:06] info [rpc.2] Starting server...
+[2023-12-26 09:47:06] info [rpc.2] Server started
+[2023-12-26 09:56:05] info [rpc.2] Disposed of connection to running server.
+[2023-12-26 09:59:14] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 5
+[2023-12-26 09:59:14] info [russh::server] wrote id
+[2023-12-26 09:59:14] info [russh::server] read other id
+[2023-12-26 09:59:14] info [russh::server] session is running
+[2023-12-26 09:59:15] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 6
+[2023-12-26 09:59:15] info [russh::server] wrote id
+[2023-12-26 09:59:15] info [russh::server] read other id
+[2023-12-26 09:59:15] info [russh::server] session is running
+[2023-12-26 09:59:16] info [rpc.4] Checking /root/.vscode/cli/servers/Insiders-9621add46007f7a1ab37d1fce9bcdcecca62aeb0/log.txt and /root/.vscode/cli/servers/Insiders-9621add46007f7a1ab37d1fce9bcdcecca62aeb0/pid.txt for a running server...
+[2023-12-26 09:59:16] info [rpc.4] Found running server (pid=19988)
+[2023-12-26 09:59:20] info [rpc.4] Disposed of connection to running server.
+[2023-12-26 09:59:29] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 7
+[2023-12-26 09:59:29] info [russh::server] wrote id
+[2023-12-26 09:59:29] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 8
+[2023-12-26 09:59:29] info [russh::server] wrote id
+[2023-12-26 09:59:29] info [russh::server] read other id
+[2023-12-26 09:59:29] info [russh::server] session is running
+[2023-12-26 09:59:29] info [russh::server] read other id
+[2023-12-26 09:59:29] info [russh::server] session is running
+[2023-12-26 09:59:30] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 9
+[2023-12-26 09:59:30] info [russh::server] wrote id
+[2023-12-26 09:59:30] info [russh::server] read other id
+[2023-12-26 09:59:30] info [russh::server] session is running
+[2023-12-26 09:59:31] info [rpc.5] Checking /root/.vscode/cli/servers/Insiders-9621add46007f7a1ab37d1fce9bcdcecca62aeb0/log.txt and /root/.vscode/cli/servers/Insiders-9621add46007f7a1ab37d1fce9bcdcecca62aeb0/pid.txt for a running server...
+[2023-12-26 09:59:31] info [rpc.5] Found running server (pid=19988)
+[2023-12-26 09:59:34] info [rpc.5] Disposed of connection to running server.
+[2023-12-26 10:05:49] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 10
+[2023-12-26 10:05:49] info [russh::server] wrote id
+[2023-12-26 10:05:49] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 11
+[2023-12-26 10:05:49] info [russh::server] wrote id
+[2023-12-26 10:05:49] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 12
+[2023-12-26 10:05:49] info [russh::server] wrote id
+[2023-12-26 10:05:49] info [russh::server] read other id
+[2023-12-26 10:05:49] info [russh::server] session is running
+[2023-12-26 10:05:49] info [russh::server] read other id
+[2023-12-26 10:05:49] info [russh::server] session is running
+[2023-12-26 10:05:49] info [russh::server] read other id
+[2023-12-26 10:05:49] info [russh::server] session is running
+[2023-12-26 10:05:50] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 13
+[2023-12-26 10:05:50] info [russh::server] wrote id
+[2023-12-26 10:05:50] info [russh::server] read other id
+[2023-12-26 10:05:50] info [russh::server] session is running
+[2023-12-26 10:05:51] info [rpc.6] Checking /root/.vscode/cli/servers/Insiders-9621add46007f7a1ab37d1fce9bcdcecca62aeb0/log.txt and /root/.vscode/cli/servers/Insiders-9621add46007f7a1ab37d1fce9bcdcecca62aeb0/pid.txt for a running server...
+[2023-12-26 10:05:51] info [rpc.6] Found running server (pid=19988)
+[2023-12-26 10:06:08] info [rpc.6] Disposed of connection to running server.
+[2023-12-26 10:06:14] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 14
+[2023-12-26 10:06:14] info [russh::server] wrote id
+[2023-12-26 10:06:15] info [russh::server] read other id
+[2023-12-26 10:06:15] info [russh::server] session is running
+[2023-12-26 10:06:16] info [rpc.7] Checking /root/.vscode/cli/servers/Insiders-9621add46007f7a1ab37d1fce9bcdcecca62aeb0/log.txt and /root/.vscode/cli/servers/Insiders-9621add46007f7a1ab37d1fce9bcdcecca62aeb0/pid.txt for a running server...
+[2023-12-26 10:06:16] info [rpc.7] Found running server (pid=19988)
+[2023-12-26 10:07:11] info [rpc.7] Forwarding port 45547
+[2023-12-26 10:07:11] info [rpc.0] Forwarding port 45547
+[2023-12-26 10:08:47] info [rpc.7] Unforwarding port 45547
+[2023-12-26 10:08:49] info [rpc.7] Forwarding port 45547
+[2023-12-26 10:09:22] info [rpc.7] Forwarding port 32799
+[2023-12-26 10:10:11] info [rpc.0] Forwarding port 9009
+[2023-12-26 10:10:12] info [rpc.0] Forwarding port 9008
+[2023-12-26 10:10:13] info [rpc.0] Forwarding port 9005
+[2023-12-26 10:10:13] info [rpc.0] Forwarding port 9007
+[2023-12-26 10:10:14] info [rpc.0] Forwarding port 9006
+[2023-12-26 10:10:14] info [rpc.0] Forwarding port 32799
+[2023-12-26 10:11:07] info [rpc.7] Disposed of connection to running server.
+[2023-12-26 10:11:14] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 15
+[2023-12-26 10:11:14] info [russh::server] wrote id
+[2023-12-26 10:11:15] info [russh::server] read other id
+[2023-12-26 10:11:15] info [russh::server] session is running
+[2023-12-26 10:11:15] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 16
+[2023-12-26 10:11:15] info [russh::server] wrote id
+[2023-12-26 10:11:16] info [russh::server] read other id
+[2023-12-26 10:11:16] info [russh::server] session is running
+[2023-12-26 10:11:17] info [rpc.8] Unforwarding port 32799
+[2023-12-26 10:11:17] info [rpc.8] Unforwarding port 45547
+[2023-12-26 10:11:17] info [rpc.8] Checking /root/.vscode/cli/servers/Insiders-9621add46007f7a1ab37d1fce9bcdcecca62aeb0/log.txt and /root/.vscode/cli/servers/Insiders-9621add46007f7a1ab37d1fce9bcdcecca62aeb0/pid.txt for a running server...
+[2023-12-26 10:11:17] info [rpc.8] Found running server (pid=19988)
+[2023-12-26 10:12:32] info [rpc.8] Disposed of connection to running server.
+[2023-12-26 13:12:42] info [rpc.0] Unforwarding port 9009
+[2023-12-26 13:12:42] info [rpc.0] Unforwarding port 9008
+[2023-12-26 13:12:42] info [rpc.0] Unforwarding port 9005
+[2023-12-26 13:12:43] info [rpc.0] Unforwarding port 9007
+[2023-12-26 13:12:43] info [rpc.0] Unforwarding port 9006
+[2023-12-26 13:12:44] info [rpc.0] Unforwarding port 32799
+[2023-12-26 13:12:44] info [rpc.0] Unforwarding port 45547
+[2023-12-26 13:23:13] info [rpc.0] Disposed of connection to running server.
+[2023-12-26 13:23:36] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 17
+[2023-12-26 13:23:36] info [russh::server] wrote id
+[2023-12-26 13:23:36] info [russh::server] read other id
+[2023-12-26 13:23:36] info [russh::server] session is running
+[2023-12-26 13:23:37] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 18
+[2023-12-26 13:23:37] info [russh::server] wrote id
+[2023-12-26 13:23:37] info [russh::server] read other id
+[2023-12-26 13:23:37] info [russh::server] session is running
+[2023-12-26 13:23:38] info [rpc.9] Checking /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/log.txt and /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/pid.txt for a running server...
+[2023-12-26 13:23:38] info [rpc.9] Found running server (pid=237)
+[2023-12-26 13:23:39] info [rpc.10] Checking /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/log.txt and /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/pid.txt for a running server...
+[2023-12-26 13:23:39] info [rpc.10] Found running server (pid=237)
+[2023-12-26 14:47:56] info [rpc.9] Disposed of connection to running server.
+[2023-12-26 14:47:56] info [rpc.10] Disposed of connection to running server.
+[2023-12-27 01:22:07] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 19
+[2023-12-27 01:22:07] info [russh::server] wrote id
+[2023-12-27 01:22:07] info [russh::server] read other id
+[2023-12-27 01:22:07] info [russh::server] session is running
+[2023-12-27 01:22:07] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 20
+[2023-12-27 01:22:07] info [russh::server] wrote id
+[2023-12-27 01:22:07] info [russh::server] read other id
+[2023-12-27 01:22:07] info [russh::server] session is running
+[2023-12-27 01:22:08] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 21
+[2023-12-27 01:22:08] info [russh::server] wrote id
+[2023-12-27 01:22:08] info [russh::server] read other id
+[2023-12-27 01:22:08] info [russh::server] session is running
+[2023-12-27 01:22:09] info [rpc.11] Checking /root/.vscode/cli/servers/Insiders-9621add46007f7a1ab37d1fce9bcdcecca62aeb0/log.txt and /root/.vscode/cli/servers/Insiders-9621add46007f7a1ab37d1fce9bcdcecca62aeb0/pid.txt for a running server...
+[2023-12-27 01:22:09] info [rpc.11] Starting server...
+[2023-12-27 01:22:09] info [rpc.11] Server started
+[2023-12-27 01:23:00] info [rpc.11] Disposed of connection to running server.
+[2023-12-28 00:48:17] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 22
+[2023-12-28 00:48:17] info [russh::server] wrote id
+[2023-12-28 00:48:17] info [russh::server] read other id
+[2023-12-28 00:48:17] info [russh::server] session is running
+[2023-12-28 00:48:19] info [rpc.13] Checking /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/log.txt and /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/pid.txt for a running server...
+[2023-12-28 00:48:19] info [rpc.13] Starting server...
+[2023-12-28 00:48:19] info [rpc.13] Server started
+[2023-12-28 00:49:13] info [rpc.13] Disposed of connection to running server.
+[2023-12-28 00:49:25] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 23
+[2023-12-28 00:49:25] info [russh::server] wrote id
+[2023-12-28 00:49:26] info [russh::server] read other id
+[2023-12-28 00:49:26] info [russh::server] session is running
+[2023-12-28 00:49:27] info [rpc.15] Checking /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/log.txt and /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/pid.txt for a running server...
+[2023-12-28 00:49:27] info [rpc.15] Found running server (pid=66796)
+[2023-12-28 00:49:40] info [rpc.15] Forwarding port 44243
+[2023-12-28 00:53:31] info [rpc.15] Forwarding port 39333
+[2023-12-28 01:16:19] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 24
+[2023-12-28 01:16:19] info [russh::server] wrote id
+[2023-12-28 01:16:19] info [russh::server] read other id
+[2023-12-28 01:16:19] info [russh::server] session is running
+[2023-12-28 01:16:20] info [rpc.16] Checking /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/log.txt and /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/pid.txt for a running server...
+[2023-12-28 01:16:20] info [rpc.16] Found running server (pid=66796)
+[2023-12-28 01:16:20] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 25
+[2023-12-28 01:16:20] info [russh::server] wrote id
+[2023-12-28 01:16:21] info [russh::server] read other id
+[2023-12-28 01:16:21] info [russh::server] session is running
+[2023-12-28 01:16:22] info [rpc.17] Checking /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/log.txt and /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/pid.txt for a running server...
+[2023-12-28 01:16:22] info [rpc.17] Found running server (pid=66796)
+[2023-12-28 01:16:23] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:16:23] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:16:24] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:16:24] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:16:25] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:16:25] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:16:26] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:16:26] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:16:26] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:16:26] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:16:27] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:16:27] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:16:29] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:16:29] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:16:32] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:16:32] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:16:33] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:16:33] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:16:34] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:16:34] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:16:36] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:16:36] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:16:37] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:16:37] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:16:38] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:16:38] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:16:41] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:16:41] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:16:44] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:16:44] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:16:45] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:16:45] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:16:45] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:16:47] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:16:47] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:16:52] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:16:52] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:16:55] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:16:55] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:16:56] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:16:56] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:16:57] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:16:57] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:16:58] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:16:58] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:00] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:00] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:01] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:01] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:02] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:02] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:04] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:04] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:05] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:05] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:06] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:06] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:08] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:08] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:09] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:09] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:10] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:10] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:11] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:11] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:11] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:12] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:12] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:13] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:13] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:14] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:14] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:15] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:15] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:16] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:16] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:17] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:17] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:18] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:18] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:19] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:19] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:20] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:20] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:21] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:21] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:21] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:21] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:22] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:22] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:23] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:23] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:24] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:24] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:24] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:24] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:25] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:25] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:26] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:27] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:27] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:28] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:28] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:28] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:28] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:29] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:29] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:30] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:30] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:31] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:31] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:32] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:32] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:32] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:32] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:34] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:34] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:35] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:35] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:35] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:35] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:36] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:36] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:37] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:37] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:38] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:38] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:39] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:39] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:40] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:40] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:41] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:41] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:41] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:42] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:42] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:43] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:43] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:44] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:44] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:45] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:45] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:45] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:45] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:46] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:46] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:47] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:47] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:48] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:48] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:48] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:48] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:49] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:49] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:51] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:51] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:52] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:52] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:52] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:52] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:53] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:53] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:54] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:54] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:54] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:55] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:55] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:56] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:56] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:57] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:57] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:58] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:58] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:59] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:17:59] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:00] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:00] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:00] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:00] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:02] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:02] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:02] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:02] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:03] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:03] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:04] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:04] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:05] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:05] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:06] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:06] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:06] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:06] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:07] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:07] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:08] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:08] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:08] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:08] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:08] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:08] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:08] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:08] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:08] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:08] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:08] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:08] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:08] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:08] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:08] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:08] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:08] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:08] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:08] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:08] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:08] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:08] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:08] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:08] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:08] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:08] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:08] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:08] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:08] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:08] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:08] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:08] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:08] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:08] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:08] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:08] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:08] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:08] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:08] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 01:18:08] warn [rpc.15] error handling call: NoAttachedServerError(NoAttachedServerError)
+[2023-12-28 02:52:55] info [rpc.15] Disposed of connection to running server.
+[2023-12-28 02:52:55] info [rpc.17] Disposed of connection to running server.
+[2023-12-28 02:52:55] info [rpc.16] Disposed of connection to running server.
+[2023-12-28 02:52:56] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 26
+[2023-12-28 02:52:56] info [russh::server] wrote id
+[2023-12-28 02:52:56] info [russh::server] read other id
+[2023-12-28 02:52:56] info [russh::server] session is running
+[2023-12-28 02:52:57] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 27
+[2023-12-28 02:52:57] info [russh::server] wrote id
+[2023-12-28 02:52:57] info [russh::server] read other id
+[2023-12-28 02:52:57] info [russh::server] session is running
+[2023-12-28 02:52:58] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 28
+[2023-12-28 02:52:58] info [russh::server] wrote id
+[2023-12-28 02:52:58] info [russh::server] read other id
+[2023-12-28 02:52:58] info [russh::server] session is running
+[2023-12-28 03:56:34] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 29
+[2023-12-28 03:56:34] info [russh::server] wrote id
+[2023-12-28 03:56:34] info [russh::server] read other id
+[2023-12-28 03:56:34] info [russh::server] session is running
+[2023-12-28 03:56:35] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 30
+[2023-12-28 03:56:35] info [russh::server] wrote id
+[2023-12-28 03:56:35] info [russh::server] read other id
+[2023-12-28 03:56:35] info [russh::server] session is running
+[2023-12-28 04:00:33] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 31
+[2023-12-28 04:00:33] info [russh::server] wrote id
+[2023-12-28 04:00:33] info [russh::server] read other id
+[2023-12-28 04:00:33] info [russh::server] session is running
+[2023-12-28 04:00:35] info [rpc.18] Checking /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/log.txt and /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/pid.txt for a running server...
+[2023-12-28 04:00:35] info [rpc.18] Found running server (pid=66796)
+[2023-12-28 04:00:51] info [rpc.18] Forwarding port 44743
+[2023-12-28 04:00:56] info [rpc.18] Forwarding port 40981
+[2023-12-28 04:01:09] info [rpc.18] Unforwarding port 40981
+[2023-12-28 04:01:58] info [rpc.18] Forwarding port 37369
+[2023-12-28 04:25:41] info [rpc.18] Disposed of connection to running server.
+[2023-12-28 04:25:42] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 32
+[2023-12-28 04:25:42] info [russh::server] wrote id
+[2023-12-28 04:25:42] info [russh::server] read other id
+[2023-12-28 04:25:42] info [russh::server] session is running
+[2023-12-28 04:25:43] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 33
+[2023-12-28 04:25:43] info [russh::server] wrote id
+[2023-12-28 04:25:43] info [russh::server] read other id
+[2023-12-28 04:25:43] info [russh::server] session is running
+[2023-12-28 04:25:44] info [rpc.19] Unforwarding port 37369
+[2023-12-28 04:25:44] info [rpc.19] Unforwarding port 44743
+[2023-12-28 04:25:45] info [rpc.19] Checking /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/log.txt and /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/pid.txt for a running server...
+[2023-12-28 04:25:45] info [rpc.19] Found running server (pid=66796)
+[2023-12-28 04:33:23] info [rpc.19] Disposed of connection to running server.
+[2023-12-29 01:35:52] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 34
+[2023-12-29 01:35:52] info [russh::server] wrote id
+[2023-12-29 01:35:52] info [russh::server] read other id
+[2023-12-29 01:35:52] info [russh::server] session is running
+[2023-12-29 02:32:39] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 35
+[2023-12-29 02:32:39] info [russh::server] wrote id
+[2023-12-29 02:32:40] info [russh::server] read other id
+[2023-12-29 02:32:40] info [russh::server] session is running
+[2023-12-31 07:51:12] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 36
+[2023-12-31 07:51:12] info [russh::server] wrote id
+[2023-12-31 07:51:12] info [russh::server] read other id
+[2023-12-31 07:51:12] info [russh::server] session is running
+[2023-12-31 07:51:14] info [rpc.20] Checking /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/log.txt and /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/pid.txt for a running server...
+[2023-12-31 07:51:14] info [rpc.20] Starting server...
+[2023-12-31 07:51:14] info [rpc.20] Server started
+[2023-12-31 07:51:24] info [rpc.20] Forwarding port 45775
+[2023-12-31 07:51:24] info [rpc.20] Forwarding port 46791
+[2023-12-31 07:52:19] info [rpc.20] Forwarding port 38727
+[2023-12-31 07:52:28] info [rpc.20] Forwarding port 35609
+[2023-12-31 08:00:35] info [rpc.20] Disposed of connection to running server.
+[2023-12-31 08:01:26] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 37
+[2023-12-31 08:01:26] info [russh::server] wrote id
+[2023-12-31 08:01:26] info [russh::server] read other id
+[2023-12-31 08:01:26] info [russh::server] session is running
+[2023-12-31 08:01:28] info [rpc.22] Checking /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/log.txt and /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/pid.txt for a running server...
+[2023-12-31 08:01:28] info [rpc.22] Found running server (pid=104024)
+[2023-12-31 08:01:41] info [rpc.22] Forwarding port 45775
+[2023-12-31 08:01:41] info [rpc.22] Forwarding port 46791
+[2023-12-31 08:01:41] info [rpc.22] Forwarding port 38727
+[2023-12-31 08:01:42] info [rpc.22] Forwarding port 35609
+[2023-12-31 08:01:46] info [rpc.22] Forwarding port 45465
+[2023-12-31 08:04:00] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 38
+[2023-12-31 08:04:00] info [russh::server] wrote id
+[2023-12-31 08:04:13] info [russh::server] read other id
+[2023-12-31 08:04:13] info [russh::server] session is running
+[2023-12-31 08:04:29] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 39
+[2023-12-31 08:04:29] info [russh::server] wrote id
+[2023-12-31 08:04:38] info [russh::server] read other id
+[2023-12-31 08:04:38] info [russh::server] session is running
+[2023-12-31 08:04:40] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 40
+[2023-12-31 08:04:40] info [russh::server] wrote id
+[2023-12-31 08:04:44] info [russh::server] read other id
+[2023-12-31 08:04:44] info [russh::server] session is running
+[2023-12-31 08:04:49] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 41
+[2023-12-31 08:04:49] info [russh::server] wrote id
+[2023-12-31 08:04:51] info [russh::server] read other id
+[2023-12-31 08:04:51] info [russh::server] session is running
+[2023-12-31 08:04:51] info [rpc.22] Disposed of connection to running server.
+[2023-12-31 08:05:14] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 42
+[2023-12-31 08:05:14] info [russh::server] wrote id
+[2023-12-31 08:05:14] info [russh::server] read other id
+[2023-12-31 08:05:14] info [russh::server] session is running
+[2023-12-31 08:05:15] info [rpc.23] Checking /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/log.txt and /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/pid.txt for a running server...
+[2023-12-31 08:05:15] info [rpc.23] Found running server (pid=104024)
+[2023-12-31 08:05:27] info [rpc.23] Forwarding port 45775
+[2023-12-31 08:05:28] info [rpc.23] Forwarding port 46791
+[2023-12-31 08:06:36] info [rpc.23] Forwarding port 38727
+[2023-12-31 08:06:37] info [rpc.23] Forwarding port 35609
+[2023-12-31 08:06:38] info [rpc.23] Forwarding port 45465
+[2023-12-31 08:07:26] info [rpc.23] Forwarding port 45181
+[2023-12-31 08:09:05] info [rpc.23] Forwarding port 38279
+[2023-12-31 08:09:59] info [rpc.23] Forwarding port 37417
+[2023-12-31 11:46:59] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 43
+[2023-12-31 11:46:59] info [russh::server] wrote id
+[2023-12-31 11:47:06] info [russh::server] read other id
+[2023-12-31 11:47:06] info [russh::server] session is running
+[2023-12-31 11:48:10] info [rpc.23] Disposed of connection to running server.
+[2023-12-31 11:48:44] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 44
+[2023-12-31 11:48:44] info [russh::server] wrote id
+[2023-12-31 11:48:44] info [russh::server] read other id
+[2023-12-31 11:48:44] info [russh::server] session is running
+[2023-12-31 11:48:46] info [rpc.24] Checking /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/log.txt and /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/pid.txt for a running server...
+[2023-12-31 11:48:46] info [rpc.24] Found running server (pid=104024)
+[2023-12-31 11:49:02] info [rpc.24] Forwarding port 45775
+[2023-12-31 11:49:02] info [rpc.24] Forwarding port 46791
+[2023-12-31 11:49:08] info [rpc.24] Forwarding port 38727
+[2023-12-31 11:50:05] info [rpc.24] Forwarding port 35609
+[2023-12-31 11:50:33] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 45
+[2023-12-31 11:50:33] info [russh::server] wrote id
+[2023-12-31 11:50:34] info [russh::server] read other id
+[2023-12-31 11:50:34] info [russh::server] session is running
+[2023-12-31 11:50:40] info [rpc.25] Checking /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/log.txt and /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/pid.txt for a running server...
+[2023-12-31 11:50:40] info [rpc.25] Found running server (pid=104024)
+[2023-12-31 11:54:51] info [rpc.24] Disposed of connection to running server.
+[2023-12-31 11:54:51] info [rpc.25] Disposed of connection to running server.
+[2023-12-31 11:55:01] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 46
+[2023-12-31 11:55:01] info [russh::server] wrote id
+[2023-12-31 11:55:02] info [russh::server] read other id
+[2023-12-31 11:55:02] info [russh::server] session is running
+[2023-12-31 11:55:03] info [rpc.26] Checking /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/log.txt and /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/pid.txt for a running server...
+[2023-12-31 11:55:03] info [rpc.26] Found running server (pid=104024)
+[2023-12-31 11:55:23] info [rpc.26] Forwarding port 45775
+[2023-12-31 11:55:29] info [rpc.26] Forwarding port 46791
+[2023-12-31 11:56:47] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 47
+[2023-12-31 11:56:47] info [russh::server] wrote id
+[2023-12-31 11:56:49] info [rpc.26] Forwarding port 38727
+[2023-12-31 11:56:49] info [russh::server] read other id
+[2023-12-31 11:56:49] info [russh::server] session is running
+[2023-12-31 11:56:50] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 48
+[2023-12-31 11:56:50] info [russh::server] wrote id
+[2023-12-31 11:56:51] info [russh::server] read other id
+[2023-12-31 11:56:51] info [russh::server] session is running
+[2023-12-31 11:56:51] info [rpc.27] Checking /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/log.txt and /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/pid.txt for a running server...
+[2023-12-31 11:56:51] info [rpc.27] Found running server (pid=104024)
+[2023-12-31 11:56:53] info [rpc.28] Unforwarding port 45775
+[2023-12-31 11:56:53] info [rpc.28] Unforwarding port 46791
+[2023-12-31 11:56:53] info [rpc.28] Checking /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/log.txt and /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/pid.txt for a running server...
+[2023-12-31 11:56:53] info [rpc.28] Found running server (pid=104024)
+[2023-12-31 12:00:20] info [rpc.28] Forwarding port 41975
+[2023-12-31 12:00:51] info [rpc.28] Forwarding port 42239
+[2023-12-31 12:00:52] info [rpc.28] Forwarding port 37245
+[2023-12-31 12:10:35] info [rpc.28] Unforwarding port 41975
+[2023-12-31 12:10:37] info [rpc.28] Forwarding port 41975
+[2023-12-31 12:10:39] info [rpc.28] Unforwarding port 41975
+[2023-12-31 12:10:42] info [rpc.28] Forwarding port 41975
+[2023-12-31 12:44:20] info [rpc.28] Disposed of connection to running server.
+[2023-12-31 12:44:20] info [rpc.27] Disposed of connection to running server.
+[2023-12-31 12:44:20] info [rpc.26] Disposed of connection to running server.
+[2024-01-01 00:55:19] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 49
+[2024-01-01 00:55:19] info [russh::server] wrote id
+[2024-01-01 00:55:19] info [russh::server] read other id
+[2024-01-01 00:55:19] info [russh::server] session is running
+[2024-01-01 00:55:22] info [rpc.29] Checking /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/log.txt and /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/pid.txt for a running server...
+[2024-01-01 00:55:22] info [rpc.29] Starting server...
+[2024-01-01 00:55:22] info [rpc.29] Server started
+[2024-01-01 00:55:35] info [rpc.29] Forwarding port 42239
+[2024-01-01 00:55:35] info [rpc.29] Forwarding port 41975
+[2024-01-01 00:56:20] info [rpc.29] Forwarding port 41103
+[2024-01-01 00:57:15] info [rpc.29] Forwarding port 38045
+[2024-01-01 00:57:16] info [rpc.29] Forwarding port 33821
+[2024-01-01 03:14:44] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 50
+[2024-01-01 03:14:44] info [russh::server] wrote id
+[2024-01-01 03:14:45] info [russh::server] read other id
+[2024-01-01 03:14:45] info [russh::server] session is running
+[2024-01-01 03:14:45] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 51
+[2024-01-01 03:14:45] info [russh::server] wrote id
+[2024-01-01 03:14:46] info [russh::server] read other id
+[2024-01-01 03:14:46] info [russh::server] session is running
+[2024-01-01 03:14:47] info [rpc.31] Checking /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/log.txt and /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/pid.txt for a running server...
+[2024-01-01 03:14:47] info [rpc.31] Found running server (pid=149481)
+[2024-01-01 03:14:48] info [rpc.32] Checking /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/log.txt and /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/pid.txt for a running server...
+[2024-01-01 03:14:48] info [rpc.32] Found running server (pid=149481)
+[2024-01-01 03:29:33] info [rpc.31] Disposed of connection to running server.
+[2024-01-01 03:29:33] info [rpc.32] Disposed of connection to running server.
+[2024-01-01 03:29:33] info [rpc.29] Disposed of connection to running server.
+[2024-01-01 03:29:43] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 52
+[2024-01-01 03:29:43] info [russh::server] wrote id
+[2024-01-01 03:29:43] info [russh::server] read other id
+[2024-01-01 03:29:43] info [russh::server] session is running
+[2024-01-01 03:29:45] info [rpc.33] Checking /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/log.txt and /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/pid.txt for a running server...
+[2024-01-01 03:29:45] info [rpc.33] Found running server (pid=149481)
+[2024-01-01 03:29:54] info [rpc.33] Forwarding port 42239
+[2024-01-01 03:29:54] info [rpc.33] Forwarding port 41975
+[2024-01-01 03:31:19] info [rpc.33] Forwarding port 35657
+[2024-01-01 03:31:25] info [rpc.33] Forwarding port 44857
+[2024-01-01 03:31:26] info [rpc.33] Forwarding port 36991
+[2024-01-01 03:32:55] info [rpc.33] Forwarding port 42061
+[2024-01-01 03:35:48] info [rpc.33] Disposed of connection to running server.
+[2024-01-02 07:20:54] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 53
+[2024-01-02 07:20:54] info [russh::server] wrote id
+[2024-01-02 07:20:54] info [russh::server] read other id
+[2024-01-02 07:20:54] info [russh::server] session is running
+[2024-01-02 07:20:56] info [rpc.34] Checking /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/log.txt and /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/pid.txt for a running server...
+[2024-01-02 07:20:56] info [rpc.34] Starting server...
+[2024-01-02 07:20:56] info [rpc.34] Server started
+[2024-01-02 07:21:03] info [rpc.34] Forwarding port 42239
+[2024-01-02 07:21:03] info [rpc.34] Forwarding port 41975
+[2024-01-02 07:21:36] info [rpc.34] Forwarding port 39631
+[2024-01-02 07:21:43] info [rpc.34] Forwarding port 46683
+[2024-01-02 07:21:43] info [rpc.34] Forwarding port 41849
+[2024-01-02 07:26:55] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 54
+[2024-01-02 07:26:55] info [russh::server] wrote id
+[2024-01-02 07:27:04] info [russh::server] read other id
+[2024-01-02 07:27:04] info [russh::server] session is running
+[2024-01-02 07:27:16] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 55
+[2024-01-02 07:27:16] info [russh::server] wrote id
+[2024-01-02 07:27:19] info [russh::server] read other id
+[2024-01-02 07:27:19] info [russh::server] session is running
+[2024-01-02 07:27:23] info [rpc.36] Checking /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/log.txt and /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/pid.txt for a running server...
+[2024-01-02 07:27:23] info [rpc.36] Found running server (pid=180799)
+[2024-01-02 07:29:36] info [rpc.34] Disposed of connection to running server.
+[2024-01-02 07:29:36] info [rpc.36] Disposed of connection to running server.
+[2024-01-02 07:29:45] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 56
+[2024-01-02 07:29:45] info [russh::server] wrote id
+[2024-01-02 07:29:46] info [russh::server] read other id
+[2024-01-02 07:29:46] info [russh::server] session is running
+[2024-01-02 07:29:47] info [rpc.37] Checking /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/log.txt and /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/pid.txt for a running server...
+[2024-01-02 07:29:47] info [rpc.37] Found running server (pid=180799)
+[2024-01-02 07:30:22] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 57
+[2024-01-02 07:30:22] info [russh::server] wrote id
+[2024-01-02 07:30:22] info [russh::server] read other id
+[2024-01-02 07:30:22] info [russh::server] session is running
+[2024-01-02 07:30:23] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 58
+[2024-01-02 07:30:23] info [russh::server] wrote id
+[2024-01-02 07:30:23] info [russh::server] read other id
+[2024-01-02 07:30:23] info [russh::server] session is running
+[2024-01-02 07:30:24] info [rpc.38] Checking /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/log.txt and /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/pid.txt for a running server...
+[2024-01-02 07:30:24] info [rpc.38] Found running server (pid=180799)
+[2024-01-02 07:30:25] info [rpc.39] Checking /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/log.txt and /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/pid.txt for a running server...
+[2024-01-02 07:30:25] info [rpc.39] Found running server (pid=180799)
+[2024-01-02 07:30:42] info [rpc.39] Forwarding port 42239
+[2024-01-02 07:30:43] info [rpc.39] Forwarding port 41975
+[2024-01-02 07:31:02] info [rpc.39] Forwarding port 39879
+[2024-01-02 07:35:53] info [rpc.39] Forwarding port 34471
+[2024-01-02 07:35:55] info [rpc.39] Forwarding port 38455
+[2024-01-02 07:49:48] info [rpc.37] Disposed of connection to running server.
+[2024-01-02 07:50:03] info [rpc.39] Disposed of connection to running server.
+[2024-01-02 07:50:07] info [rpc.38] Disposed of connection to running server.
+[2024-01-02 07:50:36] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 59
+[2024-01-02 07:50:36] info [russh::server] wrote id
+[2024-01-02 07:50:37] info [russh::server] read other id
+[2024-01-02 07:50:37] info [russh::server] session is running
+[2024-01-02 07:50:39] info [rpc.40] Checking /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/log.txt and /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/pid.txt for a running server...
+[2024-01-02 07:50:39] info [rpc.40] Found running server (pid=180799)
+[2024-01-02 07:51:28] info [rpc.40] Forwarding port 42239
+[2024-01-02 07:52:16] info [rpc.40] Forwarding port 41975
+[2024-01-02 07:52:25] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 60
+[2024-01-02 07:52:25] info [russh::server] wrote id
+[2024-01-02 07:52:27] info [russh::server] read other id
+[2024-01-02 07:52:27] info [russh::server] session is running
+[2024-01-02 07:52:29] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 61
+[2024-01-02 07:52:29] info [russh::server] wrote id
+[2024-01-02 07:52:31] info [russh::server] read other id
+[2024-01-02 07:52:31] info [russh::server] session is running
+[2024-01-02 07:52:32] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 62
+[2024-01-02 07:52:32] info [russh::server] wrote id
+[2024-01-02 07:52:34] info [russh::server] read other id
+[2024-01-02 07:52:34] info [russh::server] session is running
+[2024-01-02 07:52:37] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 63
+[2024-01-02 07:52:37] info [russh::server] wrote id
+[2024-01-02 07:52:39] info [russh::server] read other id
+[2024-01-02 07:52:39] info [russh::server] session is running
+[2024-01-02 07:52:43] info [rpc.41] Checking /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/log.txt and /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/pid.txt for a running server...
+[2024-01-02 07:52:43] info [rpc.41] Found running server (pid=180799)
+[2024-01-02 07:52:52] info [rpc.42] Checking /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/log.txt and /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/pid.txt for a running server...
+[2024-01-02 07:52:52] info [rpc.42] Found running server (pid=180799)
+[2024-01-02 07:53:57] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 64
+[2024-01-02 07:53:57] info [russh::server] wrote id
+[2024-01-02 07:53:59] info [russh::server] read other id
+[2024-01-02 07:53:59] info [russh::server] session is running
+[2024-01-02 07:54:01] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 65
+[2024-01-02 07:54:01] info [russh::server] wrote id
+[2024-01-02 07:54:05] info [russh::server] read other id
+[2024-01-02 07:54:05] info [russh::server] session is running
+[2024-01-02 07:54:06] info [rpc.43] Checking /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/log.txt and /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/pid.txt for a running server...
+[2024-01-02 07:54:06] info [rpc.43] Found running server (pid=180799)
+[2024-01-02 07:54:11] info [rpc.44] Checking /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/log.txt and /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/pid.txt for a running server...
+[2024-01-02 07:54:11] info [rpc.44] Found running server (pid=180799)
+[2024-01-02 15:00:14] info [rpc.42] Disposed of connection to running server.
+[2024-01-02 15:00:14] info [rpc.44] Disposed of connection to running server.
+[2024-01-02 15:00:14] info [rpc.41] Disposed of connection to running server.
+[2024-01-02 15:00:14] info [rpc.43] Disposed of connection to running server.
+[2024-01-02 15:00:14] info [rpc.40] Disposed of connection to running server.
+[2024-01-04 00:15:44] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 66
+[2024-01-04 00:15:44] info [russh::server] wrote id
+[2024-01-04 00:15:44] info [russh::server] read other id
+[2024-01-04 00:15:44] info [russh::server] session is running
+[2024-01-04 00:15:46] info [rpc.45] Checking /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/log.txt and /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/pid.txt for a running server...
+[2024-01-04 00:15:46] info [rpc.45] Starting server...
+[2024-01-04 00:15:46] info [rpc.45] Server started
+[2024-01-04 00:15:50] info [rpc.45] Forwarding port 42239
+[2024-01-04 00:15:54] info [rpc.45] Forwarding port 34387
+[2024-01-04 04:45:51] info [rpc.45] Disposed of connection to running server.
+[2024-01-08 01:06:36] info [tunnels::connections::relay_tunnel_host] Opened new client on channel 67
+[2024-01-08 01:06:36] info [russh::server] wrote id
+[2024-01-08 01:06:36] info [russh::server] read other id
+[2024-01-08 01:06:36] info [russh::server] session is running
+[2024-01-08 01:06:37] info [rpc.47] Checking /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/log.txt and /root/.vscode/cli/servers/Stable-0ee08df0cf4527e40edc9aa28f4b5bd38bbff2b2/pid.txt for a running server...
+[2024-01-08 01:06:37] info [rpc.47] Starting server...
+[2024-01-08 01:06:37] info [rpc.47] Server started
+[2024-01-08 01:06:42] info [rpc.47] Forwarding port 42239
+[2024-01-08 01:06:47] info [rpc.47] Forwarding port 37727
+[2024-01-08 01:08:50] info [rpc.47] Forwarding port 34141
