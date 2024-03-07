@@ -1,3 +1,4 @@
+import json
 
 def make_save_name(dataset_name, n_bins, time_threshold, location_threshold, seed):
 
@@ -22,3 +23,7 @@ def make_model_name(**kwargs):
     if kwargs["transition_type"] == "test":
         save_name = f"test_eps{kwargs['epsilon']}"
     return save_name
+
+with open("../config.json", "r") as f:
+    config = json.load(f)
+image_name = config["image_name"]
