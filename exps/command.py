@@ -18,8 +18,8 @@ def command_baseline(data_dir, dim, seed, epsilon, n_epochs, test_thresh=30):
     transition_type = "first"
     train_all_layers = False
     model_dir = data_dir / make_model_name(network_type=network_type, is_dp=True, meta_n_iter=meta_n_iter, memory_dim=dim, memory_hidden_dim=dim, location_embedding_dim=dim, hidden_dim=dim, batch_size=0, train_all_layers=train_all_layers, consistent=True, epsilon=epsilon, seed=seed, meta_dist=meta_dist, transition_type=transition_type)
-    return f'docker run --rm --gpus all -v {host_data_dir}:{orig_data_dir} -e TRAINING_DATA_DIR={data_dir} -e SEED={seed} -e META_N_ITER={meta_n_iter} -e EPOCH={n_epochs} -e P_BATCH=100 -e DP=True -e MULTI_TASK={train_all_layers} -e CONSISTENT=True -e HIDDEN_DIM={dim} -e LOC_DIM={dim} -e MEM_DIM={dim} -e MEM_HIDDEN_DIM={dim} -e EPSILON={epsilon} -e META_DIST={meta_dist} -e COEF_TIME=1 -e NETWORK_TYPE={network_type} {image_name} /bin/bash -c "./train.sh"' \
-        , f'docker run --rm --gpus all -v {host_data_dir}:{orig_data_dir} -e TEST_THRESH={test_thresh} -e ABLATION=True -e SEED=0 -e TRUNCATE=0 -e MODEL_DIR={model_dir} -e EVAL_INTERVAL=10 -e EVAL_DATA_DIR={data_dir} {image_name} /bin/bash -c "./evaluate.sh"'
+    return f'sudo docker run --rm --gpus all -v {host_data_dir}:{orig_data_dir} -e TRAINING_DATA_DIR={data_dir} -e SEED={seed} -e META_N_ITER={meta_n_iter} -e EPOCH={n_epochs} -e P_BATCH=100 -e DP=True -e MULTI_TASK={train_all_layers} -e CONSISTENT=True -e HIDDEN_DIM={dim} -e LOC_DIM={dim} -e MEM_DIM={dim} -e MEM_HIDDEN_DIM={dim} -e EPSILON={epsilon} -e META_DIST={meta_dist} -e COEF_TIME=1 -e NETWORK_TYPE={network_type} {image_name} /bin/bash -c "./train.sh"' \
+        , f'sudo docker run --rm --gpus all -v {host_data_dir}:{orig_data_dir} -e TEST_THRESH={test_thresh} -e ABLATION=True -e SEED=0 -e TRUNCATE=0 -e MODEL_DIR={model_dir} -e EVAL_INTERVAL=10 -e EVAL_DATA_DIR={data_dir} {image_name} /bin/bash -c "./evaluate.sh"'
 
 
 # p
