@@ -261,7 +261,7 @@ class EarlyStopping:
 
 def set_logger(file_name, save_path):
     # remove the exiting log file
-    if os.path.exists(save_path):
+    if os.path.exists(save_path) or os.path.islink(save_path):
         os.remove(save_path)
         
     # path to log
