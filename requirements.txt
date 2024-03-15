@@ -39,3 +39,4 @@ cvxpy
 geopy
 osmnx
 shapely
+hydra
