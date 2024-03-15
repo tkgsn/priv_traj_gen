@@ -709,7 +709,7 @@ class FullLinearQuadTreeNetwork(LinearQuadTreeNetwork):
 
 
 def guide_to_model(type):
-    if type == "hiemrnet":
+    if type == "hrnet":
         return FullLinearQuadTreeNetwork, MetaGRUNet
     elif type == "baseline":
         return MetaNetwork, MetaGRUNet

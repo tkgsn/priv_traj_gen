@@ -13,7 +13,7 @@ def main(cfg: DictConfig) -> None:
         print(cfg)
         eval_run(**cfg)
     else:
-        if cfg["model_name"] == "baseline":
+        if cfg["model_name"] in ["baseline", "hrnet"]:
             baseline_run(**cfg)
 
 

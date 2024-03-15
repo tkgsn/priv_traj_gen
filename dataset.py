@@ -1,6 +1,7 @@
 from torch.utils.data import Dataset
 import torch
 import numpy as np
+from my_utils import construct_default_quadtree
 from logging import getLogger, config
 logger = getLogger(__name__)
 
@@ -46,13 +47,33 @@ def traj_to_format(traj):
     return format
 
 class PretrainingDataset(Dataset):
-    def __init__(self, trajectory_matrix, pretraining_method, n_iter, batch_size):
-        self.n_classes = len(trajectory_matrix)
-        self.n_locations = len(trajectory_matrix[0])
+    def __init__(self, transition_matrix, pretraining_method, n_iter, batch_size, model_name):
+        self.n_classes = len(transition_matrix)
+        self.n_locations = len(transition_matrix[0])
         self.pretraining_method = pretraining_method
-        self.transition_matrix = trajectory_matrix
+        self.transition_matrix = transition_matrix
         self.n_iter = n_iter
         self.batch_size = batch_size
+        self.model_name = model_name
+
+        if model_name == "hrnet":
+            n_locations = len(transition_matrix[0])
+            n_bins = int(np.sqrt(n_locations)) -2
+            self.tree = construct_default_quadtree(n_bins)
+            self.tree.make_self_complete()
+
+    def make_collate_fn(self):
+        def collate_fn(batch):
+            inputs = []
+            targets = []
+            for record in batch:
+                inputs.append(record["input"])
+                targets.append(record["target"])
+            targets = torch.stack(targets)
+            if self.model_name == "hrnet":
+                targets = self.tree.make_quad_distribution(targets)
+            return {"input":torch.stack(inputs), "target":targets}
+        return collate_fn
 
     def __getitem__(self, _):
 

@@ -215,12 +215,14 @@ def pre_training_pretraining_network(transition_matrix, n_iter, pretraining_netw
     # n_classes = pretraining_network.n_classes
     # n_locations = len(transition_matrix[0])
     # epoch = 0
+
+    # n_locations = len(transition_matrix[0])
     # n_bins = int(np.sqrt(n_locations)) -2
     # tree = construct_default_quadtree(n_bins)
     # tree.make_self_complete()
 
-    pretraining_dataset = PretrainingDataset(transition_matrix, pretraining_method, n_iter, batch_size)
-    pretraining_data_loader = torch.utils.data.DataLoader(pretraining_dataset, num_workers=0, pin_memory=True, batch_size=batch_size)
+    pretraining_dataset = PretrainingDataset(transition_matrix, pretraining_method, n_iter, batch_size, pretraining_network.name)
+    pretraining_data_loader = torch.utils.data.DataLoader(pretraining_dataset, num_workers=0, pin_memory=True, batch_size=batch_size, collate_fn=pretraining_dataset.make_collate_fn())
 
     with tqdm.tqdm(pretraining_data_loader) as pbar:
         for epoch, batch in enumerate(pbar):
@@ -228,6 +230,7 @@ def pre_training_pretraining_network(transition_matrix, n_iter, pretraining_netw
             target = batch["target"].to(device)
 
             pretraining_network_output = pretraining_network(input).view(*target.shape)
+
             loss = F.kl_div(pretraining_network_output, target, reduction='batchmean')
             optimizer.zero_grad()
             loss.backward()

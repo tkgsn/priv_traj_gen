@@ -274,7 +274,7 @@ class QuadTree(Grid):
         assert self.is_complete
         # to batched shape
         if len(counts.shape) == 1:
-            counts = counts.rehsape(1, -1)
+            counts = counts.reshape(1, -1)
         batch_size = counts.shape[0]
         n_leafs = counts.shape[1]
 

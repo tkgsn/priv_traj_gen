@@ -1,0 +1,10 @@
+# @package _global_
+defaults:
+  - override /model@_global_: baseline
+  - override /model/baseline@_global_: hrnet
+  - override /dataset@_global_: geolife
+  - override /dataset/geolife@_global_: default
+  - override /evaluation@_global_: baseline
+  - override /evaluation/baseline@_global_: default
+
+exp_name: ablation

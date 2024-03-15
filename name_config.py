@@ -19,7 +19,7 @@ def make_save_name(dataset_name, n_bins, time_threshold, location_threshold, dat
     return save_name
 
 def make_model_name(**kwargs):
-    if kwargs["model_name"] == "hiemrnet":
+    if kwargs["model_name"] == "hrnet":
         if kwargs["train_all_layers"] == False:
             kwargs["consistent"] = False
         save_name = f"{kwargs['model_name']}_dp{kwargs['is_dp']}_{kwargs['meta_dist']}{kwargs['pre_n_iter']}_dim{kwargs['memory_dim']}_{kwargs['memory_hidden_dim']}_{kwargs['location_embedding_dim']}_{kwargs['hidden_dim']}_btch{kwargs['batch_size']}_tr{kwargs['train_all_layers']}_co{kwargs['consistent']}_eps{kwargs['epsilon']}_{kwargs['model_seed']}"
