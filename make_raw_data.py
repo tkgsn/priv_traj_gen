@@ -11,6 +11,7 @@ import json
 import linecache
 import make_pair_to_route
 import math
+from name_config import make_raw_data_path
 
 def make_raw_data_peopleflow():
     format = '%H:%M:%S'
@@ -636,7 +637,8 @@ def make_raw_data(dataset, logger):
     save_path: the path to save the raw data (pathlib)
     raw_data: sequence of (time, lat, lon)
     """
-    save_path = get_datadir() / dataset / "raw_data.csv"
+    # save_path = get_datadir() / dataset / "raw_data.csv"
+    save_path = make_raw_data_path(dataset)
     save_path.parent.mkdir(parents=True, exist_ok=True)
     if not (save_path).exists():
         if dataset == "geolife":
@@ -789,29 +791,7 @@ def convert_mr_to_training(dataset):
 
 def run(dataset):
     logger = set_logger(__name__, "./log.log")
-    # target to make
-    # save_path = get_datadir() / original_data_name / save_name / f"raw_data_seed{seed}.csv"
-    # if save_path.exists():
-        # logger.info(f"raw data already exists in {save_path}")
-        # return
-    
-    # save_path.parent.mkdir(parents=True, exist_ok=True)
-    # make raw data
     make_raw_data(dataset, logger)
-
-    # load raw data
-    # trajs = load(save_path, max_size)
-
-    # np.random.seed(seed)
-    # if args.max_size != 0:
-    #     print("shuffle trajectories and choose the first", args.max_size, "trajectories")
-    #     # shuffle trajectories and real_time_traj with the same order without using numpy
-    #     p = np.random.permutation(len(trajs))
-    #     trajs = [trajs[i] for i in p]
-    #     trajs = trajs[:max_size]
-
-    # logger.info(f"save raw data to {save_path}")
-    # save(save_path, trajs)
 
 
 
@@ -821,60 +801,3 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     run(args.dataset)
-
-    # save_path = get_datadir() / args.original_data_name / args.save_name / f"raw_data_seed{args.seed}.csv"
-    # save_paths = glob.glob(str(save_path))
-    # if save_paths != []:
-    #     print("raw data already exists")
-    #     exit()
-    
-    # trajs = None
-    # if not (save_path.parent.parent / "raw_data.csv").exists():
-    #     print("make raw data")
-    #     if args.original_data_name == 'taxi':
-    #         trajs = make_raw_data_taxi()
-    #     elif args.original_data_name == 'peopleflow':
-    #         trajs = make_raw_data_peopleflow()
-    #         save_path.parent.parent.mkdir(parents=True, exist_ok=True)
-    #         print("save raw data to", save_path.parent.parent / "raw_data.csv")
-    #         save(save_path.parent.parent / "raw_data.csv", trajs)
-    #     elif args.original_data_name == "geolife":
-    #         trajs = make_raw_data_geolife()
-    #     elif args.original_data_name == "geolife_mm":
-    #         trajs = make_raw_data_from_map_matched_data(save_path.parent / "MTNet")
-    #     elif args.original_data_name == "chengdu":
-    #         trajs = make_raw_data_from_map_matched_data(save_path.parent / "MTNet")
-    #         # data_path = "dataset_configs/chengdu.json"
-    #         # with open(data_path, "w") as f:
-    #             # json.dump({"lat_range": lat_range, "lon_range": lon_range}, f)
-    #     elif args.original_data_name == 'circle':
-    #         trajs = make_raw_data_test_circle(args.seed, args.max_size) 
-    #     elif args.original_data_name == 'return':
-    #         trajs = make_raw_data_test_return(args.seed, args.max_size)
-    #     elif args.original_data_name == 'quadtree':
-    #         trajs = make_raw_data_test_quadtree(args.seed, args.max_size, args.n_bins)
-    #     elif args.original_data_name == 'rotation':
-    #         make_raw_data_rotation(args.seed, args.max_size, args.n_bins)
-    #     elif args.original_data_name == 'random':
-    #         make_raw_data_random(args.seed, args.max_size, args.n_bins)
-    #     else:
-    #         trajs = make_raw_data_test(args.seed, args.max_size, "normal", True, args.n_bins)
-    #         trajs = make_raw_data_distance_test(args.seed, args.max_size)
-    # else:
-    #     print("load raw data from", save_path.parent.parent / "raw_data.csv", args.max_size, "data")
-    #     np.random.seed(args.seed)
-    #     trajs = load(save_path.parent.parent / "raw_data.csv", args.max_size)
-
-    # save_path.parent.mkdir(parents=True, exist_ok=True)
-    # if trajs is not None:
-
-    #     np.random.seed(args.seed)
-    #     if args.max_size != 0:
-    #         print("shuffle trajectories and choose the first", args.max_size, "trajectories")
-    #         # shuffle trajectories and real_time_traj with the same order without using numpy
-    #         p = np.random.permutation(len(trajs))
-    #         trajs = [trajs[i] for i in p]
-    #         trajs = trajs[:args.max_size]
-
-    #     print("save raw data to", save_path)
-    #     save(save_path, trajs)

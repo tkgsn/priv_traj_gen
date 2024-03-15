@@ -1,0 +1,10 @@
+defaults:
+- _self_
+- model@_global_ : baseline
+- dataset@_global_ : geolife
+- evaluation@_global_: baseline
+
+cuda_number: 0
+exp_name: default
+
+hydra_logging: disabled

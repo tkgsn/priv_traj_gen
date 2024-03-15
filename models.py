@@ -319,7 +319,7 @@ class MetaNetwork(nn.Module):
     this class is a meta network, does not have any memory funtion
     that is, the hidden state is directory converted to log distribution on locations by MLP
     '''
-
+    name = "baseline"
     def __init__(self, memory_hidden_dim, hidden_dim, output_dim, n_classes, activate):
         '''
         output_dim := location_dim
@@ -556,6 +556,7 @@ class LinearQuadTreeNetwork(BaseQuadTreeNetwork):
 # in this class, location embedding comes from the tconvs with input of the self.root_value(1)
 # this class requires privtree
 class FullLinearQuadTreeNetwork(LinearQuadTreeNetwork):
+    name = "hrnet"
 # class FullLinearQuadTreeNetwork(ResidualQuadTreeNetwork):
     def __init__(self, n_locations, memory_dim, hidden_dim, location_embedding_dim, privtree, activate, multilayer, is_consistent):
         # n_classes = len(privtree.get_leafs())

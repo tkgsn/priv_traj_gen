@@ -6,6 +6,7 @@ import seaborn as sns
 import argparse
 import pickle
 
+from name_config import make_model_dir, make_training_data_path, make_save_name
 from my_utils import construct_default_quadtree, noise_normalize, save, plot_density, get_datadir, set_logger, get_original_dataset_name
 from collections import Counter
 import numpy as np
@@ -76,182 +77,280 @@ def downsample_trajs(trajs, downsampling_dict):
         indice.append(id)
     return new_trajs, indice
 
-def run(generator, dataset, args):
+def make_counting_functions(n_base_locations, **kwargs):
 
-    n_bins = int(np.sqrt(dataset.n_locations)-2)
+    # global: generated -> Counter
+    def evaluate_passing(generated_stay_trajs, generated_route_trajs, dataset, counter):
+        counter += count_passing_locations(generated_route_trajs)
+    def evaluate_source(generated_stay_trajs, generated_route_trajs, dataset, counter):
+        counter += count_source_locations(generated_stay_trajs)
+    def evaluate_distance(generated_stay_trajs, generated_route_trajs, dataset, counter):
+        counter += count_distance(dataset.distance_matrix, generated_stay_trajs, dataset.n_bins_for_distance)
+    def first_count(generated_stay_trajs, generated_route_trajs, dataset, counter):
+        first_locations = [traj[0] for traj in generated_stay_trajs if len(traj) > 1]
+        counter += Counter(first_locations)
 
-    print("???")
-    if args.compensation:
-        original_dataset_name = get_original_dataset_name(dataset)
-        print(type(original_dataset_name), original_dataset_name)
-        route_db_path = get_datadir() / original_dataset_name / "pair_to_route"/ f"{n_bins}_tr{args.truncate}" / "paths.db"
-        # copy the database to ./ to avoid the latency
-        subprocess.run(["cp", route_db_path, "./"])
-        route_db_path = "./paths.db"
-        print("compensating trajectories by", route_db_path)
+    # conditional: generated -> list(Counter)
+    def evaluate_emp_next(generated_stay_trajs, generated_route_trajs, dataset, counter):
+        for location, counter_ in zip(dataset.top_base_locations, counter):
+            counter_ += count_first_next_locations(generated_stay_trajs, location)
+    def evaluate_target(generated_stay_trajs, generated_route_trajs, dataset, counter):
+        for location, counter_ in zip(dataset.top_base_locations, counter):
+            counter_ += count_target_locations(generated_stay_trajs, location)
+    def evaluate_destination(generated_stay_trajs, generated_route_trajs, dataset, counter):
+        for location, counter_ in zip(dataset.top_base_locations, counter):
+            counter_ += compute_destination_count(generated_stay_trajs, location)
+    def evaluate_route(generated_stay_trajs, generated_route_trajs, dataset, counter):
+        for location, counter_ in zip(dataset.top_base_locations, counter):
+            counter_ += count_route_locations(generated_route_trajs, location)
+
+    evaluation_functions = []
+    counters = []
+    evaluating_metrics = []
+    # if kwargs["evaluate_global"]:
+        # evaluation_functions.append(compute_global_counts_from_time_label)
+    if kwargs["evaluate_passing"]:
+        evaluation_functions.append(evaluate_passing)
+        counters.append(Counter())
+        evaluating_metrics.append("passing")
+    if kwargs["evaluate_source"]:
+        evaluation_functions.append(evaluate_source)
+        counters.append(Counter())
+        evaluating_metrics.append("source")
+    if kwargs["evaluate_emp_next"]:
+        evaluation_functions.append(evaluate_emp_next)
+        counters.append([Counter() for _ in range(n_base_locations)])
+        evaluating_metrics.append("emp_next")
+    # if kwargs["evaluate_second_emp_next"]:
+    #     evaluation_functions.append(count_second_order_first_next_locations)
+    if kwargs["evaluate_target"]:
+        evaluation_functions.append(evaluate_target)
+        counters.append([Counter() for _ in range(n_base_locations)])
+        evaluating_metrics.append("target")
+    if kwargs["evaluate_destination"]:
+        evaluation_functions.append(evaluate_destination)
+        counters.append([Counter() for _ in range(n_base_locations)])
+        evaluating_metrics.append("destination")
+    if kwargs["evaluate_route"]:
+        evaluation_functions.append(evaluate_route)
+        counters.append([Counter() for _ in range(n_base_locations)])
+        evaluating_metrics.append("route")
+    if kwargs["evaluate_distance"]:
+        evaluation_functions.append(evaluate_distance)
+        counters.append(Counter())
+        evaluating_metrics.append("distance")
+
+    if len(counters) != 0:
+        evaluation_functions.append(first_count)
+        counters.append(Counter())
+        evaluating_metrics.append("first_location")
+
+    return evaluating_metrics, evaluation_functions, counters
+
+
+def post_process_generated(generated, **kwargs):
+
+    if len(generated) == 2:
+        generated_trajs, generated_time_trajs = generated
+        # generated_time_trajs = dataset.convert_time_label_trajs_to_time_trajs(generated_time_trajs)
     else:
-        print("not compensating trajectories")
+        generated_trajs = generated
+        generated_time_trajs = dataset.time_label_trajs
+
+    # if kwargs["need_downsampling"]:
+    #     original_length = len(generated_trajs)
+    #     generated_trajs, indice = downsample_trajs(generated_trajs, kwargs["downsampling_dict"])
+    #     # print(f"downsampled {original_length} trajectories to {len(generated_trajs)} trajectories")
+    #     generated_time_trajs = [generated_time_trajs[i] for i in indice]
+
+    # handling time is not implemented yet
+
+    if kwargs["is_route_generator"]:
+        generated_route_trajs = generated_trajs
+        generated_stay_trajs = get_stay_point(generated_trajs, generated_time_trajs, kwargs["time_threshold"])
+    else:
+        if not kwargs["compensation"]:
+            generated_route_trajs = generated_trajs
+            generated_stay_trajs = generated_trajs
+        else:
+            generated_route_trajs, valid_ids = compensate_trajs(generated_trajs, route_db_path)
+            # generated_stay_trajs = np.array(generated_trajs)[valid_ids].tolist()
+            generated_stay_trajs = [traj for i, traj in enumerate(generated_trajs) if i in valid_ids]
+            n_invalid += len(generated_trajs) - len(generated_route_trajs)
+        
+    return generated_stay_trajs, generated_route_trajs
+
+def evaluate(generator, dataset, save_dir, logger, **kwargs):
+
+    # n_bins = int(np.sqrt(dataset.n_locations)-2)
+    # print("???")
+    # if args.compensation:
+    #     original_dataset_name = get_original_dataset_name(dataset)
+    #     print(type(original_dataset_name), original_dataset_name)
+    #     route_db_path = get_datadir() / original_dataset_name / "pair_to_route"/ f"{n_bins}_tr{args.truncate}" / "paths.db"
+    #     # copy the database to ./ to avoid the latency
+    #     subprocess.run(["cp", route_db_path, "./"])
+    #     route_db_path = "./paths.db"
+    #     print("compensating trajectories by", route_db_path)
+    # else:
+    #     print("not compensating trajectories")
 
     # n_test_locations = min(1, len(dataset.top_base_locations))
     # n_2nd_order_test_locations = min(1, len(dataset.top_2nd_order_base_locations))
-    n_test_locations = len(dataset.top_base_locations)
-    n_2nd_order_test_locations = len(dataset.top_2nd_order_base_locations)
+    # n_test_locations = len(dataset.top_base_locations)
+    # n_2nd_order_test_locations = len(dataset.top_2nd_order_base_locations)
 
     generator.eval()
     with torch.no_grad():
         results = {}
 
-        if args.evaluate_first_next_location:
-            print("DEPRECATED: evaluate_first_next_location")
+        if kwargs["evaluate_first_next_location"]:
+            # print("DEPRECATED: evaluate_first_next_location")
             jss = evaluate_next_location_on_test_dataset(dataset.first_next_location_counts, dataset.first_order_test_data_loader, dataset.first_counters, generator, 1)
             results["first_next_location_js"] = jss
+            logger.info(f"computed divergence for first_next_location: {np.mean(jss)}")
 
-        if args.evaluate_second_next_location and (dataset.min_len > 2):
+        if kwargs["evaluate_second_next_location"] and (dataset.min_len > 2):
             jss = evaluate_next_location_on_test_dataset(dataset.second_next_location_counts, dataset.first_order_test_data_loader, dataset.first_counters, generator, 2)
             results["second_next_location_js"] = jss
 
-        if args.evaluate_second_order_next_location and (dataset.min_len > 2):
+        if kwargs["evaluate_second_order_next_location"] and (dataset.min_len > 2):
             print("DEPRECATED: evaluate_second_order_next_location")
             jss = evaluate_next_location_on_test_dataset(dataset.second_order_next_location_counts, dataset.second_order_test_data_loader, dataset.second_counters, generator, 2)
             results["second_order_next_location_js"] = jss
 
-        if (args.evaluate_global or args.evaluate_passing or args.evaluate_source or args.evaluate_target or args.evaluate_route or args.evaluate_destination or args.evaluate_distance):
+            
+        # if any([kwargs["evaluate_global"], kwargs["evaluate_passing"], kwargs["evaluate_source"], kwargs["evaluate_target"], kwargs["evaluate_route"], kwargs["evaluate_destination"], kwargs["evaluate_distance"]]):
 
             # counters = {"global":[Counter() for _ in dataset.time_ranges], "passing": Counter(), "source": Counter(), "target": [Counter() for _ in range(n_test_locations)], "route": [Counter() for _ in range(n_test_locations)], "destination": [Counter() for _ in range(n_test_locations)], "distance": Counter(), "first_location": Counter()}
-            counters = {"passing": Counter(), "source": Counter(), "emp_next": [Counter() for _ in range(n_test_locations)], "second_emp_next": [Counter() for _ in range(n_2nd_order_test_locations)], "target": [Counter() for _ in range(n_test_locations)], "route": [Counter() for _ in range(n_test_locations)], "destination": [Counter() for _ in range(n_test_locations)], "distance": Counter(), "first_location": Counter()}
-            condition = True
-            n_gene_traj = 0
-            # gene_trajs = []
-            print("generating...")
-            n_invalid = 0
-            while condition:
-                mini_batch_size =  min([1000, len(args.references)])
-                # sample mini_batch_size references from dataset.references
-                references = random.sample(args.references, mini_batch_size)
-                generated = generator.make_sample(references, mini_batch_size)
+            # counters = {"passing": Counter(), "source": Counter(), "emp_next": [Counter() for _ in range(n_test_locations)], "second_emp_next": [Counter() for _ in range(n_2nd_order_test_locations)], "target": [Counter() for _ in range(n_test_locations)], "route": [Counter() for _ in range(n_test_locations)], "destination": [Counter() for _ in range(n_test_locations)], "distance": Counter(), "first_location": Counter()}
+            # condition = True
+        n_gene_traj = 0
+        n_invalid = 0
+        evaluating_metrics_names, _, counters = make_counting_functions(len(dataset.top_base_locations), **kwargs)
+        while (n_gene_traj < len(dataset.references)) and dataset.counting_functions:
+            mini_batch_size =  min([1000, len(dataset.references)])
+            # sample mini_batch_size references from dataset.references
+            references = random.sample(dataset.references, mini_batch_size)
+            generated = generator.make_sample(references, mini_batch_size)
 
-                if len(generated) == 2:
-                    generated_trajs, generated_time_trajs = generated
-                    # generated_time_trajs = dataset.convert_time_label_trajs_to_time_trajs(generated_time_trajs)
-                else:
-                    generated_trajs = generated
-                    generated_time_trajs = dataset.time_label_trajs
+            # post processing
+            generated_stay_trajs, generated_route_trajs = post_process_generated(generated, **kwargs)
 
-                if args.need_downsampling:
-                    original_length = len(generated_trajs)
-                    generated_trajs, indice = downsample_trajs(generated_trajs, args.downsampling_dict)
-                    # print(f"downsampled {original_length} trajectories to {len(generated_trajs)} trajectories")
-                    generated_time_trajs = [generated_time_trajs[i] for i in indice]
+            # counting to make each distribution
+            for counting_function, counter in zip(dataset.counting_functions, counters):
+                counting_function(generated_stay_trajs, generated_route_trajs, dataset, counter)
+                # if result is list:
+                #     for result_, counter_ in zip(result, counter):
+                #         counter_ += result_
+                # else:
+                #     counter += evaluation_function(generated_stay_trajs, dataset)
 
-                # handling time is not implemented yet
-                if args.route_generator:
-                    generated_route_trajs = generated_trajs
-                    generated_stay_trajs = get_stay_point(generated_trajs, generated_time_trajs, args.time_threshold)
-                else:
-                    if not args.compensation:
-                        generated_route_trajs = generated_trajs
-                        generated_stay_trajs = generated_trajs
-                    else:
-                        generated_route_trajs, valid_ids = compensate_trajs(generated_trajs, route_db_path)
-                        # generated_stay_trajs = np.array(generated_trajs)[valid_ids].tolist()
-                        generated_stay_trajs = [traj for i, traj in enumerate(generated_trajs) if i in valid_ids]
-                        n_invalid += len(generated_trajs) - len(generated_route_trajs)
+            # count first location
+            # first_locations = [traj[0] for traj in generated_stay_trajs if len(traj) > 1]
+            # counters[-1] += Counter(first_locations)
 
-                first_locations = [traj[0] for traj in generated_stay_trajs if len(traj) > 1]
-                counters["first_location"] += Counter(first_locations)
+            # if kwargs["evaluate_global"]:
+            #     for time_label in range(1, dataset.n_time_split+1):
+            #         counters["global"][time_label-1] += compute_global_counts_from_time_label(generated_stay_trajs, generated_time_trajs, time_label)
+            
+            # if kwargs["evaluate_passing"]:
+            #     counters["passing"] += count_passing_locations(generated_route_trajs)
 
-                if args.evaluate_global:
-                    for time_label in range(1, dataset.n_time_split+1):
-                        counters["global"][time_label-1] += compute_global_counts_from_time_label(generated_stay_trajs, generated_time_trajs, time_label)
-                
-                if args.evaluate_passing:
-                    counters["passing"] += count_passing_locations(generated_route_trajs)
+            # if kwargs["evaluate_source"]:
+            #     counters["source"] += count_source_locations(generated_stay_trajs)
 
-                if args.evaluate_source:
-                    counters["source"] += count_source_locations(generated_stay_trajs)
+            # for i, location in enumerate(dataset.top_base_locations):
+            #     if kwargs["evaluate_emp_next"]:
+            #         counters["emp_next"][i] += count_first_next_locations(generated_stay_trajs, location)
 
-                for i, location in enumerate(dataset.top_base_locations):
-                    if args.evaluate_emp_next:
-                        counters["emp_next"][i] += count_first_next_locations(generated_stay_trajs, location)
+            #     if kwargs["evaluate_target"]:
+            #         counters["target"][i] += count_target_locations(generated_stay_trajs, location)
 
-                    if args.evaluate_target:
-                        counters["target"][i] += count_target_locations(generated_stay_trajs, location)
+            #     if kwargs["evaluate_destination"]:
+            #         counters["destination"][i] += count_route_locations(generated_stay_trajs, location)
 
-                    if args.evaluate_destination:
-                        counters["destination"][i] += count_route_locations(generated_stay_trajs, location)
+            #     if kwargs["evaluate_route"]:
+            #         counters["route"][i] += count_route_locations(generated_route_trajs, location)
 
-                    if args.evaluate_route:
-                        counters["route"][i] += count_route_locations(generated_route_trajs, location)
+            # for i, locations in enumerate(dataset.top_2nd_order_base_locations):
+            #     if kwargs["evaluate_second_emp_next"]:
+            #         counters["second_emp_next"][i] += count_second_order_first_next_locations(generated_stay_trajs, locations)
 
-                for i, locations in enumerate(dataset.top_2nd_order_base_locations):
-                    if args.evaluate_second_emp_next:
-                        counters["second_emp_next"][i] += count_second_order_first_next_locations(generated_stay_trajs, locations)
-
-                if args.evaluate_distance:
-                    counters["distance"] += count_distance(dataset.distance_matrix, generated_stay_trajs, dataset.n_bins_for_distance)
-        
-                # evaluate the same number of generated data as the ten times of that of original data
-                n_gene_traj += len(generated_route_trajs)
-                condition = n_gene_traj < len(args.references)
-
-                # gene_trajs.extend(generated_stay_trajs)
+            # if kwargs["evaluate_distance"]:
+            #     counters["distance"] += count_distance(dataset.distance_matrix, generated_stay_trajs, dataset.n_bins_for_distance)
+    
+            # evaluate the same number of generated data as the ten times of that of original data
+            n_gene_traj += len(generated_route_trajs)
 
             # save
 
-            # save(pathlib.Path(args.save_path) / f"evaluated_{epoch}.csv", gene_trajs)
-            # print(f"saved evaluated file ({len(gene_trajs)}) to", pathlib.Path(args.save_path) / f"evaluated_{epoch}.csv")]
-            print(n_invalid, "invalid trajectories")
-            # compute js
-            real_counters = dataset.real_counters
-            n_trajs = dataset.n_trajs
-            img_dir = pathlib.Path(args.save_dir) / f"imgs_trun{args.truncate}_{args.to_bin}" / args.name
-            img_dir.mkdir(exist_ok=True)
-            for key, counter in counters.items():
-                print(key)
-                if key == "first_location":
-                    continue
-                if key == "distance":
-                    n_vocabs = dataset.n_bins_for_distance
-                else:
-                    n_vocabs = dataset.n_locations
+        # save(pathlib.Path(kwargs["save_path"]) / f"evaluated_{epoch}.csv", gene_trajs)
+        # print(f"saved evaluated file ({len(gene_trajs)}) to", pathlib.Path(kwargs["save_path"]) / f"evaluated_{epoch}.csv")]
+        logger.info(f"generating {n_gene_traj} trajectories, there existed {n_invalid} invalid trajectories")
+        # compute js
+        # real_counters = dataset.real_counters
+        # n_trajs = dataset.n_trajs
+        # img_dir = save_dir / f"imgs_trun{kwargs['truncation']}_{kwargs['to_bin']}" / kwargs["name"]
+        img_dir = save_dir / "imgs"
+        img_dir.mkdir(exist_ok=True)
+        for key, counter, real_counter in zip(evaluating_metrics_names, counters, dataset.real_counters):
 
+            if key == "distance":
+                n_vocabs = dataset.n_bins_for_distance
+            else:
+                n_vocabs = dataset.n_locations
 
-                # compute kl divergence for a dimension
-                if key in ["target", "destination", "route", "emp_next"]:
-                    results[f"{key}_kls_eachdim"] = [compute_divergence(real_counter, n_traj, counter_, counters["first_location"][location], n_vocabs, save_path=img_dir / f"{key}_{i}.png", location=location) for i, (counter_, real_counter, n_traj, location) in enumerate(zip(counter, real_counters[key], n_trajs[key], dataset.top_base_locations))]
-                    results[f"{key}_jss_eachdim"] = [compute_divergence(real_counter, n_traj, counter_, counters["first_location"][location], n_vocabs, type="kl") for counter_, real_counter, n_traj, location in zip(counter, real_counters[key], n_trajs[key], dataset.top_base_locations)]
-                    results[f"{key}_kls_positivedim"] = [compute_divergence(real_counter, n_traj, counter_, counters["first_location"][location], n_vocabs, positive=True) for counter_, real_counter, n_traj, location in zip(counter, real_counters[key], n_trajs[key], dataset.top_base_locations)]
-                    results[f"{key}_jss_positivedim"] = [compute_divergence(real_counter, n_traj, counter_, counters["first_location"][location], n_vocabs, positive=True, type="kl") for counter_, real_counter, n_traj, location in zip(counter, real_counters[key], n_trajs[key], dataset.top_base_locations)]
-                    results[f"{key}_jss"] = [compute_divergence(real_counter, sum(real_counter.values()), counter_, sum(counter_.values()), n_vocabs, axis=1) for counter_, real_counter in zip(counter, real_counters[key])]
-                    results[f"{key}_emd"] = [compute_divergence(real_counter, sum(real_counter.values()), counter_, sum(counter_.values()), n_vocabs, type="emd", distance_matrix=dataset.distance_matrix) for counter_, real_counter, n_traj in zip(counter, real_counters[key], n_trajs[key])]
-                elif key == "second_emp_next":
-                    results[f"{key}_jss"] = [compute_divergence(real_counter, sum(real_counter.values()), counter_, sum(counter_.values()), n_vocabs, axis=1) for counter_, real_counter in zip(counter, real_counters[key])]
-                elif key == "global":
-                    results[f"{key}_kls_eachdim"] = [compute_divergence(real_counter, n_traj, counter_, n_gene_traj, n_vocabs) for counter_, real_counter, n_traj in zip(counter, real_counters[key], n_trajs[key])]
-                    results[f"{key}_kls_positivedim"] = [compute_divergence(real_counter, n_traj, counter_, n_gene_traj, n_vocabs, positive=True) for counter_, real_counter, n_traj in zip(counter, real_counters[key], n_trajs[key])]
-                    results[f"{key}_jss_eachdim"] = [compute_divergence(real_counter, n_traj, counter_, n_gene_traj, n_vocabs, type="kl") for counter_, real_counter, n_traj in zip(counter, real_counters[key], n_trajs[key])]
-                    results[f"{key}_jss_positivedim"] = [compute_divergence(real_counter, n_traj, counter_, n_gene_traj, n_vocabs, positive=True, type="kl") for counter_, real_counter, n_traj in zip(counter, real_counters[key], n_trajs[key])]
-                    results[f"{key}_jss"] = [compute_divergence(real_counter, sum(real_counter.values()), counter_, sum(counter_.values()), n_vocabs, axis=1) for counter_, real_counter in zip(counter, real_counters[key])]
-                else:
-                    results[f"{key}_kl_eachdim"] = compute_divergence(real_counters[key], n_trajs[key], counter, n_gene_traj, n_vocabs)
-                    results[f"{key}_kl_positivedim"] = compute_divergence(real_counters[key], n_trajs[key], counter, n_gene_traj, n_vocabs, positive=True)
-                    results[f"{key}_js_eachdim"] = compute_divergence(real_counters[key], n_trajs[key], counter, n_gene_traj, n_vocabs, type="kl")
-                    results[f"{key}_js_positivedim"] = compute_divergence(real_counters[key], n_trajs[key], counter, n_gene_traj, n_vocabs, positive=True, type="kl")
-                    results[f"{key}_js"] = compute_divergence(real_counters[key], sum(real_counters[key].values()), counter, sum(counter.values()), n_vocabs, axis=1)
+            first_location_counts = counters[evaluating_metrics_names.index("first_location")]
+            real_first_location_counts = dataset.real_counters[evaluating_metrics_names.index("first_location")]
 
-                # # compute js divergence
-                # if key in ["target", "destination", "route"]:
-                #     results[f"{key}_jss"] = []
-                #     for i, (counter_, real_counter) in enumerate(zip(counter, real_counters[key])):
-                #         results[f"{key}_jss"].append(compute_divergence(real_counter, sum(real_counter.values()), counter_, sum(counter_.values()), n_vocabs, axis=1))
-                #         # plot_density(counter_, dataset.n_locations, img_dir / f"{key}_{i}.png", dataset.top_base_locations[i], coef=1/counters["first_location"][dataset.top_base_locations[i]])
-                # elif key == "global":
-                #     for i, (counter_, real_counter) in enumerate(zip(counter, real_counters[key])):
-                #         results[f"{key}_jss_{i}"] = compute_divergence(real_counter, sum(real_counter.values()), counter_, sum(counter_.values()), n_vocabs, axis=1)
-                #         # plot_density(counter_, dataset.n_locations, img_dir / f"{key}_{i}.png")
-                # else:
-                #     results[f"{key}_js"] = compute_divergence(real_counters[key], sum(real_counters[key].values()), counter, sum(counter.values()), n_vocabs, axis=1)
-                #     # plot_density(counter, n_vocabs, img_dir / f"{key}.png")
+            # evaluation of conditional metrics
+            if key in ["target", "destination", "route", "emp_next"]:
+                results[f"{key}_kls_eachdim"] = [compute_divergence(real_counter, real_first_location_counts[location], counter_, first_location_counts[location], n_vocabs, save_path=img_dir / f"{key}_{i}.png", location=location) for i, (counter_, real_counter, location) in enumerate(zip(counter, real_counter, dataset.top_base_locations))]
+                results[f"{key}_jss_eachdim"] = [compute_divergence(real_counter, real_first_location_counts[location], counter_, first_location_counts[location], n_vocabs, type="kl") for counter_, real_counter, location in zip(counter, real_counter, dataset.top_base_locations)]
+                results[f"{key}_kls_positivedim"] = [compute_divergence(real_counter, real_first_location_counts[location], counter_, first_location_counts[location], n_vocabs, positive=True) for counter_, real_counter, location in zip(counter, real_counter, dataset.top_base_locations)]
+                results[f"{key}_jss_positivedim"] = [compute_divergence(real_counter, real_first_location_counts[location], counter_, first_location_counts[location], n_vocabs, positive=True, type="kl") for counter_, real_counter, location in zip(counter, real_counter, dataset.top_base_locations)]
+                results[f"{key}_jss"] = [compute_divergence(real_counter, sum(real_counter.values()), counter_, sum(counter_.values()), n_vocabs, axis=1) for counter_, real_counter in zip(counter, real_counter)]
+                results[f"{key}_emd"] = [compute_divergence(real_counter, sum(real_counter.values()), counter_, sum(counter_.values()), n_vocabs, type="emd", distance_matrix=dataset.distance_matrix) for counter_, real_counter in zip(counter, real_counter)]
+
+                logger.info(f"computed divergence for {key}: {np.mean(results[f'{key}_jss'])}")
+            # if key in ["target", "destination", "route", "emp_next"]:
+            #     results[f"{key}_kls_eachdim"] = [compute_divergence(real_counter, n_traj, counter_, counters["first_location"][location], n_vocabs, save_path=img_dir / f"{key}_{i}.png", location=location) for i, (counter_, real_counter, n_traj, location) in enumerate(zip(counter, real_counters[key], n_trajs[key], dataset.top_base_locations))]
+            #     results[f"{key}_jss_eachdim"] = [compute_divergence(real_counter, n_traj, counter_, counters["first_location"][location], n_vocabs, type="kl") for counter_, real_counter, n_traj, location in zip(counter, real_counters[key], n_trajs[key], dataset.top_base_locations)]
+            #     results[f"{key}_kls_positivedim"] = [compute_divergence(real_counter, n_traj, counter_, counters["first_location"][location], n_vocabs, positive=True) for counter_, real_counter, n_traj, location in zip(counter, real_counters[key], n_trajs[key], dataset.top_base_locations)]
+            #     results[f"{key}_jss_positivedim"] = [compute_divergence(real_counter, n_traj, counter_, counters["first_location"][location], n_vocabs, positive=True, type="kl") for counter_, real_counter, n_traj, location in zip(counter, real_counters[key], n_trajs[key], dataset.top_base_locations)]
+            #     results[f"{key}_jss"] = [compute_divergence(real_counter, sum(real_counter.values()), counter_, sum(counter_.values()), n_vocabs, axis=1) for counter_, real_counter in zip(counter, real_counters[key])]
+            #     results[f"{key}_emd"] = [compute_divergence(real_counter, sum(real_counter.values()), counter_, sum(counter_.values()), n_vocabs, type="emd", distance_matrix=dataset.distance_matrix) for counter_, real_counter, n_traj in zip(counter, real_counters[key], n_trajs[key])]
+            # elif key == "second_emp_next":
+            #     results[f"{key}_jss"] = [compute_divergence(real_counter, sum(real_counter.values()), counter_, sum(counter_.values()), n_vocabs, axis=1) for counter_, real_counter in zip(counter, real_counters[key])]
+            # elif key == "global":
+            #     results[f"{key}_kls_eachdim"] = [compute_divergence(real_counter, n_traj, counter_, n_gene_traj, n_vocabs) for counter_, real_counter, n_traj in zip(counter, real_counters[key], n_trajs[key])]
+            #     results[f"{key}_kls_positivedim"] = [compute_divergence(real_counter, n_traj, counter_, n_gene_traj, n_vocabs, positive=True) for counter_, real_counter, n_traj in zip(counter, real_counters[key], n_trajs[key])]
+            #     results[f"{key}_jss_eachdim"] = [compute_divergence(real_counter, n_traj, counter_, n_gene_traj, n_vocabs, type="kl") for counter_, real_counter, n_traj in zip(counter, real_counters[key], n_trajs[key])]
+            #     results[f"{key}_jss_positivedim"] = [compute_divergence(real_counter, n_traj, counter_, n_gene_traj, n_vocabs, positive=True, type="kl") for counter_, real_counter, n_traj in zip(counter, real_counters[key], n_trajs[key])]
+            #     results[f"{key}_jss"] = [compute_divergence(real_counter, sum(real_counter.values()), counter_, sum(counter_.values()), n_vocabs, axis=1) for counter_, real_counter in zip(counter, real_counters[key])]
+            # evaluation of global metrics
+            else:
+                results[f"{key}_kl_eachdim"] = compute_divergence(real_counter, len(dataset.data), counter, n_gene_traj, n_vocabs)
+                results[f"{key}_kl_positivedim"] = compute_divergence(real_counter, len(dataset.data), counter, n_gene_traj, n_vocabs, positive=True)
+                results[f"{key}_js_eachdim"] = compute_divergence(real_counter, len(dataset.data), counter, n_gene_traj, n_vocabs, type="kl")
+                results[f"{key}_js_positivedim"] = compute_divergence(real_counter, len(dataset.data), counter, n_gene_traj, n_vocabs, positive=True, type="kl")
+                results[f"{key}_js"] = compute_divergence(real_counter, sum(real_counter.values()), counter, sum(counter.values()), n_vocabs, axis=1)
+
+                logger.info(f"computed divergence for {key}: {results[f'{key}_js']}")
+            # # compute js divergence
+            # if key in ["target", "destination", "route"]:
+            #     results[f"{key}_jss"] = []
+            #     for i, (counter_, real_counter) in enumerate(zip(counter, real_counters[key])):
+            #         results[f"{key}_jss"].append(compute_divergence(real_counter, sum(real_counter.values()), counter_, sum(counter_.values()), n_vocabs, axis=1))
+            #         # plot_density(counter_, dataset.n_locations, img_dir / f"{key}_{i}.png", dataset.top_base_locations[i], coef=1/counters["first_location"][dataset.top_base_locations[i]])
+            # elif key == "global":
+            #     for i, (counter_, real_counter) in enumerate(zip(counter, real_counters[key])):
+            #         results[f"{key}_jss_{i}"] = compute_divergence(real_counter, sum(real_counter.values()), counter_, sum(counter_.values()), n_vocabs, axis=1)
+            #         # plot_density(counter_, dataset.n_locations, img_dir / f"{key}_{i}.png")
+            # else:
+            #     results[f"{key}_js"] = compute_divergence(real_counters[key], sum(real_counters[key].values()), counter, sum(counter.values()), n_vocabs, axis=1)
+            #     # plot_density(counter, n_vocabs, img_dir / f"{key}.png")
 
     return results
 
@@ -571,10 +670,10 @@ def compute_next_location_count(target, trajectories, n_locations, target_index=
 
 def make_next_location_count(dataset, target_index, order=1):
     if order == 1:
-        print(f"compute {target_index} next location count")
+        # print(f"compute {target_index} next location count")
         # compute the next location probability for each location
         next_location_counts = {}
-        for label, traj in tqdm.tqdm(zip(dataset.labels, dataset.data)):
+        for label, traj in zip(dataset.labels, dataset.data):
             reference = dataset.label_to_reference[label]
 
             if target_index == 0:
@@ -603,10 +702,10 @@ def make_next_location_count(dataset, target_index, order=1):
                 next_location_counts[traj[0]][traj[2]] += 1
 
     elif order == 2:
-        print(f"compute {target_index} first second order next location count")
+        # print(f"compute {target_index} first second order next location count")
         # compute the next location probability for each location
         next_location_counts = {}
-        for label, traj in tqdm.tqdm(zip(dataset.labels, dataset.data)):
+        for label, traj in zip(dataset.labels, dataset.data):
             reference = dataset.label_to_reference[label]
             if len(reference) < 3:
                 continue
@@ -654,7 +753,7 @@ def compute_global_counts_from_time_label(trajs, time_label_trajs, time_label):
 
 
 
-def compute_auxiliary_information(dataset, save_dir, logger):
+def compute_auxiliary_information(dataset, save_dir, test_thresh, logger, **kwargs):
     save_dir = pathlib.Path(save_dir)
     img_dir = save_dir.parent / f"imgs"
     img_dir.mkdir(exist_ok=True)
@@ -667,7 +766,7 @@ def compute_auxiliary_information(dataset, save_dir, logger):
     dataset.second_order_first_locations = [tuple(trajectory[:2]) for trajectory in dataset.data if len(trajectory) > 2]
     dataset.second_order_first_locations_counts = Counter(dataset.second_order_first_locations)
     # find locations whose count is larger than test_thresh and sort them
-    test_thresh = args.test_thresh
+    test_thresh = test_thresh
     test_locations = {location:count for location, count in dataset.first_location_counts.items() if count > test_thresh}
     max_test_loc = 20
     if len(test_locations) > max_test_loc:
@@ -702,6 +801,8 @@ def compute_auxiliary_information(dataset, save_dir, logger):
     dataset.second_next_location_counts = make_next_location_count(dataset, 2)
     dataset.second_order_next_location_counts = make_next_location_count(dataset, 0, order=2)
 
+    make_first_order_test_data_loader(dataset, 20)
+    
     # compute the global counts
     real_global_counts = []
     for time in range(1,dataset.n_time_split+1):
@@ -729,35 +830,77 @@ def compute_auxiliary_information(dataset, save_dir, logger):
     # # compute time distribution
     # time_label_count = Counter(dataset.time_label_trajs)
     # time_distribution = {label: time_label_count[label] / len(dataset.time_label_trajs) for label in time_label_count.keys()}
+    dataset.distance_matrix = np.load(get_datadir() / str(dataset)  / f"distance_matrix_bin{int(np.sqrt(dataset.n_locations)) -2}.npy")
 
-    # compute counters
-    dataset.real_counters = {}
-    dataset.real_counters["global"] = [Counter({key:count for key, count in enumerate(global_count)}) for global_count in real_global_counts]
-    dataset.real_counters["passing"] = count_passing_locations(dataset.route_data)
-    dataset.real_counters["source"] = count_source_locations(dataset.data)
-    dataset.real_counters["target"] = [count_target_locations(dataset.data, location) for location in dataset.top_base_locations]
-    dataset.real_counters["route"] = [count_route_locations(dataset.route_data, location) for location in dataset.top_base_locations]
-    dataset.real_counters["destination"] = [count_route_locations(dataset.data, location) for location in dataset.top_base_locations]
-    dataset.real_counters["emp_next"] = [count_first_next_locations(dataset.data, location) for location in dataset.top_base_locations]
-    dataset.real_counters["second_emp_next"] = [count_second_order_first_next_locations(dataset.data, locations) for locations in dataset.top_2nd_order_base_locations]
-    logger.info("load distance matrix from {}".format(get_datadir() / str(dataset)  / f"distance_matrix_bin{int(np.sqrt(dataset.n_locations)) -2}.npy"))
-    try:
-        dataset.distance_matrix = np.load(get_datadir() / str(dataset)  / f"distance_matrix_bin{int(np.sqrt(dataset.n_locations)) -2}.npy")
-        dataset.real_counters["distance"] = count_distance(dataset.distance_matrix, dataset.data, dataset.n_bins_for_distance)
-    except:
-        print("WARNING: distance matrix is not found", get_datadir() / str(dataset)  / f"distance_matrix_bin{int(np.sqrt(dataset.n_locations)) -2}.npy")
+    dataset.evaluating_metrics, dataset.counting_functions, dataset.real_counters = make_counting_functions(len(dataset.top_base_locations), **kwargs)
+    logger.info(f"evaluating metrics: {dataset.evaluating_metrics}")
+    # counting to make each distribution
+    for counting_function, counter in zip(dataset.counting_functions, dataset.real_counters):
+        counting_function(dataset.data, dataset.route_data, dataset, counter)
+
+    # dataset.evaluating_metrics = []
+    # dataset.real_counters = []
+    # dataset.n_trajs = []
+    # if kwargs["evaluate_passing"]:
+    #     dataset.evaluating_metrics.append("passing")
+    #     dataset.real_counters.append(count_passing_locations(dataset.data))
+    #     dataset.n_trajs.append(len(dataset.data))
+    # if kwargs["evaluate_source"]:
+    #     dataset.evaluating_metrics.append("source")
+    #     dataset.real_counters.append(count_source_locations(dataset.data))
+    #     dataset.n_trajs.append(len(dataset.data))
+    # if kwargs["evaluate_emp_next"]:
+    #     dataset.evaluating_metrics.append("emp_next")
+    #     dataset.real_counters.append([count_first_next_locations(dataset.data, location) for location in dataset.top_base_locations])
+    #     dataset.n_trajs.append(sum(dataset.first_location_counts.values()))
+    # # if kwargs["evaluate_second_emp_next"]:
+    # #     evaluation_functions.append(count_second_order_first_next_locations)
+    # if kwargs["evaluate_target"]:
+    #     dataset.evaluating_metrics.append("target")
+    #     dataset.real_counters.append([count_target_locations(dataset.data, location) for location in dataset.top_base_locations])
+    #     dataset.n_trajs.append([dataset.first_location_counts[location] for location in dataset.top_base_locations])
+    # if kwargs["evaluate_destination"]:
+    #     dataset.evaluating_metrics.append("destination")
+    #     dataset.real_counters.append([compute_destination_count(dataset.data, location) for location in dataset.top_base_locations])
+    #     dataset.n_trajs.append([dataset.first_location_counts[location] for location in dataset.top_base_locations])
+    # if kwargs["evaluate_route"]:
+    #     dataset.evaluating_metrics.append("route")
+    #     dataset.real_counters.append([count_route_locations(dataset.route_data, location) for location in dataset.top_base_locations])
+    #     dataset.n_trajs.append([dataset.route_first_location_counts[location] for location in dataset.top_base_locations])
+    # if kwargs["evaluate_distance"]:
+    #     dataset.evaluating_metrics.append("distance")
+    #     dataset.real_counters.append(count_distance(dataset.distance_matrix, dataset.data, dataset.n_bins_for_distance))
+    #     dataset.n_trajs.append(len(dataset.data))
+
+    # # compute counters
+    # dataset.real_counters = {}
+    # for metric, count_function in evaluating_metrics:
+    # dataset.real_counters["global"] = [Counter({key:count for key, count in enumerate(global_count)}) for global_count in real_global_counts]
+    # dataset.real_counters["passing"] = count_passing_locations(dataset.route_data)
+    # dataset.real_counters["source"] = count_source_locations(dataset.data)
+    # dataset.real_counters["target"] = [count_target_locations(dataset.data, location) for location in dataset.top_base_locations]
+    # dataset.real_counters["route"] = [count_route_locations(dataset.route_data, location) for location in dataset.top_base_locations]
+    # dataset.real_counters["destination"] = [count_route_locations(dataset.data, location) for location in dataset.top_base_locations]
+    # dataset.real_counters["emp_next"] = [count_first_next_locations(dataset.data, location) for location in dataset.top_base_locations]
+    # dataset.real_counters["second_emp_next"] = [count_second_order_first_next_locations(dataset.data, locations) for locations in dataset.top_2nd_order_base_locations]
+    # logger.info("load distance matrix from {}".format(get_datadir() / str(dataset)  / f"distance_matrix_bin{int(np.sqrt(dataset.n_locations)) -2}.npy"))
+    # try:
+    #     dataset.distance_matrix = np.load(get_datadir() / str(dataset)  / f"distance_matrix_bin{int(np.sqrt(dataset.n_locations)) -2}.npy")
+    #     dataset.real_counters["distance"] = count_distance(dataset.distance_matrix, dataset.data, dataset.n_bins_for_distance)
+    # except:
+    #     print("WARNING: distance matrix is not found", get_datadir() / str(dataset)  / f"distance_matrix_bin{int(np.sqrt(dataset.n_locations)) -2}.npy")
 
     # compute n_trajs
-    dataset.n_trajs = {}
-    dataset.n_trajs["global"] = [len(dataset.data) for global_count in real_global_counts]
-    dataset.n_trajs["passing"] = len(dataset.data)
-    dataset.n_trajs["source"] = len(dataset.data)
-    dataset.n_trajs["target"] = [dataset.first_location_counts[location] for location in dataset.top_base_locations]
-    dataset.n_trajs["route"] = [dataset.route_first_location_counts[location] for location in dataset.top_base_locations]
-    dataset.n_trajs["destination"] = [dataset.first_location_counts[location] for location in dataset.top_base_locations]
-    dataset.n_trajs["distance"] = len(dataset.data)
-    dataset.n_trajs["emp_next"] = [sum(counter.values()) for counter in dataset.real_counters["emp_next"]]
-    dataset.n_trajs["second_emp_next"] = [sum(counter.values()) for counter in dataset.real_counters["second_emp_next"]]
+    # dataset.n_trajs = {}
+    # dataset.n_trajs["global"] = [len(dataset.data) for global_count in real_global_counts]
+    # dataset.n_trajs["passing"] = len(dataset.data)
+    # dataset.n_trajs["source"] = len(dataset.data)
+    # dataset.n_trajs["target"] = [dataset.first_location_counts[location] for location in dataset.top_base_locations]
+    # dataset.n_trajs["route"] = [dataset.route_first_location_counts[location] for location in dataset.top_base_locations]
+    # dataset.n_trajs["destination"] = [dataset.first_location_counts[location] for location in dataset.top_base_locations]
+    # dataset.n_trajs["distance"] = len(dataset.data)
+    # dataset.n_trajs["emp_next"] = [sum(counter.values()) for counter in dataset.real_counters["emp_next"]]
+    # dataset.n_trajs["second_emp_next"] = [sum(counter.values()) for counter in dataset.real_counters["second_emp_next"]]
 
     # plot the counts
     # for key, counter in dataset.real_counters.items():
@@ -1005,175 +1148,226 @@ class MTNetGeneratorMock():
         return self.trajs[self.cursor-mini_batch_size:self.cursor], self.time_trajs[self.cursor-mini_batch_size:self.cursor]
 
 
-class Namespace():
-    pass
+# class Namespace():
+    # pass
 
-def set_args(run_args):
+# def set_args(run_args):
 
-    args = Namespace()
-    args.ablation = run_args.ablation
-    args.evaluate_global = False and (not args.ablation)
-    args.evaluate_passing = True and (not args.ablation)
-    args.evaluate_source = False and (not args.ablation)
-    args.evaluate_target = True and (not args.ablation)
-    args.evaluate_route = True and (not args.ablation)
-    args.evaluate_destination = True and (not args.ablation)
-    args.evaluate_distance = True and (not args.ablation)
-    args.evaluate_emp_next = True and (not args.ablation)
-    args.evaluate_second_emp_next = True and (not args.ablation)
-    args.evaluate_first_next_location = True and (training_setting["network_type"] in ["hiemrnet", "baseline"])
-    args.evaluate_second_next_location = True and (training_setting["network_type"] in ["hiemrnet", "baseline"])
-    args.evaluate_second_order_next_location = False and (training_setting["network_type"] in ["hiemrnet", "baseline"])
-    args.dataset = dataset_name
+#     args = Namespace()
+#     args.ablation = run_args.ablation
+#     args.evaluate_global = False and (not args.ablation)
+#     args.evaluate_passing = True and (not args.ablation)
+#     args.evaluate_source = False and (not args.ablation)
+#     args.evaluate_target = True and (not args.ablation)
+#     args.evaluate_route = True and (not args.ablation)
+#     args.evaluate_destination = True and (not args.ablation)
+#     args.evaluate_distance = True and (not args.ablation)
+#     args.evaluate_emp_next = True and (not args.ablation)
+#     args.evaluate_second_emp_next = True and (not args.ablation)
+#     args.evaluate_first_next_location = True and (training_setting["network_type"] in ["hiemrnet", "baseline"])
+#     args.evaluate_second_next_location = True and (training_setting["network_type"] in ["hiemrnet", "baseline"])
+#     args.evaluate_second_order_next_location = False and (training_setting["network_type"] in ["hiemrnet", "baseline"])
+#     args.dataset = dataset_name
     
-    args.eval_initial = True
-    args.n_test_locations = 30
-    args.n_split = 5
-    # this is not used
-    args.batch_size = 100
-    args.route_generator = False
-    args.time_threshold = 10
-    args.eval_interval = run_args.eval_interval
-    args.test_thresh = run_args.test_thresh
+#     args.eval_initial = True
+#     args.n_test_locations = 30
+#     args.n_split = 5
+#     # this is not used
+#     args.batch_size = 100
+#     args.route_generator = False
+#     args.time_threshold = 10
+#     args.eval_interval = run_args.eval_interval
+#     args.test_thresh = run_args.test_thresh
 
-    # args.time_threshold = run_args.time_threshold
-    args.route_generator = (training_setting["network_type"] == "mtnet")
-    args.compensation = (dataset_name in ["chengdu", "geolife_mm"]) and (not args.route_generator)
-    args.truncate = run_args.truncate
-    # if run_args.location_threshold == 0 and run_args.time_threshold == 0:
-        # args.compensation = False
-        # args.route_generator = True
+#     # args.time_threshold = run_args.time_threshold
+#     args.route_generator = (training_setting["network_type"] == "mtnet")
+#     args.compensation = (dataset_name in ["chengdu", "geolife_mm"]) and (not args.route_generator)
+#     args.truncate = run_args.truncate
+#     # if run_args.location_threshold == 0 and run_args.time_threshold == 0:
+#         # args.compensation = False
+#         # args.route_generator = True
     
-    # args.to_bin = run_args.n_bins
+#     # args.to_bin = run_args.n_bins
 
-    return args
+#     return args
 
-if __name__ == "__main__":
-    from run import construct_dataset, construct_generator, construct_meta_network
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--model_dir', type=str)
+def run(**kwargs):
+    from main import construct_pretraining_network, construct_dataset, construct_generator
 
-    # for ground truth
-    # parser.add_argument('--location_threshold', type=int)
-    # parser.add_argument('--time_threshold', type=int)
-    # parser.add_argument('--n_bins', type=int)
-    parser.add_argument('--eval_data_dir', type=str)
-    parser.add_argument('--seed', type=int)
-    parser.add_argument('--truncate', type=int)
-    parser.add_argument('--test_thresh', type=int)
-    parser.add_argument('--eval_interval', type=int)
+    device = torch.device(f"cuda:{kwargs['cuda_number']}" if torch.cuda.is_available() else "cpu")
 
-    # parser.add_argument('--server', action="store_true")
-    parser.add_argument('--ablation', action="store_true")
-    run_args = parser.parse_args()
-
-    logger = set_logger(__name__, "./log.log")
-
-    # if run_args.server:
-        # get(run_args.model_dir, parent=True)
-
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    model_dir = pathlib.Path(run_args.model_dir)
-    
+    # find models
+    model_dir = make_model_dir(**kwargs)
     if model_dir.stem.startswith("model_"):
         model_paths = [model_dir]
         model_dir = model_dir.parent
     else:
         # find the models whose name stats with model_i
-        model_paths = model_dir.glob("model_*")
-    
-    # get(model_dir / "params.json")
-    with open(model_dir / "params.json", "r") as f:
-        training_setting = json.load(f)
-    (model_dir / "imgs").mkdir(exist_ok=True)
-    # data_name = training_setting["data_name"]
-    # n_bins = int(training_setting["training_data_name"].split("_")[2].split("bin")[1])
-
-    # if "training_data_name" in training_setting:
-        # data_path = get_datadir() / training_setting["dataset"] / training_setting["data_name"] / training_setting["training_data_name"]
-    # else:
-
-    training_data_dir = pathlib.Path(training_setting["training_data_dir"])
-    with open(training_data_dir / "params.json", "r") as f:
-        data_setting = json.load(f)
-    n_bins = data_setting["n_bins"]
-    dataset_name = data_setting["dataset"]
-    # if run_args.server:
-        # get(data_path, parent=True)
-
-    # if run_args.server:
-        # get(route_data_path, parent=True)
-        # get(get_datadir() / training_setting["dataset"] / f"distance_matrix_bin{run_args.n_bins}.npy")
-        # if training_setting["network_type"] == "MTNet":
-            # get(get_datadir() / dataset_name / "raw", parent=True)
-
-    route_data_path = training_data_dir / "route_training_data.csv"
-        
-    # with open(data_path / "params.json", "r") as f:
-        # data_setting = json.load(f)
-    # n_bins = int(np.sqrt(data_setting["n_locations"]) -2)
-    # assert n_bins == run_args.n_bins, "n_bins should be equal to the n_bins in the data"
-
-    # route_data_name = f"0_0_bin{n_bins}_seed{data_setting['seed']}"
-    # route_data_path = get_datadir() / training_setting["dataset"] / training_setting["data_name"] / route_data_name
-    
-    # training_data_path = data_path
-    # if run_args.server:
-        # get(training_data_path, parent=True)
-    args = set_args(run_args)
-
-    eval_data_path = pathlib.Path(run_args.eval_data_dir) / "training_data.csv"
-    eval_route_data_path = pathlib.Path(run_args.eval_data_dir) / "route_training_data.csv"
-    dataset = construct_dataset(eval_data_path, eval_route_data_path, 5)
-    compute_auxiliary_information(dataset, model_dir, logger)
-
-    print(training_data_dir)
-    training_dataset = construct_dataset(training_data_dir / "training_data.csv", None, 5)
-    args.references = training_dataset.references
-    args.from_bin = training_dataset.n_bins
-    args.to_bin = dataset.n_bins
-    args.need_downsampling = (args.from_bin != args.to_bin)
-    if args.need_downsampling:
-        print("downsampling from", args.from_bin, "to", args.to_bin)
-        args.downsampling_dict = make_downsampling_dict(args.from_bin, args.to_bin)
-
-    args.save_dir = model_dir
-    (args.save_dir / f"imgs_trun{args.truncate}_{args.to_bin}").mkdir(exist_ok=True, parents=True)
-    make_first_order_test_data_loader(dataset, args.n_test_locations)
-    # make_second_order_test_data_loader(dataset, args.n_test_locations)
-        
-    # sort according to i
+        model_paths = list(model_dir.glob("model_*"))
     model_paths = sorted(model_paths, key=lambda x: int(x.stem.split("_")[-1]))
-    print(model_paths)
+    logger = set_logger(__name__, model_dir / "eval.log")
+    logger.info(f"evaluate models: {model_paths}")
+
+    # make dataset
+    save_name = make_save_name(**kwargs)
+    training_data_dir = make_training_data_path(save_name=save_name, **kwargs)
+    dataset = construct_dataset(training_data_dir, None, kwargs["n_split"])
+    compute_auxiliary_information(dataset, model_dir, kwargs["test_threshold"], logger, **kwargs)
+
+    # evaluation
     for i, model_path in enumerate(model_paths):
-        if i % args.eval_interval != 0:
+        logger.info(f"evaluate {model_path}")
+
+        # skip according to the interval
+        if i % kwargs["evaluation_interval"] != 0:
             continue
 
-        if training_setting["network_type"] == "mtnet":
-            generator = MTNetGeneratorMock(model_path / "samples.txt", model_path / "samples_time.txt", training_setting["dataset"], n_bins)
-        elif training_setting["network_type"] == "privtrace":
-            with open(model_path / f"privtrace_generator.pickle", "rb") as f:
-                generator = pickle.load(f)
-        elif training_setting["network_type"] == "clustering":
-            with open(model_path / f"generator.pickle", "rb") as f:
-                generator = pickle.load(f)
-        elif training_setting["network_type"] in ["hiemrnet", "baseline"]:
-            meta_network, _ = construct_meta_network(training_setting["clustering"], training_setting["network_type"], training_dataset.n_locations, training_setting["memory_dim"], training_setting["memory_hidden_dim"], training_setting["location_embedding_dim"], training_setting["multilayer"], training_setting["consistent"], logger)
-            if hasattr(meta_network, "remove_class_to_query"):
-                meta_network.remove_class_to_query()
-            generator, _ = construct_generator(training_dataset.n_locations, meta_network, training_setting["network_type"], training_setting["location_embedding_dim"], training_setting["n_split"], len(training_dataset.label_to_reference), training_setting["hidden_dim"], training_dataset.reference_to_label, logger)
-            logger.info(f"evaluate {model_path}!")
+        # load model
+        if kwargs["model_name"] in ["hrnet", "baseline"]:
+            pretraining_network, _ = construct_pretraining_network(kwargs["clustering"], kwargs["model_name"], dataset.n_locations, kwargs["memory_dim"], kwargs["memory_hidden_dim"], kwargs["location_embedding_dim"], kwargs["multilayer"], kwargs["consistent"], logger)
+            if hasattr(pretraining_network, "remove_class_to_query"):
+                pretraining_network.remove_class_to_query()
+            generator, _ = construct_generator(dataset.n_locations, pretraining_network, kwargs["model_name"], kwargs["location_embedding_dim"], kwargs["n_split"], len(dataset.label_to_reference), kwargs["hidden_dim"], dataset.reference_to_label, logger)
             generator.load_state_dict(torch.load(model_path, map_location=device))
             generator = generator.to(device)
-            print(generator, device)
 
-        args.name = model_path.name
-        results = run(generator, dataset, args)
-        print("save result to", args.save_dir / f"evaluated_{args.name}_trun{args.truncate}_{args.to_bin}.json")
-        with open(args.save_dir / f"evaluated_{args.name}_trun{args.truncate}_{args.to_bin}.json", "w") as f:
+        # evaluate the model
+        results = evaluate(generator, dataset, model_dir, logger, **kwargs)
+
+        # save the result
+        result_save_path = model_dir / f"evaluated_{i}_trun{kwargs['truncation']}.json"
+        logger.info("save result to " + str(result_save_path))
+        with open(result_save_path, "w") as f:
             json.dump(results, f)
-        # if run_args.server:
-            # send(args.save_dir / f"evaluated_{args.name}_trun{args.truncate}_{args.to_bin}.json")
-            # send(args.save_dir / f"imgs_trun{args.truncate}_{args.to_bin}" / args.name, parent=True)
-        print(results)
+
+
+
+# if __name__ == "__main__":
+#     from main import construct_dataset, construct_generator, construct_meta_network
+#     parser = argparse.ArgumentParser()
+#     parser.add_argument('--model_dir', type=str)
+
+#     # for ground truth
+#     # parser.add_argument('--location_threshold', type=int)
+#     # parser.add_argument('--time_threshold', type=int)
+#     # parser.add_argument('--n_bins', type=int)
+#     parser.add_argument('--eval_data_dir', type=str)
+#     parser.add_argument('--seed', type=int)
+#     parser.add_argument('--truncate', type=int)
+#     parser.add_argument('--test_thresh', type=int)
+#     parser.add_argument('--eval_interval', type=int)
+
+#     # parser.add_argument('--server', action="store_true")
+#     parser.add_argument('--ablation', action="store_true")
+#     run_args = parser.parse_args()
+
+#     logger = set_logger(__name__, "./log.log")
+
+#     # if run_args.server:
+#         # get(run_args.model_dir, parent=True)
+
+#     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+#     model_dir = pathlib.Path(run_args.model_dir)
+    
+#     if model_dir.stem.startswith("model_"):
+#         model_paths = [model_dir]
+#         model_dir = model_dir.parent
+#     else:
+#         # find the models whose name stats with model_i
+#         model_paths = model_dir.glob("model_*")
+    
+#     # get(model_dir / "params.json")
+#     with open(model_dir / "params.json", "r") as f:
+#         training_setting = json.load(f)
+#     (model_dir / "imgs").mkdir(exist_ok=True)
+#     # data_name = training_setting["data_name"]
+#     # n_bins = int(training_setting["training_data_name"].split("_")[2].split("bin")[1])
+
+#     # if "training_data_name" in training_setting:
+#         # data_path = get_datadir() / training_setting["dataset"] / training_setting["data_name"] / training_setting["training_data_name"]
+#     # else:
+
+#     training_data_dir = pathlib.Path(training_setting["training_data_dir"])
+#     with open(training_data_dir / "params.json", "r") as f:
+#         data_setting = json.load(f)
+#     n_bins = data_setting["n_bins"]
+#     dataset_name = data_setting["dataset"]
+#     # if run_args.server:
+#         # get(data_path, parent=True)
+
+#     # if run_args.server:
+#         # get(route_data_path, parent=True)
+#         # get(get_datadir() / training_setting["dataset"] / f"distance_matrix_bin{run_args.n_bins}.npy")
+#         # if training_setting["network_type"] == "MTNet":
+#             # get(get_datadir() / dataset_name / "raw", parent=True)
+
+#     route_data_path = training_data_dir / "route_training_data.csv"
+        
+#     # with open(data_path / "params.json", "r") as f:
+#         # data_setting = json.load(f)
+#     # n_bins = int(np.sqrt(data_setting["n_locations"]) -2)
+#     # assert n_bins == run_args.n_bins, "n_bins should be equal to the n_bins in the data"
+
+#     # route_data_name = f"0_0_bin{n_bins}_seed{data_setting['seed']}"
+#     # route_data_path = get_datadir() / training_setting["dataset"] / training_setting["data_name"] / route_data_name
+    
+#     # training_data_path = data_path
+#     # if run_args.server:
+#         # get(training_data_path, parent=True)
+#     args = set_args(run_args)
+
+#     eval_data_path = pathlib.Path(run_args.eval_data_dir) / "training_data.csv"
+#     eval_route_data_path = pathlib.Path(run_args.eval_data_dir) / "route_training_data.csv"
+#     dataset = construct_dataset(eval_data_path, eval_route_data_path, 5)
+#     compute_auxiliary_information(dataset, model_dir, logger)
+
+#     print(training_data_dir)
+#     training_dataset = construct_dataset(training_data_dir / "training_data.csv", None, 5)
+#     args.references = training_dataset.references
+#     args.from_bin = training_dataset.n_bins
+#     args.to_bin = dataset.n_bins
+#     args.need_downsampling = (args.from_bin != args.to_bin)
+#     if args.need_downsampling:
+#         print("downsampling from", args.from_bin, "to", args.to_bin)
+#         args.downsampling_dict = make_downsampling_dict(args.from_bin, args.to_bin)
+
+#     args.save_dir = model_dir
+#     (args.save_dir / f"imgs_trun{args.truncate}_{args.to_bin}").mkdir(exist_ok=True, parents=True)
+    # make_first_order_test_data_loader(dataset, args.n_test_locations)
+#     # make_second_order_test_data_loader(dataset, args.n_test_locations)
+        
+#     # sort according to i
+#     model_paths = sorted(model_paths, key=lambda x: int(x.stem.split("_")[-1]))
+#     print(model_paths)
+#     for i, model_path in enumerate(model_paths):
+#         if i % args.eval_interval != 0:
+#             continue
+
+#         if training_setting["network_type"] == "mtnet":
+#             generator = MTNetGeneratorMock(model_path / "samples.txt", model_path / "samples_time.txt", training_setting["dataset"], n_bins)
+#         elif training_setting["network_type"] == "privtrace":
+#             with open(model_path / f"privtrace_generator.pickle", "rb") as f:
+#                 generator = pickle.load(f)
+#         elif training_setting["network_type"] == "clustering":
+#             with open(model_path / f"generator.pickle", "rb") as f:
+#                 generator = pickle.load(f)
+#         elif training_setting["network_type"] in ["hrnet", "baseline"]:
+#             meta_network, _ = construct_meta_network(training_setting["clustering"], training_setting["network_type"], training_dataset.n_locations, training_setting["memory_dim"], training_setting["memory_hidden_dim"], training_setting["location_embedding_dim"], training_setting["multilayer"], training_setting["consistent"], logger)
+#             if hasattr(meta_network, "remove_class_to_query"):
+#                 meta_network.remove_class_to_query()
+#             generator, _ = construct_generator(training_dataset.n_locations, meta_network, training_setting["network_type"], training_setting["location_embedding_dim"], training_setting["n_split"], len(training_dataset.label_to_reference), training_setting["hidden_dim"], training_dataset.reference_to_label, logger)
+#             logger.info(f"evaluate {model_path}!")
+#             generator.load_state_dict(torch.load(model_path, map_location=device))
+#             generator = generator.to(device)
+#             print(generator, device)
+
+#         args.name = model_path.name
+#         results = run(generator, dataset, args)
+#         print("save result to", args.save_dir / f"evaluated_{args.name}_trun{args.truncate}_{args.to_bin}.json")
+#         with open(args.save_dir / f"evaluated_{args.name}_trun{args.truncate}_{args.to_bin}.json", "w") as f:
+#             json.dump(results, f)
+#         # if run_args.server:
+#             # send(args.save_dir / f"evaluated_{args.name}_trun{args.truncate}_{args.to_bin}.json")
+#             # send(args.save_dir / f"imgs_trun{args.truncate}_{args.to_bin}" / args.name, parent=True)
+#         print(results)

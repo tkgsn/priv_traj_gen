@@ -1,0 +1,8 @@
+# @package _global_
+defaults:
+  - override /dataset@_global_: geolife
+  - override /dataset/geolife@_global_: default
+  - override /evaluation@_global_: baseline
+  - override /evaluation/baseline@_global_: default
+
+exp_name: comparison_baseline

@@ -12,6 +12,8 @@ import seaborn as sns
 import tqdm
 from grid import Grid, QuadTree, priv_tree
 import subprocess
+import hydra
+import os
 
 
 def get_original_dataset_name(dataset):
@@ -257,13 +259,17 @@ class EarlyStopping:
         self.val_loss_min = val_loss
 
 
-def set_logger(__name__, save_path):
-    with open('./log_config.json', 'r') as f:
-        log_conf = json.load(f)
-    log_conf["handlers"]["fileHandler"]["filename"] = str(save_path)
-    config.dictConfig(log_conf)
-    logger = getLogger(__name__)
-    logger.info('log is saved to {}'.format(save_path))
+def set_logger(file_name, save_path):
+    # remove the exiting log file
+    if os.path.exists(save_path):
+        os.remove(save_path)
+        
+    # path to log
+    target = f"{hydra.core.hydra_config.HydraConfig.get().runtime.output_dir}/hub.log"
+
+    # make a symbolic link
+    os.symlink(target, save_path)
+    logger = getLogger(file_name)
 
     return logger
 
@@ -445,10 +451,13 @@ def save(save_path, trajectories, option="w"):
     # send(save_path)
 
 def compute_num_params(model, logger):
+
     num_params = 0
-    for param in model.parameters():
-        num_params += param.numel()
-    logger.info(f"number of parameters of {model}: {num_params}")
+
+    if hasattr(model, "module"):
+        for param in model.parameters():
+            num_params += param.numel()
+        logger.info(f"number of parameters of {model}: {num_params}")
 
     return num_params
 

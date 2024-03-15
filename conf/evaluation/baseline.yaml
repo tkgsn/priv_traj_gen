@@ -1,0 +1,26 @@
+defaults:
+- baseline@_global_: default
+
+# evaluation setting
+evaluation_mode: False
+evaluation_interval: 1
+ablation: False
+evaluate_global: False
+evaluate_passing: True
+evaluate_source: False
+evaluate_target: True
+evaluate_route: True
+evaluate_destination: True
+evaluate_distance: True
+evaluate_emp_next: True
+evaluate_second_emp_next: True
+evaluate_first_next_location: True
+evaluate_second_next_location: False
+evaluate_second_order_next_location: False
+evaluate_initial_state: True
+n_test_locations: 30
+test_threshold: 20
+
+is_route_generator: False
+compensation: False
+truncation: False

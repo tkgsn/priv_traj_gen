@@ -1,0 +1,29 @@
+defaults:
+- baseline@_global_ : default
+
+model_name: baseline
+epsilon: 0.0
+meta_dist: both
+transition_type: first
+train_all_layers: False
+model_seed: 0
+is_dp: False
+memory_dim: 32
+memory_hidden_dim: 32
+location_embedding_dim: 32
+hidden_dim: 32
+batch_size: 0
+remove_first_value: False
+remove_duplicate: False
+clustering: depth
+multilayer: False
+consistent: False
+pre_n_iter: 1000
+learning_rate: 1e-3
+patience: 30
+pre_training_patience: 1000
+n_epochs: 11
+coef_time: 1
+coef_location: 1
+clipping_for_transition_matrix: 1
+pretraining_method: dirichlet

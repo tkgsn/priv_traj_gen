@@ -16,6 +16,7 @@ import functools
 from make_raw_data import make_raw_data_random, make_raw_data_rotation
 import subprocess
 import sqlite3
+from name_config import make_training_data_path
 
 def compute_distance_matrix(state_to_latlon, n_locations):
 
@@ -302,7 +303,8 @@ def run(dataset_name, lat_range, lon_range, n_bins, time_threshold, location_thr
     """
 
     save_name = make_save_name(dataset_name, n_bins, time_threshold, location_threshold, seed)
-    training_data_dir = get_datadir() / dataset_name / f"{size}" / save_name
+    # training_data_dir = get_datadir() / dataset_name / f"{size}" / save_name
+    training_data_dir = make_training_data_path(dataset_name, size, save_name)
     training_data_dir.mkdir(exist_ok=True, parents=True)
 
     if not (training_data_dir / "training_data.csv").exists():
