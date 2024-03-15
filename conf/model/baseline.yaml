@@ -23,7 +23,7 @@ pre_n_iter: 0
 learning_rate: 1e-3
 patience: 30
 pre_training_patience: 1000
-n_epochs: 11
+n_epochs: 100
 coef_time: 1
 coef_location: 1
 clipping_for_transition_matrix: 1
