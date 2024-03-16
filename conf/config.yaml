@@ -8,3 +8,6 @@ cuda_number: 0
 exp_name: default
 
 hydra_logging: disabled
+hydra:
+  run:
+    dir: /data/logs/${now:%Y-%m-%d_%H-%M-%S}
