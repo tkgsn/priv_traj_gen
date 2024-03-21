@@ -181,6 +181,7 @@ def post_process_generated(generated, **kwargs):
     return generated_stay_trajs, generated_route_trajs
 
 def evaluate(generator, dataset, save_dir, logger, **kwargs):
+    from dataset import TrajectoryDataset
 
     # n_bins = int(np.sqrt(dataset.n_locations)-2)
     # print("???")
@@ -231,8 +232,8 @@ def evaluate(generator, dataset, save_dir, logger, **kwargs):
         while (n_gene_traj < len(dataset.references)) and dataset.counting_functions:
             mini_batch_size =  min([1000, len(dataset.references)])
             # sample mini_batch_size references from dataset.references
-            references = random.sample(dataset.references, mini_batch_size)
-            generated = generator.make_sample(references, mini_batch_size)
+            references = random.sample(dataset.references ,mini_batch_size)
+            generated = generator.make_sample(references, TrajectoryDataset.start_idx(dataset.n_locations), mini_batch_size)
 
             # post processing
             generated_stay_trajs, generated_route_trajs = post_process_generated(generated, **kwargs)
@@ -528,7 +529,8 @@ def evaluate_next_location_on_test_dataset(next_location_counts, data_loader, co
             input_locations = mini_batch["input"].to(device)
             references = [tuple(v) for v in mini_batch["reference"]]
             input_times = mini_batch["time"].to(device)
-            output = generator([input_locations, input_times], references)[0]
+            # output = generator([input_locations, input_times], references)[0]
+            output, _ = generator([input_locations, input_times])[0]
             output = output[-1] if type(output) == list else output
             output = torch.exp(output).cpu().detach().numpy()[:, target_index].tolist()
             outputs.extend(output)
@@ -1227,7 +1229,8 @@ def run(**kwargs):
             pretraining_network, _ = construct_pretraining_network(kwargs["clustering"], kwargs["model_name"], dataset.n_locations, kwargs["memory_dim"], kwargs["memory_hidden_dim"], kwargs["location_embedding_dim"], kwargs["multilayer"], kwargs["consistent"], logger)
             if hasattr(pretraining_network, "remove_class_to_query"):
                 pretraining_network.remove_class_to_query()
-            generator, _ = construct_generator(dataset.n_locations, pretraining_network, kwargs["model_name"], kwargs["location_embedding_dim"], kwargs["n_split"], len(dataset.label_to_reference), kwargs["hidden_dim"], dataset.reference_to_label, logger)
+            # generator, _ = construct_generator(dataset.n_locations, pretraining_network, kwargs["model_name"], kwargs["location_embedding_dim"], kwargs["n_split"], len(dataset.label_to_reference), kwargs["hidden_dim"], dataset.reference_to_label, logger)
+            generator = construct_generator(kwargs["model_name"], dataset.n_locations, dataset.n_time_split+1, kwargs["location_embedding_dim"], kwargs["time_embedding_dim"], kwargs["memory_hidden_dim"], kwargs["multitask"])
             generator.load_state_dict(torch.load(model_path, map_location=device))
             generator = generator.to(device)
 

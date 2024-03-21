@@ -437,7 +437,7 @@ class QuadTree(Grid):
     
     def get_node_by_state(self, state):
         for node in self.get_leafs():
-            assert len(node.state_list) == 1, "node.state_list must be a singleton"
+            assert len(node.state_list) == 1, "node.state_list must be single"
             if state in node.state_list:
                 return node
         return None

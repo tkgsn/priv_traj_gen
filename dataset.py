@@ -47,22 +47,27 @@ def traj_to_format(traj):
     return format
 
 class PretrainingDataset(Dataset):
-    def __init__(self, transition_matrix, pretraining_method, n_iter, batch_size, model_name):
+    def __init__(self, transition_matrix, pretraining_method, n_iter, batch_size, network):
+        from models import LinearHierarchicalLocationEncodingComponent
         self.n_classes = len(transition_matrix)
         self.n_locations = len(transition_matrix[0])
         self.pretraining_method = pretraining_method
         self.transition_matrix = transition_matrix
         self.n_iter = n_iter
         self.batch_size = batch_size
-        self.model_name = model_name
 
-        if model_name == "hrnet":
+        self.model_type = "hrnet" if type(network.location_encoding_component) == LinearHierarchicalLocationEncodingComponent else "baseline"
+
+        if self.model_type == "hrnet":
             n_locations = len(transition_matrix[0])
             n_bins = int(np.sqrt(n_locations)) -2
             self.tree = construct_default_quadtree(n_bins)
             self.tree.make_self_complete()
+        
+        self.multitask = network.scoring_component.multitask
 
     def make_collate_fn(self):
+        from evaluation import make_target_distributions_of_all_layers
         def collate_fn(batch):
             inputs = []
             targets = []
@@ -70,8 +75,11 @@ class PretrainingDataset(Dataset):
                 inputs.append(record["input"])
                 targets.append(record["target"])
             targets = torch.stack(targets)
-            if self.model_name == "hrnet":
-                targets = self.tree.make_quad_distribution(targets)
+            # if self.model_name == "hrnet":
+                # targets = self.tree.make_quad_distribution(targets)
+            if self.multitask:
+                targets = make_target_distributions_of_all_layers(targets, self.tree)
+                
             return {"input":torch.stack(inputs), "target":targets}
         return collate_fn
 
@@ -110,10 +118,14 @@ class TrajectoryDataset(Dataset):
     @staticmethod
     def end_idx(n_locations):
         return n_locations+2
+
+    @staticmethod
+    def n_specials():
+        return 3
     
     @staticmethod
     def vocab_size(n_locations):
-        return n_locations+3
+        return n_locations + TrajectoryDataset.n_specials()
     
     @staticmethod
     def time_end_idx(n_split):
@@ -121,6 +133,10 @@ class TrajectoryDataset(Dataset):
 
     def _time_end_idx(self):
         return TrajectoryDataset.time_end_idx(self.n_time_split)
+
+    @staticmethod
+    def time_vocab_size(n_split):
+        return n_split+1
     
     @staticmethod
     def time_to_label(time, n_time_split, max_time):
