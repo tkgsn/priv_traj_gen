@@ -127,7 +127,8 @@ def train_epoch(data_loader, generator, optimizer, loss_model, train_all_layers,
 
     return np.mean(losses, axis=0)
 
-def clustering(clustering_type, n_locations):
+def clustering(clustering_type, n_locations, logger):
+    logger.info(f"clustering type: {clustering_type}")
     n_bins = int(np.sqrt(n_locations)) -2
     # if clustering_type == "distance":
         # distance_matrix = np.load(training_data_dir.parent.parent / f"distance_matrix_bin{n_bins}.npy")
@@ -197,183 +198,70 @@ def prepare_transition_matrix(location_to_class, transition_type, dataset, clipp
 
         plot_density(target_count_i, dataset.n_locations, save_dir / "imgs" / f"class_next_location_distribution_{i}.png")
     
-    return transition_matrix
+    return torch.stack(transition_matrix)
+
+def compute_loss_for_pretraining(pretraining_network, target):
+
+    # multitask training
+    if pretraining_network.scoring_component.multitask:
+        assert (type(pretraining_network_output) == list) and (type(target) == list), f"{type(pretraining_network_output)} and {type(target)} must be list because of multitask training"
+
+        losses = []
+        # for each depth
+        for i in range(len(pretraining_network_output)):
+            losses.append(F.kl_div(pretraining_network_output[i], target, reduction='batchmean'))
+        loss = sum(losses)
+    else:
+        pretraining_network_output = pretraining_network_output.view(*target.shape)
+        loss = F.kl_div(pretraining_network_output, target, reduction='batchmean')
+    
+    return loss
+
+
 
 def pre_training_pretraining_network(transition_matrix, privtree, n_iter, pretraining_network, patience, save_dir, pretraining_method, logger):
-    # print(len(transition_matrix), transition_matrix[0].shape)
     device = next(pretraining_network.parameters()).device
-    transition_matrix = torch.stack(transition_matrix)
-    # if args.meta_network_load_path == "None":
-    early_stopping = EarlyStopping(patience=patience, path=save_dir / "pretraining_network.pt", delta=1e-6)
-    # train_pretraining_network(pretraining_network, transition_matrix, pre_n_iter, early_stopping, pretraining_method)
-    #     args.meta_network_load_path = str(save_dir / "meta_network.pt")
-    # else:
-    #     pretraining_network.load_state_dict(torch.load(args.meta_network_load_path))
-    #     logger.info(f"load meta network from {args.meta_network_load_path}")
-    # def train_pretraining_network(pretraining_network, next_location_counts, n_iter, early_stopping, distribution, logger):
-    # device = next(iter(pretraining_network.parameters())).device
-    n_classes = len(transition_matrix)
-    # one_hot_encoder for class
+    
+    # class_encoder converts class to a vector which is used for the input of the temp_network, and this itself is not trained
     class_encoder = pretraining_network.location_encoding_component.make_class_encoder(privtree).to(device)
+    # temp_network works as the substitution of the prefix encoding component (i.e., this outputs input for the scoring component) for pre-training because a record of pre-training is not a sequence
     temp_network = pretraining_network.prefix_encoding_component.make_temp_network(class_encoder.dim).to(device)
     optimizer = optim.Adam([{"params":pretraining_network.parameters()}, {"params":temp_network.parameters()}], lr=0.001)
+
+    # make data loader for pre-training with the transition matrix
+    # pretraining_method designates the way of sampling of training data
     batch_size = 100
-    # n_classes = pretraining_network.n_classes
-    # n_locations = len(transition_matrix[0])
-    # epoch = 0
-
-    # n_locations = len(transition_matrix[0])
-    # n_bins = int(np.sqrt(n_locations)) -2
-    # tree = construct_default_quadtree(n_bins)
-    # tree.make_self_complete()
-
     pretraining_dataset = PretrainingDataset(transition_matrix, pretraining_method, n_iter, batch_size, pretraining_network)
     pretraining_data_loader = torch.utils.data.DataLoader(pretraining_dataset, num_workers=0, pin_memory=True, batch_size=batch_size, collate_fn=pretraining_dataset.make_collate_fn())
 
+    # pre-training with early stopping
+    early_stopping = EarlyStopping(patience=patience, path=save_dir / "pretraining_network.pt", delta=1e-6)
     with tqdm.tqdm(pretraining_data_loader) as pbar:
         for epoch, batch in enumerate(pbar):
+            # input
             input = batch["input"].to(device)
             pretraining_network_output = pretraining_network.transition(input, class_encoder, temp_network)
 
-            # multitask training
-            if pretraining_network.scoring_component.multitask:
-                target = batch["target"]
-                assert type(pretraining_network_output) == list, f"{type(pretraining_network_output)} must be list because of multitask training"
-                assert type(target) == list, f"{type(target)} must be list because of multitask training"
+            # compute loss
+            loss = compute_loss_for_pretraining(pretraining_network_output, batch["target"].to(device))
 
-                losses = []
-                # for each depth
-                for i in range(len(pretraining_network_output)):
-                    target = batch["target"][i].to(device)
-                    losses.append(F.kl_div(pretraining_network_output[i], target, reduction='batchmean'))
-                loss = sum(losses)
-            else:
-                target = batch["target"].to(device)
-                pretraining_network_output = pretraining_network_output.view(*target.shape)
-                loss = F.kl_div(pretraining_network_output, target, reduction='batchmean')
-
-            # pretraining_network_output = pretraining_network(input).view(*target.shape)
-            # pretraining_network_output = pretraining_network.transition(input, class_encoder, temp_network).view(*target.shape)
-            # loss = F.kl_div(pretraining_network_output, target, reduction='batchmean')
+            # compute gradient and update
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-
-            # pbar.set_description(f"loss: {loss.item()} ({[v.item() for v in loss]})")
             pbar.set_description(f"loss: {loss.item()}")
-            early_stopping(loss.item(), pretraining_network)
 
+            # early stopping
+            early_stopping(loss.item(), pretraining_network)
             if early_stopping.early_stop:
                 pretraining_network.load_state_dict(torch.load(save_dir / "pretraining_network.pt"))
                 logger.info(f"load meta network from {save_dir / 'pretraining_network.pt'}")
                 break
-
-    # def depth_to_ids(depth):
-    #     return [node.id for node in tree.get_nodes(depth)]
-    
-    # original_targets = torch.zeros(n_classes, n_locations).to(device)
-    # for i in range(n_classes):
-    #     original_targets[i] = torch.tensor(transition_matrix[i])
-    #     original_targets[i][original_targets[i] < 0] = 0
-    #     original_targets[i] = original_targets[i] / original_targets[i].sum()
-
-    # if pretraining_method == "eye":
-    #     input = torch.eye(n_classes).to(device)
-
-    #     # normalize
-    #     input = input / input.sum(dim=1).reshape(-1,1)
-    #     # target is the distribution generated by sum of next_location_distributions weighted by input
-    #     target = torch.zeros(input.shape[0], n_locations).to(device)
-    #     for i in range(n_classes):
-    #         target += input[:,i].reshape(-1,1) * transition_matrix[i]
-    #     # normalize target
-    #     target[target < 0] = 0
-    #     target = target / target.sum(dim=1).reshape(-1,1)
-    #     target = tree.make_quad_distribution(target)
-
-    # with tqdm.tqdm(range(n_iter)) as pbar:
-    #     for epoch in pbar:
-    #         # make input: (batch_size, n_classes)
-    #         # input is sampled from Dirichlet distribution
-    #         if pretraining_method == "dirichlet":
-    #             input = torch.distributions.dirichlet.Dirichlet(torch.ones(n_classes)).sample((batch_size,)).to(device)
-    #             print(input.shape)
-
-    #             # normalize
-    #             # input = input / input.sum(dim=1).reshape(-1,1)
-    #             # target is the distribution generated by sum of next_location_distributions weighted by input
-    #             target = torch.zeros(input.shape[0], n_locations).to(device)
-    #             for i in range(n_classes):
-    #                 target += input[:,i].reshape(-1,1) * transition_matrix[i]
-    #             # normalize target
-    #             target[target < 0] = 0
-    #             target = target / target.sum(dim=1).reshape(-1,1)
-    #         elif pretraining_method == "eye":
-    #             input = torch.eye(n_classes).to(device)
-    #         elif pretraining_method == "both":
-    #             input = torch.distributions.dirichlet.Dirichlet(torch.ones(n_classes)).sample((batch_size,)).to(device)
-    #             input = torch.cat([input, torch.eye(n_classes).to(device)], dim=0)
-    #             target = torch.zeros(input.shape[0], n_locations).to(device)
-    #             for i in range(n_classes):
-    #                 target += input[:,i].reshape(-1,1) * transition_matrix[i]
-    #             target[target < 0] = 0
-    #             target = target / target.sum(dim=1).reshape(-1,1)
-    #         else:
-    #             raise NotImplementedError
-            
-    #         losses = []
-    #         loss = 0
-
-    #         pretraining_network_output = pretraining_network(input)
-    #         print(pretraining_network_output.shape)
-    #         if type(pretraining_network_output) == list:
-    #             batch_size = pretraining_network_output[0].shape[0]
-    #             test_target = evaluation.make_target_distributions_of_all_layers(target, tree)
-    #             train_all_layers = True
-    #             if train_all_layers:
-    #                 # pretraining_network_output = pretraining_network.to_location_distribution(pretraining_network_output, target_depth=0)
-    #                 for depth in range(tree.max_depth):
-    #                     losses.append(F.kl_div(pretraining_network_output[depth].view(batch_size,-1), test_target[depth], reduction='batchmean'))
-    #             else:
-    #                 pretraining_network_output = pretraining_network.to_location_distribution(pretraining_network_output, target_depth=-1)
-    #                 losses.append(F.kl_div(pretraining_network_output.view(batch_size,-1), test_target[-1], reduction='batchmean'))
-    #             loss = sum(losses)
-    #         else:
-    #             quad_loss = (pretraining_network.name == "hrnet")
-    #             if quad_loss:
-    #                 if pretraining_method != "eye":
-    #                     target = tree.make_quad_distribution(target)
-    #                 pretraining_network_output = pretraining_network_output.view(*target.shape)
-    #                 for depth in range(tree.max_depth):
-    #                     ids = depth_to_ids(depth)
-    #                     losses.append(F.kl_div(pretraining_network_output[:,ids,:], target[:,ids,:], reduction='batchmean') * 4**(tree.max_depth-depth-1))
-    #             else:
-    #                 pretraining_network_output = pretraining_network_output.view(*target.shape)
-    #                 print(target.shape)
-    #                 losses.append(F.kl_div(pretraining_network_output, target, reduction='batchmean'))
-    #         # loss = compute_loss_meta_quad_tree_attention_net(pretraining_network_output, target, pretraining_network.tree)
-    #         loss = sum(losses)
-    #         optimizer.zero_grad()
-    #         loss.backward()
-    #         optimizer.step()
-
-
-            # pbar.set_description(f"loss: {loss.item()} ({[v.item() for v in losses]})")
-            # early_stopping(loss.item(), pretraining_network)
-
-            # if early_stopping.early_stop:
-            #     pretraining_network.load_state_dict(torch.load(save_dir / "pretraining_network.pt"))
-            #     logger.info(f"load meta network from {save_dir / 'pretraining_network.pt'}")
-            #     break
-
     logger.info(f"best loss of meta training at {epoch}: {early_stopping.best_score}")
 
- 
     # test
-    logger.info("save test output to " + str(save_dir / "imgs" / f"pretraining_network_output_i.png"))
-    test_pretrained_network(pretraining_network, class_encoder, temp_network, n_classes, len(transition_matrix[0]), save_dir)
-
-    # return pretraining_network
+    logger.info("save test results to " + str(save_dir / "imgs" / f"pretraining_network_output_i.png"))
+    test_pretrained_network(pretraining_network, class_encoder, temp_network, len(transition_matrix), len(transition_matrix[0]), save_dir)
 
 def test_pretrained_network(pretraining_network, class_encoder, temp_network, n_classes, n_locations, save_dir):
     device = next(pretraining_network.parameters()).device
@@ -390,34 +278,21 @@ def test_pretrained_network(pretraining_network, class_encoder, temp_network, n_
             plot_density(torch.exp(meta_network_output[i]).cpu().view(-1), n_locations, save_dir / "imgs" / f"pretraining_network_output_{i}.png")
         pretraining_network.train()
 
-# def construct_generator(n_locations, meta_network, network_type, location_embedding_dim, n_split, trajectory_type_dim, hidden_dim, reference_to_label, logger):
-
-#     _, generator_class = guide_to_model(network_type)
-
-#     # time_dim is n_time_split + 2 (because of the edges 0 and >max)
-#     generator = generator_class(meta_network, n_locations, location_embedding_dim, n_split+2, trajectory_type_dim, hidden_dim, reference_to_label)
-#     compute_num_params(generator, logger)
-    
-#     return generator, compute_loss_meta_gru_net
 
 def construct_dataset(training_data_dir, route_data_path, n_time_split):
-
     # load dataset config    
     with open(training_data_dir / "params.json", "r") as f:
         param = json.load(f)
     n_locations = param["n_locations"]
     dataset_name = param["dataset"]
 
+    # load data
     trajectories = load(training_data_dir / "training_data.csv")
-    if route_data_path is not None:
-        # try:
-        route_trajectories = load(route_data_path)
-        # except:
-            # print("failed to load route data", route_data_path)
-            # route_trajectories = None        
-    else:
-        route_trajectories = None
     time_trajectories = load(training_data_dir / "training_data_time.csv")
+
+    # route data is optional
+    # this is used for MTNet 
+    route_trajectories = load(route_data_path) if route_data_path is not None else None
 
     return TrajectoryDataset(trajectories, time_trajectories, n_locations, n_time_split, route_data=route_trajectories, dataset_name=dataset_name)
 
@@ -486,49 +361,22 @@ def run(**kwargs):
     # make data loader
     data_loader = torch.utils.data.DataLoader(dataset, num_workers=0, shuffle=True, pin_memory=True, batch_size=kwargs["batch_size"], collate_fn=dataset.make_padded_collate(kwargs["remove_first_value"], kwargs["remove_duplicate"]))
 
-    # prepare and private pre-train the temp model
-    # pretraining_network, location_to_class = construct_pretraining_network(kwargs["clustering"], kwargs["model_name"], dataset.n_locations, kwargs["memory_dim"], kwargs["memory_hidden_dim"], kwargs["location_embedding_dim"], kwargs["multilayer"], kwargs["consistent"], logger)
-    # pretraining_network.to(device)
-
-    # if kwargs["model_name"] == "baseline":
-    #     location_encoding_component = MatrixLocationEncodingComponent(TrajectoryDataset.vocab_size(dataset.n_locations), kwargs["location_embedding_dim"])
-    #     time_encoding_component = MatrixTimeEncodingComponent(dataset.n_time_split, kwargs["time_embedding_dim"])
-    #     input_dim = kwargs["location_embedding_dim"] + kwargs["time_embedding_dim"]
-    #     prefix_encoding_component = GRUPrefixEncodingComponent(input_dim, kwargs["memory_hidden_dim"], 1, False)
-    #     scoring_component = LinearScoringComponent(kwargs["memory_hidden_dim"], dataset.n_locations, dataset.n_time_split+1)
-    #     generator = Generator(location_encoding_component, time_encoding_component, prefix_encoding_component, scoring_component)
-    # elif kwargs["model_name"] == "hrnet":
-    #     location_encoding_component = LinearHierarchicalLocationEncodingComponent(TrajectoryDataset.vocab_size(dataset.n_locations), kwargs["location_embedding_dim"])
-    #     time_encoding_component = MatrixTimeEncodingComponent(dataset.n_time_split, kwargs["time_embedding_dim"])
-    #     input_dim = kwargs["location_embedding_dim"] + kwargs["time_embedding_dim"]
-    #     prefix_encoding_component = GRUPrefixEncodingComponent(input_dim, kwargs["memory_hidden_dim"], 1, False)
-    #     scoring_component = DotScoringComponent(kwargs["memory_hidden_dim"], dataset.n_locations, dataset.n_time_split+1, location_encoding_component, kwargs["multitask"])
-    #     generator = Generator(location_encoding_component, time_encoding_component, prefix_encoding_component, scoring_component)
+    # construct generator
     generator = construct_generator(kwargs["model_name"], dataset.n_locations, dataset.n_time_split+1, kwargs["location_embedding_dim"], kwargs["time_embedding_dim"], kwargs["memory_hidden_dim"], kwargs["multitask"])
     generator.to(device)
 
+    # pre-training
     if kwargs["pre_n_iter"] != 0:
-        logger.info(f"clustering type: {kwargs['clustering']}")
+        # classify locations according to the clustering type with location semantics without dataset
         location_to_class, privtree = clustering(kwargs['clustering'], dataset.n_locations)
-        # class needs to correspond to node 
         # prepare (DP) transition matrix
         transition_matrix = prepare_transition_matrix(location_to_class, kwargs["transition_type"], dataset, kwargs["clipping_for_transition_matrix"], kwargs["epsilon"], save_dir, logger)
         # pre-training with the transition matrix
-        # pretraining_network = pre_training_pretraining_network(transition_matrix, kwargs["pre_n_iter"], pretraining_network, kwargs["pre_training_patience"], save_dir, kwargs["pretraining_method"], logger)
         pre_training_pretraining_network(transition_matrix, privtree, kwargs["pre_n_iter"], generator, kwargs["pre_training_patience"], save_dir, kwargs["pretraining_method"], logger)
-    # remove the temp component for pre-training
-    # if hasattr(pretraining_network, "remove_class_to_query"):
-        # pretraining_network.remove_class_to_query()
 
-
-    # prepare the generator
-    # generator, loss_model = construct_generator(dataset.n_locations, pretraining_network, kwargs["model_name"], kwargs["location_embedding_dim"], kwargs["n_split"], len(dataset.label_to_reference), kwargs["hidden_dim"], dataset.reference_to_label, logger)
-    # kwargs["num_params"] = compute_num_params(generator, logger)
-    # generator.to(device)
-    loss_model = compute_loss_generator
+    # set optimizer
     optimizer = optim.Adam(generator.parameters(), lr=kwargs["learning_rate"])
-
-    # make private if is_dp
+    # make generator, optimizer, and data_loader private if is_dp
     if kwargs["is_dp"]:
         logger.info("privating the model")
         privacy_engine = PrivacyEngine(accountant=kwargs["accountant_mode"])
@@ -538,10 +386,9 @@ def run(**kwargs):
         logger.info("not privating the model")
         eval_generator = generator
 
+    # traning the generator with early stopping
     early_stopping = EarlyStopping(patience=kwargs["patience"], verbose=True, path=save_dir / "checkpoint.pt", trace_func=logger.info)
-    logger.info(f"early stopping patience: {kwargs['patience']}, save path: {save_dir / 'checkpoint.pt'}")
-
-    # traning the generator
+    logger.info(f"early stopping patience: {kwargs['patience']}")
     for epoch in tqdm.tqdm(range(kwargs["n_epochs"])):
 
         # save model
@@ -550,11 +397,11 @@ def run(**kwargs):
 
         # training
         if not kwargs["is_dp"]:
-            losses = train_epoch(data_loader, generator, optimizer, loss_model, kwargs["multitask"], kwargs["coef_location"], kwargs["coef_time"])
+            losses = train_epoch(data_loader, generator, optimizer, compute_loss_generator, kwargs["multitask"], kwargs["coef_location"], kwargs["coef_time"])
             epsilon = 0
         else:
             with BatchMemoryManager(data_loader=data_loader, max_physical_batch_size=min([kwargs["physical_batch_size"], kwargs["batch_size"]]), optimizer=optimizer) as new_data_loader:
-                losses = train_epoch(new_data_loader, generator, optimizer, loss_model, kwargs["multitask"], kwargs["coef_location"], kwargs["coef_time"])
+                losses = train_epoch(new_data_loader, generator, optimizer, compute_loss_generator, kwargs["multitask"], kwargs["coef_location"], kwargs["coef_time"])
             epsilon = privacy_engine.get_epsilon(kwargs["dp_delta"])
 
         # early stopping

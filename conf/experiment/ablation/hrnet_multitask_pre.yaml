@@ -8,6 +8,6 @@ defaults:
   - override /evaluation/baseline@_global_: default
 
 exp_name: ablation
-train_all_layers: True
-pre_n_iter: 10000
-consistent: True
+multitask: True
+pre_n_iter: 100
+# consistent: True

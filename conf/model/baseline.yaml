@@ -6,12 +6,13 @@ model_name: baseline
 epsilon: 0.0
 meta_dist: both
 transition_type: first
-train_all_layers: False
+multitask: False
 model_seed: 0
 is_dp: False
 memory_dim: 32
 memory_hidden_dim: 32
 location_embedding_dim: 32
+time_embedding_dim: 32
 hidden_dim: 32
 batch_size: 0
 remove_first_value: False
