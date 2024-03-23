@@ -283,7 +283,7 @@ class LinearScoringComponent(ScoringComponent):
         return location, time
 
     def to_location_distribution(self, locations):
-        pass
+        return locations
 
 class DotScoringComponent(ScoringComponent):
     def __init__(self, hidden_dim, n_locations, n_times, location_encoding_component, multitask):
