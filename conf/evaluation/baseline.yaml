@@ -3,7 +3,7 @@ defaults:
 
 # evaluation setting
 evaluation_mode: False
-evaluation_interval: 1
+evaluation_interval: 10
 ablation: False
 evaluate_global: False
 evaluate_passing: True
