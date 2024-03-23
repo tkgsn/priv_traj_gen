@@ -1218,11 +1218,11 @@ def run(**kwargs):
 
     # evaluation
     for i, model_path in enumerate(model_paths):
-        logger.info(f"evaluate {model_path}")
-
         # skip according to the interval
         if i % kwargs["evaluation_interval"] != 0:
             continue
+
+        logger.info(f"evaluate {model_path}")
 
         # load model
         if kwargs["model_name"] in ["hrnet", "baseline"]:
