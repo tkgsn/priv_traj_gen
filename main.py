@@ -142,31 +142,31 @@ def clustering(clustering_type, n_locations, logger):
         raise NotImplementedError
     return location_to_class, privtree
 
-def construct_pretraining_network(clustering_type, network_type, n_locations, memory_dim, memory_hidden_dim, location_embedding_dim, multilayer, consistent, logger):
+# def construct_pretraining_network(clustering_type, network_type, n_locations, memory_dim, memory_hidden_dim, location_embedding_dim, multilayer, consistent, logger):
 
-    location_to_class, privtree = clustering(clustering_type, n_locations, logger)
-    # class needs to correspond to node 
-    n_classes = len(set(location_to_class.values()))
+#     location_to_class, privtree = clustering(clustering_type, n_locations, logger)
+#     # class needs to correspond to node 
+#     n_classes = len(set(location_to_class.values()))
 
-    pretraining_network_class, _ = guide_to_model(network_type)
-    if network_type == "markov1":
-        pass
-        # normalize count by dim = 1
-        # target_counts = target_counts / target_counts.sum(dim=1).reshape(-1,1)
-        # generator = Markov1Generator(target_counts.cpu(), location_to_class)
-        # eval_generator = generator
-        # optimizer = None
-        # data_loader = None
-        # privacy_engine = None
-        # args.n_epochs = 0
-    elif network_type == "baseline":
-        pretraining_network = pretraining_network_class(memory_hidden_dim, memory_dim, n_locations, n_classes, "relu")
-    elif network_type == "hrnet":
-        pretraining_network = pretraining_network_class(n_locations, memory_dim, memory_hidden_dim, location_embedding_dim, privtree, "relu", multilayer=multilayer, is_consistent=consistent)
+#     pretraining_network_class, _ = guide_to_model(network_type)
+#     if network_type == "markov1":
+#         pass
+#         # normalize count by dim = 1
+#         # target_counts = target_counts / target_counts.sum(dim=1).reshape(-1,1)
+#         # generator = Markov1Generator(target_counts.cpu(), location_to_class)
+#         # eval_generator = generator
+#         # optimizer = None
+#         # data_loader = None
+#         # privacy_engine = None
+#         # args.n_epochs = 0
+#     elif network_type == "baseline":
+#         pretraining_network = pretraining_network_class(memory_hidden_dim, memory_dim, n_locations, n_classes, "relu")
+#     elif network_type == "hrnet":
+#         pretraining_network = pretraining_network_class(n_locations, memory_dim, memory_hidden_dim, location_embedding_dim, privtree, "relu", multilayer=multilayer, is_consistent=consistent)
 
-    compute_num_params(pretraining_network, logger)
+#     compute_num_params(pretraining_network, logger)
         
-    return pretraining_network, location_to_class
+#     return pretraining_network, location_to_class
 
 def prepare_transition_matrix(location_to_class, transition_type, dataset, clipping, epsilon, save_dir, logger):
     n_classes = len(set(location_to_class.values()))
@@ -310,14 +310,13 @@ def check_hyperparameters(kwargs, dataset, logger):
     if kwargs["batch_size"] == 0:
         kwargs["batch_size"] = int(np.sqrt(len(dataset)))
         logger.info("batch size is set as " + str(kwargs["batch_size"]))
-        
-    kwargs["consistent"] = kwargs["consistent"] and kwargs["train_all_layers"]
-    if kwargs["consistent"] and not kwargs["train_all_layers"]:
-        kwargs["consistent"] = False
-        logger.info("!!!!!! consistent is set as False because train_all_layers is False")
-    if kwargs["model_name"] != "hrnet":
-        kwargs["train_all_layers"] = False
-
+    if kwargs["physical_batch_size"] == 0:
+        kwargs["physical_batch_size"] = kwargs["batch_size"]
+        logger.info("physical batch size is set as " + str(kwargs["physical_batch_size"]))
+    if kwargs["consistent"] and not kwargs["multitask"]:
+        raise ValueError("consistent is True but multitask is False")
+    if kwargs["model_name"] != "hrnet" and kwargs["multitask"]:
+        raise ValueError("multitask is True but model_name is not hrnet")
     if kwargs["pre_n_iter"] == 0:
         kwargs["epsilon"] = 0
         logger.info("pre-training is not done")
@@ -362,7 +361,7 @@ def run(**kwargs):
     data_loader = torch.utils.data.DataLoader(dataset, num_workers=0, shuffle=True, pin_memory=True, batch_size=kwargs["batch_size"], collate_fn=dataset.make_padded_collate(kwargs["remove_first_value"], kwargs["remove_duplicate"]))
 
     # construct generator
-    generator = construct_generator(kwargs["model_name"], dataset.n_locations, dataset.n_time_split+1, kwargs["location_embedding_dim"], kwargs["time_embedding_dim"], kwargs["memory_hidden_dim"], kwargs["multitask"])
+    generator = construct_generator(kwargs["model_name"], dataset.n_locations, dataset.n_time_split+1, kwargs["location_embedding_dim"], kwargs["time_embedding_dim"], kwargs["memory_hidden_dim"], kwargs["multitask"], kwargs["consistent"])
     generator.to(device)
 
     # pre-training

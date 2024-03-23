@@ -15,6 +15,7 @@ location_embedding_dim: 32
 time_embedding_dim: 32
 hidden_dim: 32
 batch_size: 0
+physical_batch_size: 0
 remove_first_value: False
 remove_duplicate: False
 clustering: depth
@@ -29,3 +30,7 @@ coef_time: 1
 coef_location: 1
 clipping_for_transition_matrix: 1
 pretraining_method: dirichlet
+accountant_mode: prv
+noise_multiplier: 1.0
+clipping_bound: 1.0
+dp_delta: 1e-5

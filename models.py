@@ -284,13 +284,14 @@ class LinearScoringComponent(ScoringComponent):
         return location, time
 
 class DotScoringComponent(ScoringComponent):
-    def __init__(self, hidden_dim, n_locations, n_times, location_encoding_component, multitask):
+    def __init__(self, hidden_dim, n_locations, n_times, location_encoding_component, multitask, consistent):
         super(DotScoringComponent, self).__init__()
         self.n_locations = n_locations
         self.fc_time = nn.Linear(hidden_dim, n_times)
         self.location_encoding_component = location_encoding_component
         self.embedding_to_key = nn.Linear(location_encoding_component.dim, hidden_dim)
         self.multitask = multitask
+        self.consistent = consistent
 
     def forward(self, prefix_embedding):
         batch_size = prefix_embedding.shape[0]
@@ -337,11 +338,23 @@ class DotScoringComponent(ScoringComponent):
     # this converts the output of forward to the log distribution of the next location at the deepest depth
     def to_location_distribution(self, locations):
         if self.multitask:
-            locations = locations[-1][:,-1,:]
+            if self.consistent:
+                assert type(locations) == list, "the output should be a list, but it is {}".format(type(locations))
+
+                # fetch the next location distributions for all depths
+                locations = [location[:,-1,:] for location in locations]
+                depth = len(locations)
+
+                # compute the distribution at the deepest depth reccurently from the above distributions
+                distribution = torch.zeros_like(locations[-1]).to(locations[-1].device)
+                for i in range(depth):
+                    score_at_depth_i = locations[i].repeat_interleave(4**(depth-i-1), dim=-1)
+                    distribution += score_at_depth_i
+                return distribution
+            else:
+                return locations[-1][:,-1,:]
         else:
-            # locations = locations[:,-1,:]
-            locations = super().to_location_distribution(locations)
-        return locations
+            return super().to_location_distribution(locations)
 
 
 def construct_baseline_generator(n_locations, n_times, location_embedding_dim, time_embedding_dim, hidden_dim):
@@ -1059,7 +1072,7 @@ def guide_to_model(type):
         return MetaNetwork, MetaGRUNet
 
 
-def construct_generator(model_name, n_locations, n_times, location_embedding_dim, time_embedding_dim, memory_hidden_dim, multitask):
+def construct_generator(model_name, n_locations, n_times, location_embedding_dim, time_embedding_dim, memory_hidden_dim, multitask, consistent):
     if model_name == "baseline":
         location_encoding_component = MatrixLocationEncodingComponent(TrajectoryDataset.vocab_size(n_locations), location_embedding_dim)
         time_encoding_component = MatrixTimeEncodingComponent(n_times-1, time_embedding_dim)
@@ -1072,7 +1085,7 @@ def construct_generator(model_name, n_locations, n_times, location_embedding_dim
         time_encoding_component = MatrixTimeEncodingComponent(n_times-1, time_embedding_dim)
         input_dim = location_embedding_dim + time_embedding_dim
         prefix_encoding_component = GRUPrefixEncodingComponent(input_dim, memory_hidden_dim, 1, False)
-        scoring_component = DotScoringComponent(memory_hidden_dim, n_locations, n_times, location_encoding_component, multitask)
+        scoring_component = DotScoringComponent(memory_hidden_dim, n_locations, n_times, location_encoding_component, multitask, consistent)
         generator = Generator(location_encoding_component, time_encoding_component, prefix_encoding_component, scoring_component)
     
     return generator
