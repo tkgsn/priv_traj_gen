@@ -199,16 +199,17 @@ def prepare_transition_matrix(location_to_class, transition_type, dataset, clipp
     
     return torch.stack(transition_matrix)
 
-def compute_loss_for_pretraining(pretraining_network, target):
+def compute_loss_for_pretraining(pretraining_network_output, target):
 
+    multitask = type(pretraining_network_output) == list
     # multitask training
-    if pretraining_network.scoring_component.multitask:
+    if multitask:
         assert (type(pretraining_network_output) == list) and (type(target) == list), f"{type(pretraining_network_output)} and {type(target)} must be list because of multitask training"
 
         losses = []
         # for each depth
         for i in range(len(pretraining_network_output)):
-            losses.append(F.kl_div(pretraining_network_output[i], target, reduction='batchmean'))
+            losses.append(F.kl_div(pretraining_network_output[i], target[i].to(pretraining_network_output[i].device), reduction='batchmean'))
         loss = sum(losses)
     else:
         pretraining_network_output = pretraining_network_output.view(*target.shape)
@@ -242,7 +243,7 @@ def pre_training_pretraining_network(transition_matrix, privtree, n_iter, pretra
             pretraining_network_output = pretraining_network.transition(input, class_encoder, temp_network)
 
             # compute loss
-            loss = compute_loss_for_pretraining(pretraining_network_output, batch["target"].to(device))
+            loss = compute_loss_for_pretraining(pretraining_network_output, batch["target"])
 
             # compute gradient and update
             optimizer.zero_grad()
