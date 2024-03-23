@@ -144,8 +144,7 @@ def clustering(clustering_type, n_locations, logger):
 
 def construct_pretraining_network(clustering_type, network_type, n_locations, memory_dim, memory_hidden_dim, location_embedding_dim, multilayer, consistent, logger):
 
-    logger.info(f"clustering type: {clustering_type}")
-    location_to_class, privtree = clustering(clustering_type, n_locations)
+    location_to_class, privtree = clustering(clustering_type, n_locations, logger)
     # class needs to correspond to node 
     n_classes = len(set(location_to_class.values()))
 
