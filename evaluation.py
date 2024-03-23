@@ -1194,7 +1194,7 @@ class MTNetGeneratorMock():
 #     return args
 
 def run(**kwargs):
-    from main import construct_pretraining_network, construct_dataset, construct_generator
+    from main import construct_dataset, construct_generator
 
     device = torch.device(f"cuda:{kwargs['cuda_number']}" if torch.cuda.is_available() else "cpu")
 
