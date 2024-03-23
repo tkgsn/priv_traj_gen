@@ -1226,9 +1226,9 @@ def run(**kwargs):
 
         # load model
         if kwargs["model_name"] in ["hrnet", "baseline"]:
-            pretraining_network, _ = construct_pretraining_network(kwargs["clustering"], kwargs["model_name"], dataset.n_locations, kwargs["memory_dim"], kwargs["memory_hidden_dim"], kwargs["location_embedding_dim"], kwargs["multilayer"], kwargs["consistent"], logger)
-            if hasattr(pretraining_network, "remove_class_to_query"):
-                pretraining_network.remove_class_to_query()
+            # pretraining_network, _ = construct_pretraining_network(kwargs["clustering"], kwargs["model_name"], dataset.n_locations, kwargs["memory_dim"], kwargs["memory_hidden_dim"], kwargs["location_embedding_dim"], kwargs["multilayer"], kwargs["consistent"], logger)
+            # if hasattr(pretraining_network, "remove_class_to_query"):
+            #     pretraining_network.remove_class_to_query()
             generator = construct_generator(kwargs["model_name"], dataset.n_locations, dataset.n_time_split+1, kwargs["location_embedding_dim"], kwargs["time_embedding_dim"], kwargs["memory_hidden_dim"], kwargs["multitask"], kwargs["consistent"])
             generator.load_state_dict(torch.load(model_path, map_location=device))
             generator = generator.to(device)
