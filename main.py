@@ -213,7 +213,7 @@ def compute_loss_for_pretraining(pretraining_network_output, target):
         loss = sum(losses)
     else:
         pretraining_network_output = pretraining_network_output.view(*target.shape)
-        loss = F.kl_div(pretraining_network_output, target, reduction='batchmean')
+        loss = F.kl_div(pretraining_network_output, target.to(pretraining_network_output.device), reduction='batchmean')
     
     return loss
 
