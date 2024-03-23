@@ -59,7 +59,7 @@ class Generator(nn.Module):
 
             # recurrently sample the next location and time
             sampled = [locations]
-            for j in range(seq_len):
+            for _ in range(seq_len):
                 (locations, times), hiddens = self([locations, times], prefix_embedding)
                 locations = self.scoring_component.to_location_distribution(locations)
 
@@ -156,7 +156,7 @@ class LinearHierarchicalLocationEncodingComponent(LocationEncodingComponent):
 
         # deconvolutional operation
         states = [ith_state]
-        for i, linear in enumerate(self.linears):
+        for linear in self.linears:
             ith_state = linear(ith_state).view(batch_size, -1, self.dim)
             states.append(ith_state)
         states = torch.concat(states, dim=-2)
@@ -267,8 +267,9 @@ class ScoringComponent(nn.Module, metaclass=ABCMeta):
     def forward(self, prefix_embedding):
         pass
 
+    # locations is expected to be the shape of batch_size * seq_len * n_locations and the output is the log distribution of the next location
     def to_location_distribution(self, locations):
-        pass
+        return locations[:,-1,:]
 
 class LinearScoringComponent(ScoringComponent):
     def __init__(self, hidden_dim, n_locations, n_times):
@@ -281,9 +282,6 @@ class LinearScoringComponent(ScoringComponent):
         location = F.log_softmax(self.fc_location(prefix_embedding), dim=-1)
         time = F.log_softmax(self.fc_time(prefix_embedding), dim=-1)
         return location, time
-
-    def to_location_distribution(self, locations):
-        return locations
 
 class DotScoringComponent(ScoringComponent):
     def __init__(self, hidden_dim, n_locations, n_times, location_encoding_component, multitask):
@@ -341,7 +339,8 @@ class DotScoringComponent(ScoringComponent):
         if self.multitask:
             locations = locations[-1][:,-1,:]
         else:
-            locations = locations[:,-1,:]
+            # locations = locations[:,-1,:]
+            locations = super().to_location_distribution(locations)
         return locations
 
 
@@ -415,7 +414,7 @@ class BaseReferenceGenerator(nn.Module):
 
             reference_input = torch.tensor([list(ref) + [i for i in range(len(ref), seq_len)] for ref in reference])
             sampled = [outputs]
-            for j in range(seq_len):
+            for _ in range(seq_len):
                 outputs = self.step(outputs)
                 # the main function of post_process is sample a location from the corresponding distribution
                 outputs = self.post_process(outputs, sampled, reference_input)

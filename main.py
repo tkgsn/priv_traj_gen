@@ -367,7 +367,7 @@ def run(**kwargs):
     # pre-training
     if kwargs["pre_n_iter"] != 0:
         # classify locations according to the clustering type with location semantics without dataset
-        location_to_class, privtree = clustering(kwargs['clustering'], dataset.n_locations)
+        location_to_class, privtree = clustering(kwargs['clustering'], dataset.n_locations, logger)
         # prepare (DP) transition matrix
         transition_matrix = prepare_transition_matrix(location_to_class, kwargs["transition_type"], dataset, kwargs["clipping_for_transition_matrix"], kwargs["epsilon"], save_dir, logger)
         # pre-training with the transition matrix
