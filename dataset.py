@@ -201,6 +201,8 @@ class TrajectoryDataset(Dataset):
         for time_traj in self.time_data:
             self.time_label_trajs.append(tuple([self._time_to_label(t) for t in time_traj]))
 
+        self.time_references = [time_label_traj[0] for time_label_traj in self.time_label_trajs]
+
         self.time_ranges = [(self._label_to_time(i), self._label_to_time(i+1)) for i in range(n_time_split)]
         self.computed_auxiliary_information = False
 
@@ -285,7 +287,9 @@ class TrajectoryDataset(Dataset):
                 if remove_first_value:
                     target[0] = ignore_idx
 
-                time_input = time_trajecotry + [time_end_idx] * (max_len - len(time_trajecotry)+1)
+                # time_input = time_trajecotry + [time_end_idx] * (max_len - len(time_trajecotry)+1)
+                # time_target = time_input[1:] + [time_end_idx]
+                time_input = [0] + time_trajecotry + [time_end_idx] * (max_len - len(time_trajecotry))
                 time_target = time_input[1:] + [time_end_idx]
 
                 inputs.append(input)

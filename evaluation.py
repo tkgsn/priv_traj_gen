@@ -181,7 +181,6 @@ def post_process_generated(generated, **kwargs):
     return generated_stay_trajs, generated_route_trajs
 
 def evaluate(generator, dataset, save_dir, logger, **kwargs):
-    from dataset import TrajectoryDataset
 
     # n_bins = int(np.sqrt(dataset.n_locations)-2)
     # print("???")
@@ -207,7 +206,8 @@ def evaluate(generator, dataset, save_dir, logger, **kwargs):
 
         if kwargs["evaluate_first_next_location"]:
             # print("DEPRECATED: evaluate_first_next_location")
-            jss = evaluate_next_location_on_test_dataset(dataset.first_next_location_counts, dataset.first_order_test_data_loader, dataset.first_counters, generator, 1)
+            # jss = evaluate_next_location_on_test_dataset(dataset.first_next_location_counts, dataset.first_order_test_data_loader, dataset.first_counters, generator, 1)
+            jss = evaluate_next_location_on_test_dataset(dataset.real_counters[dataset.evaluating_metrics_names.index("emp_next")], dataset.top_base_locations, dataset.n_locations, dataset.first_order_test_data_loader, dataset.first_counters, generator, 1)
             results["first_next_location_js"] = jss
             logger.info(f"computed divergence for first_next_location: {np.mean(jss)}")
 
@@ -232,8 +232,13 @@ def evaluate(generator, dataset, save_dir, logger, **kwargs):
         while (n_gene_traj < len(dataset.references)) and dataset.counting_functions:
             mini_batch_size =  min([1000, len(dataset.references)])
             # sample mini_batch_size references from dataset.references
-            references = random.sample(dataset.references ,mini_batch_size)
-            generated = generator.make_sample(references, TrajectoryDataset.start_idx(dataset.n_locations), mini_batch_size)
+            sample_index = random.sample(range(len(dataset.references)), mini_batch_size)
+            references = [dataset.references[i] for i in sample_index]
+            time_referenfes = [dataset.time_references[i] for i in sample_index]
+            # references = random.sample(dataset.references ,mini_batch_size)
+            # time_referenfes = [dataset.time_references[ref] for ref in references]
+
+            generated = generator.make_sample(references, time_referenfes, mini_batch_size)
 
             # post processing
             generated_stay_trajs, generated_route_trajs = post_process_generated(generated, **kwargs)
@@ -295,24 +300,24 @@ def evaluate(generator, dataset, save_dir, logger, **kwargs):
         # img_dir = save_dir / f"imgs_trun{kwargs['truncation']}_{kwargs['to_bin']}" / kwargs["name"]
         img_dir = save_dir / "imgs"
         img_dir.mkdir(exist_ok=True)
-        for key, counter, real_counter in zip(evaluating_metrics_names, counters, dataset.real_counters):
 
+        first_location_counts = counters[evaluating_metrics_names.index("first_location")]
+        real_first_location_counts = dataset.real_counters[dataset.evaluating_metrics_names.index("first_location")]
+    
+        for key, key2, counter, real_counter in zip(evaluating_metrics_names, dataset.evaluating_metrics_names, counters, dataset.real_counters):
             if key == "distance":
                 n_vocabs = dataset.n_bins_for_distance
             else:
                 n_vocabs = dataset.n_locations
 
-            first_location_counts = counters[evaluating_metrics_names.index("first_location")]
-            real_first_location_counts = dataset.real_counters[evaluating_metrics_names.index("first_location")]
-
             # evaluation of conditional metrics
             if key in ["target", "destination", "route", "emp_next"]:
-                results[f"{key}_kls_eachdim"] = [compute_divergence(real_counter, real_first_location_counts[location], counter_, first_location_counts[location], n_vocabs, save_path=img_dir / f"{key}_{i}.png", location=location) for i, (counter_, real_counter, location) in enumerate(zip(counter, real_counter, dataset.top_base_locations))]
-                results[f"{key}_jss_eachdim"] = [compute_divergence(real_counter, real_first_location_counts[location], counter_, first_location_counts[location], n_vocabs, type="kl") for counter_, real_counter, location in zip(counter, real_counter, dataset.top_base_locations)]
-                results[f"{key}_kls_positivedim"] = [compute_divergence(real_counter, real_first_location_counts[location], counter_, first_location_counts[location], n_vocabs, positive=True) for counter_, real_counter, location in zip(counter, real_counter, dataset.top_base_locations)]
-                results[f"{key}_jss_positivedim"] = [compute_divergence(real_counter, real_first_location_counts[location], counter_, first_location_counts[location], n_vocabs, positive=True, type="kl") for counter_, real_counter, location in zip(counter, real_counter, dataset.top_base_locations)]
-                results[f"{key}_jss"] = [compute_divergence(real_counter, sum(real_counter.values()), counter_, sum(counter_.values()), n_vocabs, axis=1) for counter_, real_counter in zip(counter, real_counter)]
-                results[f"{key}_emd"] = [compute_divergence(real_counter, sum(real_counter.values()), counter_, sum(counter_.values()), n_vocabs, type="emd", distance_matrix=dataset.distance_matrix) for counter_, real_counter in zip(counter, real_counter)]
+                results[f"{key}_kls_eachdim"] = [compute_divergence(real_counter_, real_first_location_counts[location], counter_, first_location_counts[location], n_vocabs, save_path=img_dir / f"{key}_{i}.png", location=location) for i, (counter_, real_counter_, location) in enumerate(zip(counter, real_counter, dataset.top_base_locations))]
+                results[f"{key}_jss_eachdim"] = [compute_divergence(real_counter_, real_first_location_counts[location], counter_, first_location_counts[location], n_vocabs, type="kl") for counter_, real_counter_, location in zip(counter, real_counter, dataset.top_base_locations)]
+                results[f"{key}_kls_positivedim"] = [compute_divergence(real_counter_, real_first_location_counts[location], counter_, first_location_counts[location], n_vocabs, positive=True) for counter_, real_counter_, location in zip(counter, real_counter, dataset.top_base_locations)]
+                results[f"{key}_jss_positivedim"] = [compute_divergence(real_counter_, real_first_location_counts[location], counter_, first_location_counts[location], n_vocabs, positive=True, type="kl") for counter_, real_counter_, location in zip(counter, real_counter, dataset.top_base_locations)]
+                results[f"{key}_jss"] = [compute_divergence(real_counter_, sum(real_counter_.values()), counter_, sum(counter_.values()), n_vocabs, axis=1) for counter_, real_counter_ in zip(counter, real_counter)]
+                results[f"{key}_emd"] = [compute_divergence(real_counter_, sum(real_counter_.values()), counter_, sum(counter_.values()), n_vocabs, type="emd", distance_matrix=dataset.distance_matrix) for counter_, real_counter_ in zip(counter, real_counter)]
 
                 logger.info(f"computed divergence for {key}: {np.mean(results[f'{key}_jss'])}")
             # if key in ["target", "destination", "route", "emp_next"]:
@@ -515,8 +520,10 @@ def compute_distribution_js_for_each_depth(distribution, target_distribution):
     return np.stack(next_location_js_for_all_depth, axis=1).tolist()
 
 
-def evaluate_next_location_on_test_dataset(next_location_counts, data_loader, counters, generator, target_index):
-    next_location_distributions = {key: noise_normalize(next_location_count) for key, next_location_count in next_location_counts.items()}
+def evaluate_next_location_on_test_dataset(next_location_counts, top_k_locations, n_locations, data_loader, counters, generator, target_index):
+    # next_location_distributions = {key: noise_normalize(next_location_count) for key, next_location_count in next_location_counts.items()}
+    # print(next_location_counts)
+    next_location_distributions = {key: compute_distribution_from_count(next_location_count, n_locations, sum(next_location_count.values())) for key, next_location_count in zip(top_k_locations, next_location_counts)}
     jss = []
 
     outputs = []
@@ -834,8 +841,8 @@ def compute_auxiliary_information(dataset, save_dir, test_thresh, logger, **kwar
     # time_distribution = {label: time_label_count[label] / len(dataset.time_label_trajs) for label in time_label_count.keys()}
     dataset.distance_matrix = np.load(get_datadir() / str(dataset)  / f"distance_matrix_bin{int(np.sqrt(dataset.n_locations)) -2}.npy")
 
-    dataset.evaluating_metrics, dataset.counting_functions, dataset.real_counters = make_counting_functions(len(dataset.top_base_locations), **kwargs)
-    logger.info(f"evaluating metrics: {dataset.evaluating_metrics}")
+    dataset.evaluating_metrics_names, dataset.counting_functions, dataset.real_counters = make_counting_functions(len(dataset.top_base_locations), **kwargs)
+    logger.info(f"evaluating metrics: {dataset.evaluating_metrics_names}")
     # counting to make each distribution
     for counting_function, counter in zip(dataset.counting_functions, dataset.real_counters):
         counting_function(dataset.data, dataset.route_data, dataset, counter)
