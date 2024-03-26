@@ -6,7 +6,7 @@ import seaborn as sns
 import argparse
 import pickle
 
-from name_config import make_model_dir, make_training_data_path, make_save_name
+from name_config import make_model_dir, make_training_data_path, make_save_name, result_name
 from my_utils import construct_default_quadtree, noise_normalize, save, plot_density, get_datadir, set_logger, get_original_dataset_name
 from collections import Counter
 import numpy as np
@@ -1244,7 +1244,7 @@ def run(**kwargs):
         results = evaluate(generator, dataset, model_dir, logger, **kwargs)
 
         # save the result
-        result_save_path = model_dir / f"evaluated_{i}_co.json" if kwargs["consistent"] else model_dir / f"evaluated_{i}.json"
+        result_save_path = model_dir / result_name(i, kwargs["consistent"])
         
         logger.info("save result to " + str(result_save_path))
         with open(result_save_path, "w") as f:

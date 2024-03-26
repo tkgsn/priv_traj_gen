@@ -153,7 +153,14 @@ class LinearHierarchicalLocationEncodingComponent(LocationEncodingComponent):
 
         indices = location.cpu().detach().clone()
         indices.apply_(lambda x: location_to_index_with_special_ids(x))
-        return indices
+
+        def node_to_hidden(node_id):
+            return self.tree.node_id_to_hidden_id[node_id]
+        
+        # change the order according to the geographical order ()
+        hidden_ids = indices.apply_(lambda x: node_to_hidden(x))
+
+        return hidden_ids
     
     def make_embedding_matrix(self, batch_size, device):
         # make root state
@@ -311,25 +318,22 @@ class DotScoringComponent(ScoringComponent):
         all_locations = torch.tensor(range(self.n_locations))
 
         # for multi-resolution task learning, compute the scores of the nodes at all depths
-        if self.multitask:
-            depths = range(1,self.location_encoding_component.tree.max_depth+1)
         # otherwise, compute the scores of the nodes at the deepest depth
-        else:
-            depths = [-1]
+        depths = range(1,self.location_encoding_component.tree.max_depth+1) if self.multitask else [-1]
 
         location_ = []
         for depth in depths:
-            # convert location to the corresponding node_ids of the depth
-            node_ids = self.location_encoding_component.location_to_index(all_locations, depth).tolist()
-
+            # convert location to the corresponding location_ids of the depth
+            location_ids = self.location_encoding_component.location_to_index(all_locations, depth).tolist()
+       
             # remove duplicate values and sort
-            node_ids = list(set(node_ids))
-            node_ids.sort()
+            location_ids = list(set(location_ids))
+            location_ids.sort()
 
             # fetch the scores of the nodes
             scores_ = []
             for i in range(batch_size):
-                scores_.append(scores[i][..., node_ids])
+                scores_.append(scores[i][..., location_ids])
             
             # convert to distribution
             location_.append(F.log_softmax(torch.stack(scores_, dim=0), dim=-1))

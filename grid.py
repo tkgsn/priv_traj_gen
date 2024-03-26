@@ -163,6 +163,7 @@ class QuadTree(Grid):
         self.state_to_node_path_cache = {}
         self.get_nodes_cache = {}
         self.is_complete = False
+        self.n_special_vocabs = 3
 
     @staticmethod
     def divide(node):
@@ -240,7 +241,9 @@ class QuadTree(Grid):
         id_to_hidden_id = dict(sorted(id_to_hidden_id.items(), key=lambda x:x[0]))
         
         # the root node does not correspond to any location
-        return [0] + list(id_to_hidden_id.values())
+        id_to_hidden_id = [0] + list(id_to_hidden_id.values())
+        # add special vocabs
+        return id_to_hidden_id + [len(id_to_hidden_id)+i for i in range(self.n_special_vocabs)]
 
     def set_coordinate(self):
         nodes = self.get_all_nodes()

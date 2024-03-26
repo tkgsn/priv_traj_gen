@@ -2,6 +2,9 @@ import json
 import os
 from my_utils import get_datadir
 
+def result_name(i, consistent):
+    return f"evaluated_{i}_co.json" if consistent else f"evaluated_{i}.json"
+
 def make_raw_data_path(dataset, **kwargs):
     return get_datadir() / dataset / "raw_data.csv"
 
