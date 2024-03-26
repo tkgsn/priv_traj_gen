@@ -143,24 +143,23 @@ class LinearHierarchicalLocationEncodingComponent(LocationEncodingComponent):
         self.dim = dim
 
     def location_to_index(self, location, depth):
+
         def location_to_index_with_special_ids(location):
             if location >= self.n_locations and location < self.n_locations+TrajectoryDataset.n_specials():
                 special_vocab_id = location - self.n_locations + 1
-                node_id = self.tree.state_to_node_id_path(self.n_locations-1)[depth] + special_vocab_id
+                index = self.tree.state_to_node_id_path(self.n_locations-1)[depth] + special_vocab_id
             else:
                 node_id = self.tree.state_to_node_id_path(location)[depth]
-            return node_id
+                index = self.tree.node_id_to_hidden_id[node_id]
+            return index
 
         indices = location.cpu().detach().clone()
         indices.apply_(lambda x: location_to_index_with_special_ids(x))
-
-        def node_to_hidden(node_id):
-            return self.tree.node_id_to_hidden_id[node_id]
         
-        # change the order according to the geographical order ()
-        hidden_ids = indices.apply_(lambda x: node_to_hidden(x))
+        # # change the order according to the geographical order ()
+        # hidden_ids = indices.apply_(lambda x: node_to_hidden(x))
 
-        return hidden_ids
+        return indices
     
     def make_embedding_matrix(self, batch_size, device):
         # make root state
@@ -325,7 +324,6 @@ class DotScoringComponent(ScoringComponent):
         for depth in depths:
             # convert location to the corresponding location_ids of the depth
             location_ids = self.location_encoding_component.location_to_index(all_locations, depth).tolist()
-       
             # remove duplicate values and sort
             location_ids = list(set(location_ids))
             location_ids.sort()
