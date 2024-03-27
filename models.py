@@ -149,8 +149,9 @@ class LinearHierarchicalLocationEncodingComponent(LocationEncodingComponent):
                 special_vocab_id = location - self.n_locations + 1
                 index = self.tree.state_to_node_id_path(self.n_locations-1)[depth] + special_vocab_id
             else:
-                node_id = self.tree.state_to_node_id_path(location)[depth]
-                index = self.tree.node_id_to_hidden_id[node_id]
+                index = self.tree.state_to_node_id_path(location)[depth]
+                # index = self.tree.node_id_to_hidden_id[node_id]
+                # print(node_id, location, index)
             return index
 
         indices = location.cpu().detach().clone()
