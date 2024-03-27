@@ -155,9 +155,6 @@ class LinearHierarchicalLocationEncodingComponent(LocationEncodingComponent):
 
         indices = location.cpu().detach().clone()
         indices.apply_(lambda x: location_to_index_with_special_ids(x))
-        
-        # # change the order according to the geographical order ()
-        # hidden_ids = indices.apply_(lambda x: node_to_hidden(x))
 
         return indices
     
