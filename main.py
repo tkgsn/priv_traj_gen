@@ -362,6 +362,7 @@ def run(**kwargs):
 
     # construct generator
     generator = construct_generator(kwargs["model_name"], dataset.n_locations, dataset.n_time_split+1, kwargs["location_embedding_dim"], kwargs["time_embedding_dim"], kwargs["memory_hidden_dim"], kwargs["multitask"], kwargs["consistent"])
+    logger.info(f"number of parameters: {compute_num_params(generator)}")
     generator.to(device)
 
     # pre-training

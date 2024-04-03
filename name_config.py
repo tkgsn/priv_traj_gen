@@ -26,9 +26,10 @@ def make_model_name(**kwargs):
         if kwargs["multitask"] == False:
             kwargs["consistent"] = False
         # save_name = f"{kwargs['model_name']}_dp{kwargs['is_dp']}_{kwargs['meta_dist']}{kwargs['pre_n_iter']}_dim{kwargs['memory_dim']}_{kwargs['memory_hidden_dim']}_{kwargs['location_embedding_dim']}_{kwargs['hidden_dim']}_btch{kwargs['batch_size']}_tr{kwargs['multitask']}_co{kwargs['consistent']}_eps{kwargs['epsilon']}_{kwargs['model_seed']}"
-        save_name = f"{kwargs['model_name']}_dp{kwargs['is_dp']}_{kwargs['meta_dist']}{kwargs['pre_n_iter']}_dim{kwargs['memory_dim']}_{kwargs['memory_hidden_dim']}_{kwargs['location_embedding_dim']}_{kwargs['hidden_dim']}_btch{kwargs['batch_size']}_mul{kwargs['multitask']}_eps{kwargs['epsilon']}_{kwargs['model_seed']}"
+        # save_name = f"{kwargs['model_name']}_dp{kwargs['is_dp']}_{kwargs['meta_dist']}{kwargs['pre_n_iter']}_dim{kwargs['memory_dim']}_{kwargs['memory_hidden_dim']}_{kwargs['location_embedding_dim']}_btch{kwargs['batch_size']}_mul{kwargs['multitask']}_eps{kwargs['epsilon']}_{kwargs['model_seed']}"
+        save_name = f"{kwargs['model_name']}_dp{kwargs['is_dp']}_{kwargs['meta_dist']}{kwargs['pre_n_iter']}_{kwargs['memory_hidden_dim']}_{kwargs['location_embedding_dim']}_btch{kwargs['batch_size']}_mul{kwargs['multitask']}_eps{kwargs['epsilon']}_{kwargs['model_seed']}"
     elif kwargs["model_name"] == "baseline":
-        save_name = f"{kwargs['model_name']}_dp{kwargs['is_dp']}_pre{kwargs['pre_n_iter']}_dim{kwargs['memory_dim']}_{kwargs['memory_hidden_dim']}_{kwargs['location_embedding_dim']}_{kwargs['hidden_dim']}_btch{kwargs['batch_size']}_eps{kwargs['epsilon']}_{kwargs['model_seed']}"
+        save_name = f"{kwargs['model_name']}_dp{kwargs['is_dp']}_pre{kwargs['pre_n_iter']}_dim{kwargs['memory_hidden_dim']}_{kwargs['location_embedding_dim']}_btch{kwargs['batch_size']}_eps{kwargs['epsilon']}_{kwargs['model_seed']}"
     elif kwargs["model_name"] == "mtnet":
         save_name = f"{kwargs['model_name']}_dp{kwargs['is_dp']}_{kwargs['model_seed']}"
 

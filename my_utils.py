@@ -450,14 +450,19 @@ def save(save_path, trajectories, option="w"):
             f.write("\n")
     # send(save_path)
 
-def compute_num_params(model, logger):
+def compute_num_params(model):
 
     num_params = 0
 
-    if hasattr(model, "module"):
-        for param in model.parameters():
-            num_params += param.numel()
-        logger.info(f"number of parameters of {model}: {num_params}")
+    # if hasattr(model, "module"):
+        # for param in model.parameters():
+        #     num_params += param.numel()
+        # logger.info(f"number of parameters of {model}: {num_params}")
+    # else:
+        # print("aa")
+
+    for param in model.parameters():
+        num_params += param.numel()
 
     return num_params
 
