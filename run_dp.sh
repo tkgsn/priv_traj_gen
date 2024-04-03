@@ -1,3 +1,5 @@
+#!/usr/bin/bash
+
 dims=(16 32 64 128)
 
 for dim in ${dims[@]}; do
