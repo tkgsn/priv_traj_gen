@@ -225,6 +225,13 @@ class QuadTree(Grid):
         location_id_to_node_id[len(leafs)+1] = len(self.get_all_nodes())
         return location_id_to_node_id
 
+    def node_id_to_hidden_id_at_depth(self, depth):
+        node_ids = [node.id for node in self.get_nodes(depth)]
+        node_id_to_hidden_id = [self.node_id_to_hidden_id[node_id] for node_id in node_ids]
+        minimum_value = min(node_id_to_hidden_id)
+        return [hidden_id - minimum_value for hidden_id in node_id_to_hidden_id]
+
+
     # hidden id is the id labeld by the order from the upper left to the lower right
     def _make_hidden_ids(self):
         nodes = self.get_all_nodes()

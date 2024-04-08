@@ -538,8 +538,12 @@ def evaluate_next_location_on_test_dataset(next_location_counts, top_k_locations
             input_times = mini_batch["time"].to(device)
             # output = generator([input_locations, input_times], references)[0]
             output, _ = generator([input_locations, input_times])[0]
-            output = output[-1] if type(output) == list else output
-            output = torch.exp(output).cpu().detach().numpy()[:, target_index].tolist()
+            # output = output[-1] if type(output) == list else output
+            output = generator.scoring_component.to_location_distribution(output, target_index)
+            # print(output.shape)
+            output = torch.exp(output).cpu().detach().numpy().tolist()
+            # print(torch.exp(output).cpu().detach().numpy()[:, target_index].shape)
+            # output = torch.exp(output).cpu().detach().numpy()[:, target_index].tolist()
             outputs.extend(output)
     
     cursor = 0
@@ -547,10 +551,12 @@ def evaluate_next_location_on_test_dataset(next_location_counts, top_k_locations
         output = outputs[cursor:cursor+n_test_data]
         inferred_distribution = np.mean(output, axis=0)
         target_distribution = next_location_distributions[target]
-        jss.append(compute_distribution_js_for_each_depth(inferred_distribution, target_distribution))
+        # jss.append(compute_distribution_js_for_each_depth(inferred_distribution, target_distribution))
+        jss.append(jensenshannon(inferred_distribution, target_distribution)**2)
 
         cursor += n_test_data
 
+    print(jss)
     return jss
 
 

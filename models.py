@@ -30,6 +30,7 @@ class Generator(nn.Module):
 
         # decoding to scores as probability of next location and next time
         location, time = self.scoring_component(hiddens)
+
         return [location, time], hiddens
 
     # for pre-training
@@ -62,6 +63,7 @@ class Generator(nn.Module):
             sampled = [(locations[:,1].view(-1, 1), times[:,1].view(-1, 1))]
             for _ in range(seq_len):
                 (locations, times), hiddens = self([locations, times], prefix_embedding)
+
                 # this is post processing for consistent generation
                 locations = self.scoring_component.to_location_distribution(locations)
 
@@ -140,6 +142,7 @@ class LinearHierarchicalLocationEncodingComponent(LocationEncodingComponent):
         self.special_vectors = nn.Embedding(1+TrajectoryDataset.n_specials(), dim)
         # 0: root, 1: start, 2: ignore, 3: end (refer to dataset)
         self.linears = nn.ModuleList([nn.Linear(dim, 4*dim) for _ in range(self.tree.max_depth)])
+        # self.linears = nn.ModuleList([nn.Sequential(nn.Linear(dim, 8*dim), nn.Linear(8*dim, 4*dim)) for _ in range(self.tree.max_depth)])
         self.dim = dim
 
     def location_to_index(self, location, depth):
@@ -183,6 +186,7 @@ class LinearHierarchicalLocationEncodingComponent(LocationEncodingComponent):
         location_embeddings = []
         for i in range(batch_size):
             location_embeddings.append(states[i][indices[i],:])
+
         location_embeddings = torch.stack(location_embeddings, dim=0)
         return location_embeddings
 
@@ -277,8 +281,8 @@ class ScoringComponent(nn.Module, metaclass=ABCMeta):
         pass
 
     # locations is expected to be the shape of batch_size * seq_len * n_locations and the output is the log distribution of the next location
-    def to_location_distribution(self, locations):
-        return locations[:,-1,:]
+    def to_location_distribution(self, locations, target=-1):
+        return locations[:,target,:]
 
 class LinearScoringComponent(ScoringComponent):
     def __init__(self, hidden_dim, n_locations, n_times):
@@ -319,20 +323,47 @@ class DotScoringComponent(ScoringComponent):
         location_ = []
         for depth in depths:
             # convert location to the corresponding location_ids of the depth
-            location_ids = self.location_encoding_component.location_to_index(all_locations, depth).tolist()
+            location_indices = self.location_encoding_component.location_to_index(all_locations, depth).tolist()
             # remove duplicate values and sort
-            location_ids = list(set(location_ids))
-            location_ids.sort()
+            location_indices = list(set(location_indices))
+            location_indices.sort()
 
             # fetch the scores of the nodes
             scores_ = []
             for i in range(batch_size):
-                scores_.append(scores[i][..., location_ids])
-            
-            # convert to distribution
+                scores_.append(scores[i][..., location_indices])
+
+            # if self.consistent:
+            #     scores_ = torch.stack(scores_, dim=0)
+            #     scores_ = F.log_softmax(scores_.view(*scores_.shape[:-1],-1,4), dim=-1)
+            #     scores_ = scores_.view(*scores_.shape[:-2],-1)
+            #     location_.append(scores_)
+            # else:
             location_.append(F.log_softmax(torch.stack(scores_, dim=0), dim=-1))
 
-        location = location_ if self.multitask else location_[-1]
+        if self.consistent:
+            distributions = []
+            for depth in depths:
+                distribution = torch.zeros_like(location_[depth-1]).to(location_[depth-1].device)
+                for i in range(depth):
+                    score_at_depth_i = location_[i].repeat_interleave(4**(depth-i-1), dim=-1)
+                    distribution += score_at_depth_i
+                # indices = self.location_encoding_component.tree.node_id_to_hidden_id_at_depth(depth)
+                # print(indices)
+                # distributions.append(distribution[...,indices])
+                distributions.append(distribution)
+            location_ = distributions
+        
+        if self.multitask:
+            for i, distribution in enumerate(location_):
+                indices = self.location_encoding_component.tree.node_id_to_hidden_id_at_depth(i+1)
+                location_[i] = distribution[...,indices]
+                # print(i, torch.exp(distribution).sum(dim=-1), distribution.shape)
+            location = location_
+        else:
+            indices = self.location_encoding_component.tree.node_id_to_hidden_id_at_depth(self.location_encoding_component.tree.max_depth)
+            location = location_[-1][...,indices]
+        # location = location_ if self.multitask else location_[-1]
         time = F.log_softmax(self.fc_time(prefix_embedding), dim=-1)
         return location, time
 
@@ -341,25 +372,25 @@ class DotScoringComponent(ScoringComponent):
         return self.embedding_to_key(embedding_matrix)
 
     # this converts the output of forward to the log distribution of the next location at the deepest depth
-    def to_location_distribution(self, locations):
+    def to_location_distribution(self, locations, target=-1):
         if self.multitask:
-            if self.consistent:
-                assert type(locations) == list, "the output should be a list, but it is {}".format(type(locations))
+            # if self.consistent:
+            #     assert type(locations) == list, "the output should be a list, but it is {}".format(type(locations))
 
-                # fetch the next location distributions for all depths
-                locations = [location[:,-1,:] for location in locations]
-                depth = len(locations)
+            #     # fetch the next location distributions for all depths
+            #     locations = [location[:,target,:] for location in locations]
+            #     depth = len(locations)
 
-                # compute the distribution at the deepest depth reccurently from the above distributions
-                distribution = torch.zeros_like(locations[-1]).to(locations[-1].device)
-                for i in range(depth):
-                    score_at_depth_i = locations[i].repeat_interleave(4**(depth-i-1), dim=-1)
-                    distribution += score_at_depth_i
-                return distribution
-            else:
-                return locations[-1][:,-1,:]
+            #     # compute the distribution at the deepest depth reccurently from the above distributions
+            #     distribution = torch.zeros_like(locations[-1]).to(locations[-1].device)
+            #     for i in range(depth):
+            #         score_at_depth_i = locations[i].repeat_interleave(4**(depth-i-1), dim=-1)
+            #         distribution += score_at_depth_i
+            #     return distribution
+            # else:
+            return locations[-1][:,target,:]
         else:
-            return super().to_location_distribution(locations)
+            return super().to_location_distribution(locations, target)
 
 
 def compute_loss_generator(target_locations, target_times, output_locations, output_times, coef_location, coef_time):
