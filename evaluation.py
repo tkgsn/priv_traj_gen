@@ -551,8 +551,8 @@ def evaluate_next_location_on_test_dataset(next_location_counts, top_k_locations
         output = outputs[cursor:cursor+n_test_data]
         inferred_distribution = np.mean(output, axis=0)
         target_distribution = next_location_distributions[target]
-        # jss.append(compute_distribution_js_for_each_depth(inferred_distribution, target_distribution))
-        jss.append(jensenshannon(inferred_distribution, target_distribution)**2)
+        jss.append(compute_distribution_js_for_each_depth(inferred_distribution, target_distribution))
+        # jss.append(jensenshannon(inferred_distribution, target_distribution)**2)
 
         cursor += n_test_data
 

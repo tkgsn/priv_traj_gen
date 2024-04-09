@@ -302,23 +302,50 @@ class DotScoringComponent(ScoringComponent):
         self.n_locations = n_locations
         self.fc_time = nn.Linear(hidden_dim, n_times)
         self.location_encoding_component = location_encoding_component
-        self.embedding_to_key = nn.Linear(location_encoding_component.dim, hidden_dim)
+        if multitask:
+            self.embedding_to_key_list = nn.ModuleList([nn.Linear(location_encoding_component.dim, hidden_dim) for _ in range(location_encoding_component.tree.max_depth)])
+            self.prefix_to_query_list = nn.ModuleList([nn.Linear(hidden_dim, hidden_dim) for _ in range(location_encoding_component.tree.max_depth)])
+        else:
+            self.embedding_to_key = nn.Linear(location_encoding_component.dim, hidden_dim)
+            self.prefix_to_query = nn.Linear(hidden_dim, hidden_dim)
         self.multitask = multitask
         self.consistent = consistent
 
     def forward(self, prefix_embedding):
         batch_size = prefix_embedding.shape[0]
-        keys = self.make_keys(batch_size, prefix_embedding.device)
+        # keys = self.make_keys(batch_size, prefix_embedding.device)
 
-        # compute score by dot product of prefix_embedding (=query) and keys
-        scores = torch.bmm(prefix_embedding.view(batch_size, -1, prefix_embedding.shape[-1]), keys.transpose(-2,-1))
-        
-        # fetch the scores of the locations and log_softmax
-        all_locations = torch.tensor(range(self.n_locations))
+        keys = self.location_encoding_component.make_embedding_matrix(batch_size, prefix_embedding.device)
+        if not self.multitask:
+            keys = self.embedding_to_key(keys)
 
         # for multi-resolution task learning, compute the scores of the nodes at all depths
         # otherwise, compute the scores of the nodes at the deepest depth
         depths = range(1,self.location_encoding_component.tree.max_depth+1) if self.multitask else [-1]
+
+        # fetch the scores of the locations and log_softmax
+        all_locations = torch.tensor(range(self.n_locations))
+
+        if self.multitask:
+            scores = [torch.zeros(batch_size,int(np.prod(prefix_embedding.shape[:-1])/batch_size),1).to(prefix_embedding.device)]
+            for depth in depths:
+                query = self.prefix_to_query_list[depth-1](prefix_embedding)
+                # convert location to the corresponding location_ids of the depth
+                location_indices = self.location_encoding_component.location_to_index(all_locations, depth).tolist()
+                # remove duplicate values and sort
+                location_indices = list(set(location_indices))
+                location_indices.sort()
+                # key = self.embedding_to_key_list[depth-1](keys[:,location_indices,:]).transpose(-2,1)
+                key = self.embedding_to_key_list[depth-1](keys[:,location_indices,:])
+                # print(key.shape, query.view(batch_size, -1, query.shape[-1]).shape, keys[:,location_indices,:].transpose(-2,-1).shape)
+                # scores.append(torch.bmm(query.view(batch_size, -1, query.shape[-1]), keys[:,location_indices,:].transpose(-2,-1)))
+                scores.append(torch.bmm(query.view(batch_size, -1, query.shape[-1]), key.transpose(-2,-1)))
+            scores = torch.concat(scores, dim=-1)
+        else:
+            query = self.prefix_to_query(prefix_embedding)
+            # compute score by dot product of prefix_embedding (=query) and keys
+            scores = torch.bmm(query.view(batch_size, -1, query.shape[-1]), keys.transpose(-2,-1))
+        
 
         location_ = []
         for depth in depths:
@@ -367,9 +394,9 @@ class DotScoringComponent(ScoringComponent):
         time = F.log_softmax(self.fc_time(prefix_embedding), dim=-1)
         return location, time
 
-    def make_keys(self, batch_size, device):
-        embedding_matrix = self.location_encoding_component.make_embedding_matrix(batch_size, device)
-        return self.embedding_to_key(embedding_matrix)
+    # def make_keys(self, batch_size, device):
+        # embedding_matrix = self.location_encoding_component.make_embedding_matrix(batch_size, device)
+        # return self.embedding_to_key(embedding_matrix)
 
     # this converts the output of forward to the log distribution of the next location at the deepest depth
     def to_location_distribution(self, locations, target=-1):
